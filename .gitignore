@@ -9,6 +9,7 @@
 # Firebase / Node
 firebase/functions/node_modules/
 firebase/functions/lib/
+apps/study_coach/firebase.json
 
 # IDE
 .DS_Store

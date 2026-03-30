@@ -48,6 +48,11 @@ From repo root:
 firebase emulators:start
 ```
 
+### Firebase config note
+
+- Root `firebase.json` + `.firebaserc` are used by Firebase CLI for emulators/deploy.
+- `apps/study_coach/firebase.json` is FlutterFire metadata and is ignored in git.
+
 ## Core Architecture
 
 The app follows Clean Architecture with feature-first modules:
@@ -60,7 +65,6 @@ Firebase and AI providers are abstracted behind repository interfaces for testab
 
 ## Next Steps
 
-- Wire real `firebase_options.dart` using `flutterfire configure`
 - Connect Auth flows (email/password + provider sign-in)
 - Implement first end-to-end feature: Subjects + Study Plan generation
 - Add Cloud Function AI endpoints and secure callable invocation
