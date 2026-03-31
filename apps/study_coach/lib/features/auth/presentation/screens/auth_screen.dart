@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../controllers/auth_controller.dart';
+
+class AuthScreen extends ConsumerStatefulWidget {
+  const AuthScreen({super.key});
+
+  @override
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends ConsumerState<AuthScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isSignUp = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authFormState = ref.watch(authFormControllerProvider);
+
+    ref.listen<AuthFormState>(authFormControllerProvider, (previous, next) {
+      if (next.errorMessage != null &&
+          next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next.errorMessage!)),
+        );
+      }
+    });
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pillar')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _isSignUp ? 'Create account' : 'Login',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                    validator: (value) {
+                      final email = value?.trim() ?? '';
+                      if (email.isEmpty) {
+                        return 'Email is required';
+                      }
+                      if (!email.contains('@')) {
+                        return 'Enter a valid email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(labelText: 'Password'),
+                    validator: (value) {
+                      final password = value ?? '';
+                      if (password.isEmpty) {
+                        return 'Password is required';
+                      }
+                      if (password.length < 6) {
+                        return 'Minimum 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: authFormState.isLoading ? null : _submit,
+                      child: authFormState.isLoading
+                          ? const SizedBox(
+                              height: 18,
+                              width: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(_isSignUp ? 'Sign up' : 'Login'),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: authFormState.isLoading
+                        ? null
+                        : () {
+                            setState(() => _isSignUp = !_isSignUp);
+                            ref.read(authFormControllerProvider.notifier)
+                                .clearError();
+                          },
+                    child: Text(
+                      _isSignUp
+                          ? 'Already have an account? Login'
+                          : 'Need an account? Sign up',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final controller = ref.read(authFormControllerProvider.notifier);
+    if (_isSignUp) {
+      await controller.signUp(
+        email: _emailController.text,
+        password: _passwordController.text,
+      );
+      return;
+    }
+
+    await controller.signIn(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+  }
+}

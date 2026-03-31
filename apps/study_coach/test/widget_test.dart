@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pillar_study_coach/app/app.dart';
 
 void main() {
-  testWidgets('App renders root title', (WidgetTester tester) async {
+  testWidgets('App renders auth screen title', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: StudyCoachApp()));
 
-    expect(find.text('Pillar AI Study Coach'), findsOneWidget);
+    expect(find.text('Pillar'), findsOneWidget);
   });
 }
