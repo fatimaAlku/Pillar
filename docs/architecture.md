@@ -4,6 +4,7 @@
 
 - Clean Architecture for clear separation of concerns
 - Feature-first folder structure for scale
+- Riverpod for state management + dependency injection
 - Backend-for-frontend via Cloud Functions for AI and business logic
 - Secure-by-default Firebase rules and least privilege access
 
@@ -30,10 +31,10 @@
   - `domain`: entities, value objects, repository contracts, use cases
   - `data`: datasource adapters, DTOs, repository implementations
 
-Suggested feature modules:
+Implemented feature modules:
 
 - `subjects`
-- `plans`
+- `study_plan`
 - `quizzes`
 - `progress`
 - `recommendations`
@@ -62,7 +63,7 @@ Suggested feature modules:
 - `generateStudyPlan` (callable/https): creates plan from subjects/exam dates
 - `generateQuiz` (callable/https): uses AI provider to build quiz payload
 - `submitQuizAttempt` (callable/https): stores attempt and computes weak areas
-- `rebalancePlan` (trigger/callable): updates sessions based on latest outcomes
+- `rebalanceStudyPlan` (trigger/callable): updates sessions based on latest outcomes
 - `dailyDeadlineSweep` (scheduled): marks urgency and sends reminders
 
 Keep AI API keys only in Functions config/secrets. Never expose in Flutter.

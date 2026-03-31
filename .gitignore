@@ -11,6 +11,37 @@ firebase/functions/node_modules/
 firebase/functions/lib/
 apps/study_coach/firebase.json
 
+# Secrets / credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+serviceAccountKey.json
+firebase-adminsdk*.json
+google-credentials.json
+
+# Local Firebase config
+.runtimeconfig.json
+
+# API keys / local app config
+apikeys.json
+api-keys.json
+keys.json
+secrets.json
+secret*.json
+credentials.json
+config.local.json
+*.secret
+
+# Flutter platform local secrets
+**/android/local.properties
+**/android/key.properties
+
 # IDE
 .DS_Store
 .idea/

@@ -1,4 +1,4 @@
-# Pillar - AI Study Coach
+# Pillar
 
 Cross-platform study assistant for university students, built with Flutter and Firebase.
 
