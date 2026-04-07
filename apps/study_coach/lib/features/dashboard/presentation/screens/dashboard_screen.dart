@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../profile/presentation/screens/profile_tab_screen.dart';
 import '../../../quizzes/presentation/screens/quizzes_tab_screen.dart';
 import '../../../study_plan/presentation/screens/study_plan_tab_screen.dart';
 import '../widgets/home_dashboard_view.dart';
@@ -23,25 +23,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       const StudyPlanTabScreen(),
       const QuizzesTabScreen(),
       const _SimpleTab(
-        title: 'Progress',
-        subtitle: 'Performance trends and weak areas will appear here.',
-        icon: Icons.insights_outlined,
+        title: 'RoadMap',
+        subtitle: 'Your learning roadmap will appear here.',
+        icon: Icons.route_outlined,
       ),
+      const ProfileTabScreen(),
     ];
 
-    final titles = ['Home', 'Study Plan', 'Quizzes', 'Progress'];
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(titles[_currentIndex]),
-        actions: [
-          IconButton(
-            onPressed: () =>
-                ref.read(authFormControllerProvider.notifier).signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
+      appBar: AppBar(toolbarHeight: 36),
       body: pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -64,9 +54,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             label: 'Quiz',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.insights_outlined),
-            activeIcon: Icon(Icons.insights),
-            label: 'Progress',
+            icon: Icon(Icons.route_outlined),
+            activeIcon: Icon(Icons.route),
+            label: 'RoadMap',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline_rounded),
+            activeIcon: Icon(Icons.person_rounded),
+            label: 'Profile',
           ),
         ],
       ),
