@@ -5,6 +5,7 @@ class SubjectModel extends Subject {
     required super.id,
     required super.name,
     required super.examDateIso,
+    super.color,
   });
 
   factory SubjectModel.fromMap(String id, Map<String, dynamic> map) {
@@ -12,6 +13,7 @@ class SubjectModel extends Subject {
       id: id,
       name: map['name'] as String? ?? '',
       examDateIso: map['examDate'] as String? ?? '',
+      color: map['color'] as String? ?? '',
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/feature_state.dart';
@@ -104,7 +105,14 @@ class AuthFormController extends StateNotifier<AuthFormState> {
         return 'This email is already registered.';
       case 'weak-password':
         return 'Password is too weak (minimum 6 characters).';
+      case 'operation-not-allowed':
+        return 'Email/password sign-in is not enabled in Firebase Auth.';
+      case 'network-request-failed':
+        return 'Network error. Check your internet connection and try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Please wait and try again.';
       default:
+        debugPrint('Unhandled FirebaseAuthException code: $code');
         return 'Authentication failed. Please try again.';
     }
   }

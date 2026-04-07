@@ -6,6 +6,10 @@ import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'splash_screen.dart';
 
+final startupDelayProvider = FutureProvider<void>((ref) async {
+  await Future<void>.delayed(const Duration(milliseconds: 1200));
+});
+
 class StudyCoachApp extends StatelessWidget {
   const StudyCoachApp({super.key});
 
@@ -28,6 +32,11 @@ class _AuthGate extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final startup = ref.watch(startupDelayProvider);
+    if (startup.isLoading) {
+      return const SplashScreen();
+    }
+
     final authUser = ref.watch(currentAuthUserProvider);
     return authUser.when(
       data: (user) => user == null ? const AuthScreen() : const DashboardScreen(),

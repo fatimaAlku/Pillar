@@ -32,6 +32,18 @@ flutter pub get
 flutter run
 ```
 
+iPhone Simulator quick start from repo root:
+
+```bash
+./scripts/run-ios-simulator.sh
+```
+
+Optional: choose a different simulator device name:
+
+```bash
+./scripts/run-ios-simulator.sh "iPhone 16"
+```
+
 ### 2) Firebase Functions
 
 ```bash
