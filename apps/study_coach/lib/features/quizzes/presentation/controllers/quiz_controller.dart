@@ -1,16 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/services/quiz_ai_service.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
 
 /// Holds client-side quiz runner state (answer selection, progress, submission).
 final quizRunnerControllerProvider =
     StateNotifierProvider<QuizRunnerController, QuizRunnerState>((ref) {
-  return QuizRunnerController();
+  return QuizRunnerController(ref.watch(quizAiServiceProvider));
 });
 
 sealed class QuizRunnerState {
   const QuizRunnerState();
+}
+
+class QuizRunnerIdle extends QuizRunnerState {
+  const QuizRunnerIdle();
+}
+
+class QuizRunnerLoading extends QuizRunnerState {
+  const QuizRunnerLoading();
+}
+
+class QuizRunnerError extends QuizRunnerState {
+  const QuizRunnerError(this.message);
+  final String message;
 }
 
 class QuizRunnerInProgress extends QuizRunnerState {
@@ -56,64 +70,88 @@ class QuizRunnerSubmitted extends QuizRunnerState {
   final QuizSubmissionResult result;
 }
 
+class QuizGenerationRequest {
+  const QuizGenerationRequest({
+    required this.topics,
+    required this.difficulty,
+    required this.numberOfQuestions,
+    this.notesText,
+  });
+
+  final List<String> topics;
+  final String difficulty;
+  final int numberOfQuestions;
+  final String? notesText;
+}
+
 class QuizRunnerController extends StateNotifier<QuizRunnerState> {
-  QuizRunnerController() : super(_initial());
+  QuizRunnerController(this._quizAiService) : super(const QuizRunnerIdle());
 
-  static QuizRunnerState _initial() {
-    // Temporary local data so the full quiz system works end-to-end.
-    // This can later be replaced by generated/persisted questions (Firestore/Functions).
-    const questions = <QuizQuestion>[
-      QuizQuestion(
-        id: 'q1',
-        topicId: 'topic_bst',
-        topicTitle: 'Binary Search Trees',
-        prompt: 'In a BST, which traversal outputs keys in sorted order?',
-        options: ['Preorder', 'Inorder', 'Postorder', 'Level order'],
-        correctIndex: 1,
-      ),
-      QuizQuestion(
-        id: 'q2',
-        topicId: 'topic_bst',
-        topicTitle: 'Binary Search Trees',
-        prompt: 'What is the average time complexity of search in a balanced BST?',
-        options: ['O(1)', 'O(log n)', 'O(n)', 'O(n log n)'],
-        correctIndex: 1,
-      ),
-      QuizQuestion(
-        id: 'q3',
-        topicId: 'topic_hashing',
-        topicTitle: 'Hashing',
-        prompt: 'Which technique resolves collisions by scanning for the next slot?',
-        options: ['Chaining', 'Open addressing', 'Perfect hashing', 'Compression'],
-        correctIndex: 1,
-      ),
-      QuizQuestion(
-        id: 'q4',
-        topicId: 'topic_heaps',
-        topicTitle: 'Heaps',
-        prompt: 'In a max-heap, the parent node is ____ its children.',
-        options: ['<=', '>=', '==', 'Unrelated to'],
-        correctIndex: 1,
-      ),
-      QuizQuestion(
-        id: 'q5',
-        topicId: 'topic_graphs',
-        topicTitle: 'Graphs',
-        prompt: 'BFS is commonly used to find the ____ path in an unweighted graph.',
-        options: ['Longest', 'Shortest', 'Most expensive', 'Random'],
-        correctIndex: 1,
-      ),
-    ];
+  final QuizAiService _quizAiService;
+  QuizGenerationRequest? _lastRequest;
+  List<QuizQuestion>? _lastGeneratedQuestions;
 
-    return const QuizRunnerInProgress(
+  void restart() {
+    final questions = _lastGeneratedQuestions;
+    if (questions == null || questions.isEmpty) {
+      state = const QuizRunnerIdle();
+      return;
+    }
+    state = QuizRunnerInProgress(
       questions: questions,
       currentIndex: 0,
-      selectedByQuestionId: {},
+      selectedByQuestionId: const {},
     );
   }
 
-  void restart() {
-    state = _initial();
+  Future<void> generateQuiz({
+    required List<String> topics,
+    required String difficulty,
+    required int numberOfQuestions,
+    String? notesText,
+  }) async {
+    final trimmedTopics = topics.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final normalizedNotes = notesText?.trim();
+
+    _lastRequest = QuizGenerationRequest(
+      topics: trimmedTopics,
+      difficulty: difficulty.trim(),
+      numberOfQuestions: numberOfQuestions,
+      notesText: normalizedNotes?.isEmpty == true ? null : normalizedNotes,
+    );
+
+    state = const QuizRunnerLoading();
+
+    try {
+      final questions = await _quizAiService.generateQuiz(
+        topics: trimmedTopics,
+        difficulty: difficulty,
+        numberOfQuestions: numberOfQuestions,
+        notesText: normalizedNotes,
+      );
+
+      _lastGeneratedQuestions = questions;
+      state = QuizRunnerInProgress(
+        questions: questions,
+        currentIndex: 0,
+        selectedByQuestionId: const {},
+      );
+    } on QuizAiException catch (e) {
+      state = QuizRunnerError(e.message);
+    } catch (_) {
+      state = const QuizRunnerError('Failed to generate quiz. Please try again.');
+    }
+  }
+
+  Future<void> retryLastGeneration() async {
+    final request = _lastRequest;
+    if (request == null) return;
+    await generateQuiz(
+      topics: request.topics,
+      difficulty: request.difficulty,
+      numberOfQuestions: request.numberOfQuestions,
+      notesText: request.notesText,
+    );
   }
 
   void selectOption({

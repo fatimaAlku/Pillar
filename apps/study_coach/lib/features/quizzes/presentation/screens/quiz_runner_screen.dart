@@ -15,10 +15,75 @@ class QuizRunnerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Quiz')),
       body: switch (state) {
+        QuizRunnerIdle() => const _QuizIdleView(),
+        QuizRunnerLoading() => const _QuizLoadingView(),
+        QuizRunnerError() => _QuizErrorView(message: state.message),
         QuizRunnerInProgress() => _QuizInProgressView(state: state),
         QuizRunnerSubmitted() => _QuizSubmittedView(result: state.result),
         _ => const SizedBox.shrink(),
       },
+    );
+  }
+}
+
+class _QuizIdleView extends StatelessWidget {
+  const _QuizIdleView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text('No quiz loaded yet. Generate one from the Quiz tab.'),
+      ),
+    );
+  }
+}
+
+class _QuizLoadingView extends StatelessWidget {
+  const _QuizLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 12),
+          Text('Generating quiz with AI...'),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuizErrorView extends ConsumerWidget {
+  const _QuizErrorView({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 34),
+            const SizedBox(height: 10),
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => ref
+                  .read(quizRunnerControllerProvider.notifier)
+                  .retryLastGeneration(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry generation'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -301,6 +366,14 @@ class _QuizSubmittedView extends ConsumerWidget {
                                 isCorrect ? Colors.green : colorScheme.primary,
                           ),
                     ),
+                    if (q.explanation != null && q.explanation!.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'Explanation: ${q.explanation}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
                   ],
                 ),
               ),

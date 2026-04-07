@@ -6,6 +6,7 @@ class QuizQuestion {
     required this.correctIndex,
     required this.topicId,
     required this.topicTitle,
+    this.explanation,
   }) : assert(options.length == 4, 'QuizQuestion must have exactly 4 options.');
 
   final String id;
@@ -16,5 +17,8 @@ class QuizQuestion {
   /// Used to compute weak topics after submission.
   final String topicId;
   final String topicTitle;
+
+  /// Optional rationale shown after submission (AI-generated).
+  final String? explanation;
 }
 
