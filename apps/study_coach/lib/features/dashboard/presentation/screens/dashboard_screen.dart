@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../quizzes/presentation/screens/quizzes_tab_screen.dart';
+import '../../../study_plan/presentation/screens/study_plan_tab_screen.dart';
 import '../widgets/home_dashboard_view.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -19,11 +20,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final pages = <Widget>[
       const HomeDashboardView(),
-      const _SimpleTab(
-        title: 'Study Plan',
-        subtitle: 'Your personalized schedule will appear here.',
-        icon: Icons.event_note_outlined,
-      ),
+      const StudyPlanTabScreen(),
       const QuizzesTabScreen(),
       const _SimpleTab(
         title: 'Progress',
