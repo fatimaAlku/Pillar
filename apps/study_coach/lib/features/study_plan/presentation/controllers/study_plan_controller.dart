@@ -16,6 +16,13 @@ final studyPlanPersonalizationServiceProvider =
 final studyPlanPrioritizedTasksProvider = Provider.family<
     List<StudyTaskPriority>,
     StudyPlanPersonalizationInput>((ref, input) {
+  final result = ref.watch(studyPlanDynamicResultProvider(input));
+  return result.updatedPlan;
+});
+
+final studyPlanDynamicResultProvider = Provider.family<
+    StudyPlanAdjustmentResult,
+    StudyPlanPersonalizationInput>((ref, input) {
   final service = ref.watch(studyPlanPersonalizationServiceProvider);
-  return service.buildPrioritizedTasks(input);
+  return service.buildDynamicPlan(input);
 });

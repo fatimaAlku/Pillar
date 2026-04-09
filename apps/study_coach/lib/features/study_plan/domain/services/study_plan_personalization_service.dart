@@ -9,8 +9,26 @@ class StudyPlanPersonalizationService {
   List<StudyTaskPriority> buildPrioritizedTasks(
     StudyPlanPersonalizationInput input,
   ) {
-    if (input.topics.isEmpty) return const [];
-    if (input.availableStudyMinutes <= 0) return const [];
+    return buildDynamicPlan(input).updatedPlan;
+  }
+
+  StudyPlanAdjustmentResult buildDynamicPlan(
+    StudyPlanPersonalizationInput input,
+  ) {
+    if (input.topics.isEmpty || input.availableStudyMinutes <= 0) {
+      return const StudyPlanAdjustmentResult(
+        updatedPlan: [],
+        explanationMessage: 'No updates were needed for today\'s plan.',
+      );
+    }
+
+    final soonSubjects = input.topics
+        .where(
+          (topic) => _daysUntilExam(now: input.now, exam: topic.examDate) <=
+              input.examSoonWindowDays,
+        )
+        .map((topic) => topic.subjectId)
+        .toSet();
 
     final withScores = input.topics.map((topic) {
       final deadlineUrgency = _deadlineUrgency(now: input.now, exam: topic.examDate);
@@ -18,8 +36,26 @@ class StudyPlanPersonalizationService {
       final difficulty = _clamp01(topic.subjectDifficulty);
       final timeSinceLastStudied =
           _timeSinceLastStudied(now: input.now, lastStudied: topic.lastStudiedAt);
+      final lowQuizBoost = _lowQuizBoost(
+        quizAccuracy: topic.quizAccuracy,
+        threshold: input.quizLowThreshold,
+      );
+      final examSoonBoost = _examSoonBoost(
+        now: input.now,
+        examDate: topic.examDate,
+        soonWindowDays: input.examSoonWindowDays,
+      );
+      final subjectSoonBoost = soonSubjects.contains(topic.subjectId) ? 0.25 : 0.0;
+      final missedSessionsBoost = _missedSessionsBoost(topic.missedSessions);
 
-      final score = deadlineUrgency + weakness + difficulty + timeSinceLastStudied;
+      final score = deadlineUrgency +
+          weakness +
+          difficulty +
+          timeSinceLastStudied +
+          lowQuizBoost +
+          examSoonBoost +
+          subjectSoonBoost +
+          missedSessionsBoost;
       return _ScoredTopic(
         source: topic,
         score: score,
@@ -27,6 +63,15 @@ class StudyPlanPersonalizationService {
         weakness: weakness,
         difficulty: difficulty,
         timeSinceLastStudied: timeSinceLastStudied,
+        lowQuizBoost: lowQuizBoost,
+        examSoonBoost: examSoonBoost + subjectSoonBoost,
+        missedSessionsBoost: missedSessionsBoost,
+        reason: _reasonForTopic(
+          topic: topic,
+          now: input.now,
+          quizLowThreshold: input.quizLowThreshold,
+          examSoonWindowDays: input.examSoonWindowDays,
+        ),
       );
     }).toList();
 
@@ -35,8 +80,12 @@ class StudyPlanPersonalizationService {
       sortedByPriority: withScores,
       totalMinutes: input.availableStudyMinutes,
     );
+    final redistributedMinutes = _redistributeForMissedSessions(
+      sortedByPriority: withScores,
+      allocated: minutesByTopic,
+    );
 
-    return withScores
+    final updatedPlan = withScores
         .map(
           (item) => StudyTaskPriority(
             topicId: item.source.topicId,
@@ -48,17 +97,54 @@ class StudyPlanPersonalizationService {
             weakness: item.weakness,
             difficulty: item.difficulty,
             timeSinceLastStudied: item.timeSinceLastStudied,
-            recommendedMinutes: minutesByTopic[item.source.topicId] ?? 0,
+            recommendedMinutes: redistributedMinutes[item.source.topicId] ?? 0,
+            adjustmentReason: item.reason,
           ),
         )
         .toList(growable: false);
+
+    final explanation = _buildExplanationMessage(updatedPlan);
+    return StudyPlanAdjustmentResult(
+      updatedPlan: updatedPlan,
+      explanationMessage: explanation,
+    );
   }
 
   double _deadlineUrgency({required DateTime now, required DateTime exam}) {
-    final daysUntilExam = exam.difference(now).inHours / 24;
+    final daysUntilExam = _daysUntilExam(now: now, exam: exam);
     if (daysUntilExam <= 0) return 1.0;
     // Decays over a 30-day window: closer exam => higher urgency.
     return _clamp01((30 - daysUntilExam) / 30);
+  }
+
+  double _daysUntilExam({required DateTime now, required DateTime exam}) {
+    return exam.difference(now).inHours / 24;
+  }
+
+  double _lowQuizBoost({
+    required double quizAccuracy,
+    required double threshold,
+  }) {
+    if (quizAccuracy >= threshold) return 0;
+    final span = threshold <= 0 ? 1.0 : threshold;
+    return _clamp01((threshold - quizAccuracy) / span) * 0.9;
+  }
+
+  double _examSoonBoost({
+    required DateTime now,
+    required DateTime examDate,
+    required int soonWindowDays,
+  }) {
+    if (soonWindowDays <= 0) return 0;
+    final daysUntilExam = _daysUntilExam(now: now, exam: examDate);
+    if (daysUntilExam > soonWindowDays) return 0;
+    if (daysUntilExam <= 0) return 0.9;
+    return _clamp01((soonWindowDays - daysUntilExam) / soonWindowDays) * 0.9;
+  }
+
+  double _missedSessionsBoost(int missedSessions) {
+    if (missedSessions <= 0) return 0;
+    return _clamp01(missedSessions / 3) * 0.8;
   }
 
   double _timeSinceLastStudied({
@@ -114,6 +200,65 @@ class StudyPlanPersonalizationService {
     return allocation;
   }
 
+  Map<String, int> _redistributeForMissedSessions({
+    required List<_ScoredTopic> sortedByPriority,
+    required Map<String, int> allocated,
+  }) {
+    if (sortedByPriority.isEmpty) return allocated;
+    final result = Map<String, int>.from(allocated);
+    final missedTopics = sortedByPriority
+        .where((topic) => topic.source.missedSessions > 0)
+        .toList(growable: false);
+    if (missedTopics.isEmpty) return result;
+
+    for (final missed in missedTopics) {
+      var bonus = missed.source.missedSessions * 5;
+      while (bonus > 0) {
+        final donor = sortedByPriority.lastWhere(
+          (topic) =>
+              topic.source.topicId != missed.source.topicId &&
+              (result[topic.source.topicId] ?? 0) > 10,
+          orElse: () => missed,
+        );
+        if (donor.source.topicId == missed.source.topicId) break;
+        result[donor.source.topicId] = (result[donor.source.topicId] ?? 0) - 1;
+        result[missed.source.topicId] = (result[missed.source.topicId] ?? 0) + 1;
+        bonus -= 1;
+      }
+    }
+
+    return result;
+  }
+
+  String _reasonForTopic({
+    required TopicPerformanceInput topic,
+    required DateTime now,
+    required double quizLowThreshold,
+    required int examSoonWindowDays,
+  }) {
+    if (topic.quizAccuracy < quizLowThreshold) {
+      return 'low quiz performance';
+    }
+
+    final daysUntilExam = _daysUntilExam(now: now, exam: topic.examDate);
+    if (daysUntilExam <= examSoonWindowDays) {
+      return 'upcoming exam';
+    }
+
+    if (topic.missedSessions > 0) {
+      return 'missed sessions';
+    }
+
+    return 'baseline personalization';
+  }
+
+  String _buildExplanationMessage(List<StudyTaskPriority> plan) {
+    if (plan.isEmpty) return 'No updates were needed for today\'s plan.';
+    final top = plan.first;
+    final reason = top.adjustmentReason ?? 'personalized signals';
+    return '${top.topicTitle} was scheduled earlier due to $reason.';
+  }
+
   double _clamp01(double value) {
     if (value < 0) return 0;
     if (value > 1) return 1;
@@ -129,6 +274,10 @@ class _ScoredTopic {
     required this.weakness,
     required this.difficulty,
     required this.timeSinceLastStudied,
+    required this.lowQuizBoost,
+    required this.examSoonBoost,
+    required this.missedSessionsBoost,
+    required this.reason,
   });
 
   final TopicPerformanceInput source;
@@ -137,5 +286,9 @@ class _ScoredTopic {
   final double weakness;
   final double difficulty;
   final double timeSinceLastStudied;
+  final double lowQuizBoost;
+  final double examSoonBoost;
+  final double missedSessionsBoost;
+  final String reason;
 }
 

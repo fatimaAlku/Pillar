@@ -28,7 +28,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       availableStudyMinutes: 180,
       now: DateTime.now(),
     );
-    final tasks = ref.watch(studyPlanPrioritizedTasksProvider(input));
+    final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
+    final tasks = dynamicResult.updatedPlan;
     final daySchedule = _buildScheduleForDay(tasks: tasks, date: _selectedDate);
 
     return ListView(
@@ -58,7 +59,10 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
         const SizedBox(height: 10),
         ...daySchedule.map((item) => _ScheduleCard(item: item)),
         const SizedBox(height: 14),
-        _PriorityLegend(tasks: tasks),
+        _PriorityLegend(
+          tasks: tasks,
+          explanationMessage: dynamicResult.explanationMessage,
+        ),
       ],
     );
   }
@@ -287,8 +291,12 @@ class _ScheduleCard extends StatelessWidget {
 }
 
 class _PriorityLegend extends StatelessWidget {
-  const _PriorityLegend({required this.tasks});
+  const _PriorityLegend({
+    required this.tasks,
+    required this.explanationMessage,
+  });
   final List<StudyTaskPriority> tasks;
+  final String explanationMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -299,7 +307,8 @@ class _PriorityLegend extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Text(
           'Personalized from exam urgency, weak quiz topics, subject difficulty, and recency. '
-          'Allocated $totalMin minutes today.',
+          'Missed sessions are redistributed. Allocated $totalMin minutes today.\n'
+          '$explanationMessage',
         ),
       ),
     );
@@ -334,6 +343,7 @@ List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
       quizAccuracy: 0.42,
       subjectDifficulty: 0.8,
       lastStudiedAt: now.subtract(const Duration(days: 6)),
+      missedSessions: 1,
     ),
     TopicPerformanceInput(
       topicId: 'topic_graphs',
@@ -344,6 +354,7 @@ List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
       quizAccuracy: 0.55,
       subjectDifficulty: 0.85,
       lastStudiedAt: now.subtract(const Duration(days: 8)),
+      missedSessions: 0,
     ),
     TopicPerformanceInput(
       topicId: 'topic_thermo',
@@ -354,6 +365,7 @@ List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
       quizAccuracy: 0.37,
       subjectDifficulty: 0.75,
       lastStudiedAt: now.subtract(const Duration(days: 10)),
+      missedSessions: 2,
     ),
     TopicPerformanceInput(
       topicId: 'topic_kinetics',
@@ -364,6 +376,7 @@ List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
       quizAccuracy: 0.68,
       subjectDifficulty: 0.62,
       lastStudiedAt: now.subtract(const Duration(days: 3)),
+      missedSessions: 0,
     ),
     TopicPerformanceInput(
       topicId: 'topic_calculus',
@@ -374,6 +387,7 @@ List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
       quizAccuracy: 0.49,
       subjectDifficulty: 0.7,
       lastStudiedAt: now.subtract(const Duration(days: 5)),
+      missedSessions: 1,
     ),
   ];
 }

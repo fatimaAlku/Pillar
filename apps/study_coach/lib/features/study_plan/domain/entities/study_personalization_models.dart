@@ -8,6 +8,7 @@ class TopicPerformanceInput {
     required this.quizAccuracy,
     required this.subjectDifficulty,
     this.lastStudiedAt,
+    this.missedSessions = 0,
   });
 
   final String topicId;
@@ -23,6 +24,7 @@ class TopicPerformanceInput {
   final double subjectDifficulty;
 
   final DateTime? lastStudiedAt;
+  final int missedSessions;
 }
 
 class StudyPlanPersonalizationInput {
@@ -30,11 +32,15 @@ class StudyPlanPersonalizationInput {
     required this.topics,
     required this.availableStudyMinutes,
     required this.now,
+    this.quizLowThreshold = 0.6,
+    this.examSoonWindowDays = 7,
   });
 
   final List<TopicPerformanceInput> topics;
   final int availableStudyMinutes;
   final DateTime now;
+  final double quizLowThreshold;
+  final int examSoonWindowDays;
 }
 
 class StudyTaskPriority {
@@ -49,6 +55,7 @@ class StudyTaskPriority {
     required this.difficulty,
     required this.timeSinceLastStudied,
     required this.recommendedMinutes,
+    this.adjustmentReason,
   });
 
   final String topicId;
@@ -63,5 +70,16 @@ class StudyTaskPriority {
   final double timeSinceLastStudied;
 
   final int recommendedMinutes;
+  final String? adjustmentReason;
+}
+
+class StudyPlanAdjustmentResult {
+  const StudyPlanAdjustmentResult({
+    required this.updatedPlan,
+    required this.explanationMessage,
+  });
+
+  final List<StudyTaskPriority> updatedPlan;
+  final String explanationMessage;
 }
 
