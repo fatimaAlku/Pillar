@@ -89,7 +89,7 @@ class FirebaseFunctionsQuizAiService implements QuizAiService {
     } on QuizAiException {
       rethrow;
     } catch (e) {
-      throw QuizAiServiceException('Quiz generation failed unexpectedly.');
+      throw const QuizAiServiceException('Quiz generation failed unexpectedly.');
     }
   }
 }
@@ -158,7 +158,7 @@ class QuizAiResponseParser {
       if (item is! Map) {
         throw QuizAiParseException('Question[$i] must be an object.');
       }
-      final q = Map<String, dynamic>.from(item as Map);
+      final q = Map<String, dynamic>.from(item);
 
       final prompt = _requireString(q, 'prompt', i);
       final explanation = _requireString(q, 'explanation', i);

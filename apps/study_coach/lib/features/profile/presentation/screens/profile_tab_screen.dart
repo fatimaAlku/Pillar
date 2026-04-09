@@ -23,32 +23,62 @@ class ProfileTabScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
-        Column(
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              child: Icon(
-                Icons.person_rounded,
-                size: 44,
-                color: colorScheme.onSurfaceVariant,
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primaryContainer,
+                  colorScheme.tertiaryContainer.withValues(alpha: 0.95),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              'fatima.alkuwaiti',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: colorScheme.onPrimaryContainer.withValues(
+                      alpha: 0.12,
+                    ),
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 32,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'fatima.alkuwaiti',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'fatima.alkuwaiti@gmail.com',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onPrimaryContainer.withValues(
+                              alpha: 0.82,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'fatima.alkuwaiti@gmail.com',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+          ),
         ),
         const SizedBox(height: 20),
         Card(

@@ -26,9 +26,56 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primaryContainer,
+                  colorScheme.secondaryContainer,
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: colorScheme.primary.withValues(alpha: 0.16),
+                    ),
+                    child: Icon(
+                      Icons.psychology_alt_rounded,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Build AI-powered quizzes and target weak topics faster.',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -37,12 +84,16 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
               children: [
                 Text(
                   'Generate AI Quiz',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Use topics and/or notes to generate a quiz, then review weak topics.',
-                  style: Theme.of(context).textTheme.bodyMedium,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -65,7 +116,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _difficulty,
+                  initialValue: _difficulty,
                   decoration: const InputDecoration(
                     labelText: 'Difficulty',
                     border: OutlineInputBorder(),
@@ -122,6 +173,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                             numberOfQuestions: _questionCount,
                           );
 
+                      if (!context.mounted) return;
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const QuizRunnerScreen(),

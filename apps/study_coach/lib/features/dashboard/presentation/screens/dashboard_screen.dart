@@ -18,6 +18,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final pages = <Widget>[
       const HomeDashboardView(),
       const StudyPlanTabScreen(),
@@ -32,38 +33,63 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(toolbarHeight: 36),
-      body: pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) => setState(() => _currentIndex = index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primaryContainer.withValues(alpha: 0.32),
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor,
+            ],
+            stops: const [0, 0.32, 1],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event_note_outlined),
-            activeIcon: Icon(Icons.event_note),
-            label: 'Plan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.quiz_outlined),
-            activeIcon: Icon(Icons.quiz),
-            label: 'Quiz',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.route_outlined),
-            activeIcon: Icon(Icons.route),
-            label: 'RoadMap',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-        ],
+        ),
+        child: pages[_currentIndex],
+      ),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: colorScheme.outlineVariant)),
+          boxShadow: [
+            BoxShadow(
+              color: colorScheme.shadow.withValues(alpha: 0.05),
+              blurRadius: 14,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.event_note_outlined),
+              activeIcon: Icon(Icons.event_note),
+              label: 'Plan',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.quiz_outlined),
+              activeIcon: Icon(Icons.quiz),
+              label: 'Quiz',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.route_outlined),
+              activeIcon: Icon(Icons.route),
+              label: 'RoadMap',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline_rounded),
+              activeIcon: Icon(Icons.person_rounded),
+              label: 'Profile',
+            ),
+          ],
+        ),
       ),
     );
   }

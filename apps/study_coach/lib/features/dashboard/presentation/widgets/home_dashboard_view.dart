@@ -78,19 +78,19 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
+        _WelcomeHero(dateLabel: dateStr),
+        const SizedBox(height: 18),
         Text(
-          'Today',
+          'Focus today',
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          dateStr,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
+        Text('Small steps, consistent progress.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            )),
         const SizedBox(height: 24),
         _ProgressCard(
           progress: _progress,
@@ -133,6 +133,89 @@ class _TodayTask {
   final String title;
   final int durationMin;
   bool done;
+}
+
+class _WelcomeHero extends StatelessWidget {
+  const _WelcomeHero({required this.dateLabel});
+
+  final String dateLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.tertiaryContainer.withValues(alpha: 0.95),
+            ],
+          ),
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your smart study assistant',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    dateLabel,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.78,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.tertiary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.auto_awesome_rounded,
+                color: colorScheme.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProgressCard extends StatelessWidget {

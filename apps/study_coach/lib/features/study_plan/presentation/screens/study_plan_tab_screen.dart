@@ -35,6 +35,42 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer,
+                  Theme.of(context).colorScheme.secondaryContainer,
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.auto_graph_rounded,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Adaptive schedule personalized from your quiz performance and exam urgency.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         _CalendarHeader(
           selectedDate: _selectedDate,
           days: days,
@@ -209,8 +245,8 @@ class _ScheduleCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final priorityColor = switch (item.priorityBand) {
-      _PriorityBand.high => Colors.red,
-      _PriorityBand.medium => Colors.orange,
+      _PriorityBand.high => const Color(0xFFD34A6A),
+      _PriorityBand.medium => const Color(0xFFE09B2D),
       _PriorityBand.low => colorScheme.primary,
     };
 
@@ -236,9 +272,10 @@ class _ScheduleCard extends StatelessWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
                 side: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.75),
                 ),
               ),
+              color: colorScheme.surfaceContainerLowest,
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(

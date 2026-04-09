@@ -20,7 +20,6 @@ class QuizRunnerScreen extends ConsumerWidget {
         QuizRunnerError() => _QuizErrorView(message: state.message),
         QuizRunnerInProgress() => _QuizInProgressView(state: state),
         QuizRunnerSubmitted() => _QuizSubmittedView(result: state.result),
-        _ => const SizedBox.shrink(),
       },
     );
   }
@@ -309,7 +308,7 @@ class _QuizSubmittedView extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _SectionTitle(title: 'Weak topics'),
+          const _SectionTitle(title: 'Weak topics'),
           const SizedBox(height: 8),
           if (result.weakTopics.isEmpty)
             Text(
@@ -327,7 +326,7 @@ class _QuizSubmittedView extends ConsumerWidget {
               ),
             ),
           const SizedBox(height: 12),
-          _SectionTitle(title: 'Review'),
+          const _SectionTitle(title: 'Review'),
           const SizedBox(height: 8),
           ...result.questions.map((q) {
             final selected = result.selectedByQuestionId[q.id];
