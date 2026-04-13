@@ -1,4 +1,4 @@
-# Pillar — project reflection (two weeks)
+# Pillar — project reflection (four weeks)
 
 Reflection structured by week. Each week follows the coursework template: **work**, **challenges**, **employability skills**, **LESPI** (Legal, Ethical, Social, Professional issues), and **plan the coming week**. Where used below, **prompt questions** and **success criteria** appear before our answers.
 
@@ -327,6 +327,306 @@ Planning should show **well-thought-through** next steps: (1) **technical** and 
 
 - Feedback on **priority order**: subjects + rules first vs. Functions stub first if time is tight.
 - Sign-off or wording for **privacy / data use** copy before uploads or third-party AI calls go live.
+
+**Screenshots / plan artefacts**
+
+You may add screenshots of your **project plan** or **progress plan** if required or agreed with your supervisor.
+
+- *[Placeholder: insert plan / Gantt / board screenshot here if needed.]*
+
+---
+
+## Week 3 — Firestore slice, security rules, and first callable flows
+
+### 1. Reflection on work
+
+> **Main task:** Critically describe the work done related to the product.
+
+**What we did**
+
+- **User-scoped data path:** Wired subjects to **live Firestore** via `SubjectsRepositoryImpl` (`users/{uid}/subjects` snapshots) and `subjectsStreamProvider` / `subjectsControllerProvider`, replacing “pure placeholder” risk on Home with a real subscription when the user is signed in.
+- **Security baseline:** Added **Firestore security rules** in `firebase/firestore.rules` so paths under `users/{userId}/**` allow read/write only when `request.auth.uid == userId`, matching the architecture goal of least-privilege access to student data.
+- **Callable study-plan generation:** Implemented **`generateStudyPlan`** in `firebase/functions/src/index.ts` (auth check, `subjectIds` validation, writes an `active` plan document under `users/{uid}/studyPlans/{planId}`) and connected the Flutter **`StudyPlanRepositoryImpl`** to call that HTTPS callable via `cloud_functions`.
+- **Operational clarity:** Extended root **`README.md`** with Functions setup (build, **`OPENAI_API_KEY`** secret for later AI routes), emulator notes, and the **deterministic fallback** behaviour when quiz AI is misconfigured—so demos and local dev do not depend on a paid key being present on day one.
+
+**Why this way**
+
+- **Stream-first subjects** keeps the dashboard reactive without manual refresh logic and stays aligned with Clean Architecture (repository + providers).
+- **Rules at the subtree** under `users/{userId}` is simple to reason about for an MVP while still enforcing ownership.
+- **Study plan as a callable** keeps plan writes and any future AI logic **server-side**, consistent with Week 1–2 LESPI decisions.
+
+**Resources**
+
+- [Cloud Firestore (Flutter)](https://firebase.google.com/docs/firestore/quickstart#flutter), [Firestore security rules](https://firebase.google.com/docs/firestore/security/get-started), [Callable Cloud Functions](https://firebase.google.com/docs/functions/callable), `docs/architecture.md`, `firebase/firestore.rules`.
+
+**Alternatives**
+
+- **Custom claims + role-based rules** if we later add tutors or shared cohorts; not needed until multi-user data appears.
+
+**Success criteria (self-check)**
+
+1. **Work described** — Subjects Firestore watch, rules file, `generateStudyPlan` + client repository, README/ops notes.
+2. **Reasoning** — Reactive data, ownership rules, server-side plan creation.
+3. **References** — Official Firebase/Firestore/Functions docs + internal architecture/rules paths.
+
+---
+
+### 2. Reflection on challenges
+
+> **Main task:** Critically reflect on challenges faced.
+
+**Challenges**
+
+- **Rules vs. product growth:** A single `users/{userId}/{document=**}` match is easy to ship but will need refinement when we add **public templates**, **admin tools**, or **cross-user** features.
+- **Callable contracts:** Keeping **request field names** and optional parameters aligned between TypeScript (`generateStudyPlan`) and Dart (`StudyPlanRepositoryImpl`) required discipline; drift causes runtime failures that only show up on device.
+- **Emulator vs. cloud:** Deciding whether demos use **emulators** or a **shared dev project** still affects how confidently we can show “real” AI in Week 4 without burning quota.
+
+**Plans**
+
+- Add a short **API contract note** (fields, errors) in `docs/architecture.md` or next to the function for each callable.
+- Run **rules unit tests** or emulator-driven checks when new collections appear (e.g. quizzes, attempts).
+
+**Resources**
+
+- Firebase emulator suite; internal `firebase/functions` and `apps/study_coach` call sites.
+
+**Alternatives**
+
+- **BFF-only writes** (no direct client writes to plan documents) with stricter rules; more Functions code, tighter security story.
+
+**Success criteria (self-check)**
+
+1. **Difficult areas** — Rule evolution, cross-language contracts, demo environment.
+2. **Alternatives** — Stricter write model via Functions only.
+3. **Resources** — Emulator + docs + repo paths.
+
+---
+
+### 3. Reflection on employability skills
+
+> **Main task:** Reflect on one soft skill.
+
+**Skill:** *Stakeholder-ready communication* (what is “done” vs. what is “wired”).
+
+**Situation:** After auth and shell work, it was tempting to say “Firebase is integrated” when some tabs were still placeholders; Week 3 forced clearer language: **subjects and rules are live**, **study plan write path exists**, but full **plan UX** and **quiz AI** were still upcoming.
+
+**Differently next time**
+
+- Maintain a **one-page demo script** alongside the README so supervisors see the exact click path (login → subjects → generate plan) without guessing.
+
+**Future**
+
+- Short **release notes** per week in the repo or a changelog for coursework evidence.
+
+**Success criteria (self-check)**
+
+1. **Skill** — Clear external communication of progress.
+2. **Situation** — Balancing integrated backend with partial UI.
+3. **Alternatives / future** — Demo script + lightweight changelog.
+
+---
+
+### 4. Reflection on LESPI
+
+> **Main task:** Reflect on LESPI affecting the work.
+
+**Issue**
+
+- **Data integrity and access control:** Once clients can read/write under `users/{uid}`, incorrect rules or client bugs could **delete or overwrite** study data; study plans also encode **academic effort** and deadlines.
+
+**Relation to project**
+
+- Firestore is the system of record for subjects and plans; mistakes affect trust and potentially **assessment-related** records if we store grades or sensitive notes later.
+
+**Mitigation**
+
+- Shipped **uid-scoped rules**; plan generation goes through **authenticated callables**; continued review of **what the client is allowed to write directly** vs. what should move entirely to Functions.
+
+**Success criteria (self-check)**
+
+1. **LESPI issue** — Integrity and authorised access to user-owned documents.
+2. **Mitigation** — Rules + callable pattern + ongoing split of write responsibilities.
+
+---
+
+### 5. Plan the coming week
+
+> **Main task:** Describe your planned actions for the coming week.
+
+**Prompt questions**
+
+- What do you plan to complete?
+- What resources (tutorials, references, technologies) do you plan to use to complete your work?
+- What would you need from your supervisor / supervision?
+
+**Required planning detail**
+
+Planning should show **well-thought-through** next steps: (1) **technical** and **managerial** tasks, separately; (2) a **realistic estimated duration** per task; (3) **links** to resources you will use.
+
+**Planned tasks (end of Week 3 → Week 4 focus)**
+
+| Type | Task | Est. duration | Resources |
+|------|------|---------------|-----------|
+| Technical | Implement **`generateQuizQuestions`** path end-to-end: OpenAI (or provider) in Functions with **secret** config, **schema validation**, and **fallback** questions if the provider fails | 10–14 h | [Secrets in Functions](https://firebase.google.com/docs/functions/config-env#secret-manager), OpenAI/LLM API docs, existing `firebase/functions/src/index.ts` |
+| Technical | Flutter **`QuizAiService`** calling the callable, parsing structured JSON into **`QuizQuestion`**, surfacing **user-visible errors** on the Quizzes tab | 6–8 h | [cloud_functions](https://firebase.google.com/docs/functions/callable#flutter), `quiz_ai_service.dart`, `quizzes_tab_screen.dart` |
+| Technical | **`generateQuiz`** persistence path (optional): ensure quiz metadata under `users/{uid}/quizzes` matches what the runner expects | 3–5 h | Firestore data model in `docs/architecture.md` |
+| Technical | **Widget / integration tests** for quiz generation happy path and parse failures (mocked callable) | 3–4 h | [Flutter testing](https://docs.flutter.dev/testing) |
+| Managerial | **Supervisor demo**: login → subjects visible → generate plan → generate quiz (with and without API key to show fallback) | 1–2 h | — |
+| Managerial | **Quota / cost note** in README or internal doc: expected tokens per quiz, how to disable AI in dev | 1 h | Provider billing docs |
+
+**What we need from supervision**
+
+- Approval to use a **shared API key budget** for demos, or confirmation to rely on **fallback-only** demos without live LLM calls.
+- Any **institutional policy** on storing **pasted notes** in Firestore vs. ephemeral processing only.
+
+**Screenshots / plan artefacts**
+
+You may add screenshots of your **project plan** or **progress plan** if required or agreed with your supervisor.
+
+- *[Placeholder: insert plan / Gantt / board screenshot here if needed.]*
+
+---
+
+## Week 4 — AI quiz generation, client–function contract, and UX polish
+
+### 1. Reflection on work
+
+> **Main task:** Critically describe the work done related to the product.
+
+**What we did**
+
+- **Server-side quiz AI:** Extended Cloud Functions with **`generateQuizQuestions`** (authenticated, **secret-backed** `OPENAI_API_KEY`, timeout budget) plus **`generateQuiz`** writing user quiz documents and returning a normalised question payload; added **deterministic fallback** generation when keys or provider responses are invalid so the product stays usable in coursework and CI-like environments.
+- **Client integration:** Implemented **`FirebaseFunctionsQuizAiService`** in `quiz_ai_service.dart` to call **`generateQuizQuestions`**, validate inputs (topics and/or notes, difficulty, count), and parse either **Map** or **JSON string** responses into **`QuizQuestion`** entities with clear **`QuizAiValidationException` / `QuizAiParseException`** semantics.
+- **Quizzes UX:** Reworked **`QuizzesTabScreen`** with a clearer **generate** flow (topics, optional notes, difficulty, question count), loading state tied to **`quizRunnerControllerProvider`**, and copy that explains the value proposition; navigation into **`QuizRunnerScreen`** for attempting generated items.
+- **Documentation alignment:** README now documents **secret setup** and fallback behaviour so deployers know why quizzes still work without configuring the provider.
+
+**Why this way**
+
+- **Secrets only in Functions** preserves the security model from earlier weeks while still exposing rich AI output to Flutter.
+- **Strict parsing** on the client avoids silently showing malformed MCQs, which would be an ethical and UX failure for a study product.
+- **Gradient card + structured form** on the Quizzes tab matches Material 3 patterns used on the dashboard and keeps the feature demoable in a single scroll.
+
+**Resources**
+
+- [Firebase Functions secrets](https://firebase.google.com/docs/functions/config-env#secret-manager), [Callable functions from Flutter](https://firebase.google.com/docs/functions/callable#flutter), provider LLM structured-output guidance, internal `quiz_ai_service.dart` and `index.ts`.
+
+**Alternatives**
+
+- **Server-only rendering** of quiz HTML for web—rejected for now because the native app needs structured models for offline review and analytics later.
+
+**Success criteria (self-check)**
+
+1. **Work described** — `generateQuizQuestions` + client service + quizzes UI + README alignment.
+2. **Reasoning** — Secrets off-device, parse safety, consistent presentation layer.
+3. **References** — Firebase + Flutter callable docs + repo files.
+
+---
+
+### 2. Reflection on challenges
+
+> **Main task:** Critically reflect on challenges faced.
+
+**Challenges**
+
+- **Non-deterministic LLM output:** Even with prompts and schema hints, models can return **wrong counts**, **duplicate options**, or **JSON that almost parses**—forcing defensive parsing and explicit error strings for the user.
+- **Latency and timeouts:** Quiz generation can exceed comfortable mobile wait times; balancing **`timeoutSeconds`** on the function with user expectations required testing on real devices.
+- **Dual code paths:** Maintaining **AI-generated** and **fallback** question builders in Functions without diverging field shapes (`question`, `options`, `correctIndex`, etc.) adds review overhead.
+
+**Plans**
+
+- Centralise a **single normaliser** in Functions that both AI and fallback feed, so the Flutter parser sees one schema.
+- Add **retry with lower count** on transient provider errors if product owners agree.
+
+**Resources**
+
+- Provider API error catalog; Flutter `Future` timeout patterns; logs in Firebase console.
+
+**Alternatives**
+
+- **Queue + push notification** for long generations; better for 50+ questions, heavier infrastructure for this coursework phase.
+
+**Success criteria (self-check)**
+
+1. **Difficult areas** — LLM variability, timeouts, dual paths.
+2. **Alternatives** — Async job queue for long runs.
+3. **Resources** — Provider docs + Firebase logs + Flutter async patterns.
+
+---
+
+### 3. Reflection on employability skills
+
+> **Main task:** Reflect on one soft skill.
+
+**Skill:** *Quality focus under uncertainty* (AI features are never “finished,” only “safe enough to ship”).
+
+**Situation:** Quiz generation could ship as a thin demo, but we invested in **validation**, **typed errors**, and **fallback content** so a marker or classmate does not hit a blank screen when the API misbehaves.
+
+**Differently next time**
+
+- Earlier **golden-file fixtures** of provider JSON in tests to catch parser regressions before merging.
+
+**Future**
+
+- **Telemetry** (anonymised): success rate, latency, parse failures—to prioritise prompt engineering vs. client bugs.
+
+**Success criteria (self-check)**
+
+1. **Skill** — Quality and resilience mindset.
+2. **Situation** — AI + fallback quiz pipeline.
+3. **Alternatives / future** — Fixture tests + telemetry.
+
+---
+
+### 4. Reflection on LESPI
+
+> **Main task:** Reflect on LESPI affecting the work.
+
+**Issues**
+
+- **Accuracy / academic fairness:** AI questions may be **wrong or misleading**; presenting them as authoritative could harm learning or exam preparation (**ethical** duty to label AI-assisted content and encourage verification).
+- **Cost and abuse:** Callable endpoints tied to billing and API keys create **financial** and **operational** risk if rates are not guarded (**professional** controls: auth-only, quotas, monitoring).
+- **Notes privacy:** Pasting lecture notes into the app sends **personal/academic text** to a third-party model unless we add redaction or on-device-only modes—**legal/privacy** implications depending on jurisdiction and university policy.
+
+**Mitigation**
+
+- In-app copy that quizzes are **assistive**, not a sole source of truth; README guidance on **secrets** and environment separation; next steps could include **rate limits**, **content warnings**, and **data minimisation** (e.g. truncate or hash notes server-side per policy).
+
+**Success criteria (self-check)**
+
+1. **LESPI issues** — Accuracy, cost/abuse, notes and third-party processing.
+2. **Mitigation** — UX honesty, secret handling, documented next controls.
+
+---
+
+### 5. Plan the coming week
+
+> **Main task:** Describe your planned actions for the coming week.
+
+**Prompt questions**
+
+- What do you plan to complete?
+- What resources (tutorials, references, technologies) do you plan to use to complete your work?
+- What would you need from your supervisor / supervision?
+
+**Required planning detail**
+
+Planning should show **well-thought-through** next steps: (1) **technical** and **managerial** tasks, separately; (2) a **realistic estimated duration** per task; (3) **links** to resources you will use.
+
+**Planned tasks (end of Week 4 → Week 5 focus)**
+
+| Type | Task | Est. duration | Resources |
+|------|------|---------------|-----------|
+| Technical | **Persist quiz attempts** and weak-topic signals to Firestore (`attempts`, `insights` paths per architecture) and surface a simple **history** list on Progress | 8–12 h | `docs/architecture.md`, Firestore Flutter docs |
+| Technical | Flesh out **`rebalanceStudyPlan`** (or client-triggered replan) using performance data, not only `subjectIds` | 6–10 h | Existing callable stub/wiring in `study_plan_repository_impl.dart`, Functions codebase |
+| Technical | **Rate limiting / App Check** (or basic callable guards) for `generateQuizQuestions` to reduce abuse risk | 3–5 h | [App Check](https://firebase.google.com/docs/app-check), Functions callable options |
+| Technical | **Accessibility pass** on Quizzes tab (labels, contrast, large text) | 2–3 h | [Flutter accessibility](https://docs.flutter.dev/ui/accessibility-and-internationalization/accessibility) |
+| Managerial | **User-facing privacy notice** draft: notes, AI providers, retention—aligned with supervision / ethics | 2–3 h | University ethics templates if available |
+| Managerial | **End-of-sprint retrospective**: what blocked quiz work, what to automate (CI for Functions build) | 1 h | — |
+
+**What we need from supervision**
+
+- Sign-off on **wording** for AI-assisted study features and any **ethics checklist** required for the module.
+- Decision on **minimum viable Progress tab** for the next assessment checkpoint (attempts only vs. charts).
 
 **Screenshots / plan artefacts**
 

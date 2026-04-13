@@ -28,6 +28,8 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final quizState = ref.watch(quizRunnerControllerProvider);
+    final isGenerating = quizState is QuizRunnerLoading;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -158,30 +160,46 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () async {
-                      final topics = _topicsController.text
-                          .split(',')
-                          .map((e) => e.trim())
-                          .where((e) => e.isNotEmpty)
-                          .toList();
-                      final notes = _notesController.text.trim();
+                    onPressed: isGenerating
+                        ? null
+                        : () async {
+                            final topics = _topicsController.text
+                                .split(',')
+                                .map((e) => e.trim())
+                                .where((e) => e.isNotEmpty)
+                                .toList();
+                            final notes = _notesController.text.trim();
 
-                      await ref.read(quizRunnerControllerProvider.notifier).generateQuiz(
-                            topics: topics,
-                            notesText: notes.isEmpty ? null : notes,
-                            difficulty: _difficulty,
-                            numberOfQuestions: _questionCount,
-                          );
+                            await ref
+                                .read(quizRunnerControllerProvider.notifier)
+                                .generateQuiz(
+                                  topics: topics,
+                                  notesText: notes.isEmpty ? null : notes,
+                                  difficulty: _difficulty,
+                                  numberOfQuestions: _questionCount,
+                                );
 
-                      if (!context.mounted) return;
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const QuizRunnerScreen(),
-                        ),
-                      );
-                    },
+                            if (!context.mounted) return;
+                            final nextState =
+                                ref.read(quizRunnerControllerProvider);
+                            if (nextState is QuizRunnerInProgress ||
+                                nextState is QuizRunnerSubmitted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const QuizRunnerScreen(),
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (nextState is QuizRunnerError) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(nextState.message)),
+                              );
+                            }
+                          },
                     icon: const Icon(Icons.play_arrow),
-                    label: const Text('Start quiz'),
+                    label: Text(isGenerating ? 'Generating...' : 'Start quiz'),
                   ),
                 ),
               ],

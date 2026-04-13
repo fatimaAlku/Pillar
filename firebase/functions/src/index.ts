@@ -42,6 +42,8 @@ export const generateStudyPlan = onCall<GeneratePlanRequest>(async (request) => 
 type GenerateQuizRequest = {
   topicIds: string[];
   notesText?: string;
+  difficulty?: string;
+  numberOfQuestions?: number;
 };
 
 export const generateQuiz = onCall<GenerateQuizRequest>(async (request) => {
@@ -50,6 +52,8 @@ export const generateQuiz = onCall<GenerateQuizRequest>(async (request) => {
   }
 
   const {topicIds, notesText} = request.data;
+  const difficulty = normalizeDifficulty(request.data.difficulty);
+  const numberOfQuestions = normalizeQuestionCount(request.data.numberOfQuestions);
   if ((!topicIds || topicIds.length === 0) && !notesText) {
     throw new Error("Provide topicIds or notesText");
   }
@@ -70,13 +74,12 @@ export const generateQuiz = onCall<GenerateQuizRequest>(async (request) => {
   // 5) Persist quiz + questions
   const payload = {
     title: "Generated Quiz",
-    questions: [
-      {
-        prompt: "What is the main concept of this topic?",
-        choices: ["A", "B", "C", "D"],
-        answerIndex: 0,
-      },
-    ],
+    questions: buildQuestions({
+      topics: topicIds,
+      notesText,
+      difficulty,
+      numberOfQuestions,
+    }),
   };
 
   await quizRef.set({
@@ -88,6 +91,188 @@ export const generateQuiz = onCall<GenerateQuizRequest>(async (request) => {
 
   return {quizId: quizRef.id, ...payload};
 });
+
+type GenerateQuizQuestionsRequest = {
+  topics?: string[];
+  notesText?: string;
+  difficulty?: string;
+  numberOfQuestions?: number;
+};
+
+export const generateQuizQuestions = onCall<GenerateQuizQuestionsRequest>(
+  async (request) => {
+    if (!request.auth) {
+      throw new Error("Unauthenticated");
+    }
+
+    const topics = (request.data.topics ?? [])
+      .map((topic) => topic.trim())
+      .filter((topic) => topic.length > 0);
+    const notesText = request.data.notesText?.trim();
+    const difficulty = normalizeDifficulty(request.data.difficulty);
+    const numberOfQuestions = normalizeQuestionCount(request.data.numberOfQuestions);
+
+    if (topics.length === 0 && !notesText) {
+      throw new Error("Provide topics or notesText");
+    }
+
+    const questions = buildQuestions({
+      topics,
+      notesText,
+      difficulty,
+      numberOfQuestions,
+    });
+
+    return {questions};
+  }
+);
+
+function normalizeDifficulty(rawDifficulty?: string): "easy" | "medium" | "hard" {
+  const lowered = rawDifficulty?.toLowerCase();
+  if (lowered === "easy" || lowered === "hard") {
+    return lowered;
+  }
+  return "medium";
+}
+
+function normalizeQuestionCount(rawCount?: number): number {
+  const count = rawCount ?? 10;
+  if (!Number.isFinite(count)) {
+    return 10;
+  }
+  return Math.min(20, Math.max(1, Math.floor(count)));
+}
+
+type QuizQuestionShape = {
+  id: string;
+  topicId: string;
+  topicTitle: string;
+  prompt: string;
+  options: string[];
+  choices: string[];
+  correctIndex: number;
+  answerIndex: number;
+  explanation: string;
+};
+
+function buildQuestions(input: {
+  topics: string[];
+  notesText?: string;
+  difficulty: "easy" | "medium" | "hard";
+  numberOfQuestions: number;
+}): QuizQuestionShape[] {
+  const sourceTopics = input.topics.length > 0 ? input.topics : ["General"];
+  const notesSignal = !!input.notesText && input.notesText.length > 0;
+
+  return Array.from({length: input.numberOfQuestions}, (_, index) => {
+    const topicTitle = sourceTopics[index % sourceTopics.length];
+    const topicId = slugify(topicTitle);
+    const difficultyHint = difficultyLabel(input.difficulty);
+    const prompt = promptFor({
+      topicTitle,
+      index,
+      hasNotes: notesSignal,
+      difficultyHint,
+    });
+    const correctStatement = correctStatementFor({
+      topicTitle,
+      difficultyHint,
+      index,
+    });
+    const distractors = distractorsFor({topicTitle, index});
+    const correctIndex = index % 4;
+    const options = Array<string>(4).fill("");
+    let distractorPointer = 0;
+    for (let optionIndex = 0; optionIndex < 4; optionIndex++) {
+      if (optionIndex === correctIndex) {
+        options[optionIndex] = correctStatement;
+      } else {
+        options[optionIndex] = distractors[distractorPointer++];
+      }
+    }
+
+    return {
+      id: `ai_q_${index + 1}`,
+      topicId,
+      topicTitle,
+      prompt,
+      options,
+      choices: options,
+      correctIndex,
+      answerIndex: correctIndex,
+      explanation: `Fallback question tuned for ${input.difficulty} difficulty.`,
+    };
+  });
+}
+
+function promptFor(input: {
+  topicTitle: string;
+  index: number;
+  hasNotes: boolean;
+  difficultyHint: string;
+}): string {
+  const prompts = [
+    `Which statement is most accurate about ${input.topicTitle}?`,
+    `Which option best explains the key idea in ${input.topicTitle}?`,
+    `Choose the most reliable summary of ${input.topicTitle}.`,
+    `Which statement would be best to remember for ${input.topicTitle}?`,
+    `Which choice correctly describes ${input.topicTitle} at a ${input.difficultyHint} level?`,
+  ];
+  const notesPrompts = [
+    `Based on your notes, which statement best matches ${input.topicTitle}?`,
+    `From your notes, what is the strongest summary of ${input.topicTitle}?`,
+    `Using your notes, which option is most accurate for ${input.topicTitle}?`,
+    `According to your notes, which statement correctly captures ${input.topicTitle}?`,
+    `From your notes at a ${input.difficultyHint} level, which statement fits ${input.topicTitle}?`,
+  ];
+  const pool = input.hasNotes ? notesPrompts : prompts;
+  return pool[input.index % pool.length];
+}
+
+function correctStatementFor(input: {
+  topicTitle: string;
+  difficultyHint: string;
+  index: number;
+}): string {
+  const variants = [
+    `${input.topicTitle} focuses on core principles and practical application (${input.difficultyHint}).`,
+    `${input.topicTitle} builds understanding by connecting concepts step by step.`,
+    `${input.topicTitle} is best learned by identifying patterns and testing examples.`,
+    `${input.topicTitle} requires using definitions accurately before solving problems.`,
+  ];
+  return variants[input.index % variants.length];
+}
+
+function distractorsFor(input: {topicTitle: string; index: number}): string[] {
+  const base = [
+    `${input.topicTitle} is mainly about memorizing unrelated facts.`,
+    `${input.topicTitle} never uses structured reasoning.`,
+    `${input.topicTitle} can be solved by guessing without understanding.`,
+    `${input.topicTitle} avoids using definitions and examples.`,
+    `${input.topicTitle} is only relevant in one narrow scenario.`,
+    `${input.topicTitle} has no link between theory and practice.`,
+  ];
+  return [
+    base[input.index % base.length],
+    base[(input.index + 2) % base.length],
+    base[(input.index + 4) % base.length],
+  ];
+}
+
+function slugify(value: string): string {
+  return `topic_${value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "general"}`;
+}
+
+function difficultyLabel(difficulty: "easy" | "medium" | "hard"): string {
+  switch (difficulty) {
+    case "easy":
+      return "intro";
+    case "hard":
+      return "advanced";
+    default:
+      return "balanced";
+  }
+}
 
 type SubmitQuizAttemptRequest = {
   quizId: string;
