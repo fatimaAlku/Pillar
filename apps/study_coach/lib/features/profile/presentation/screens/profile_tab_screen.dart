@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 
 class ProfileTabScreen extends ConsumerWidget {
@@ -19,6 +20,8 @@ class ProfileTabScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final themeMode = ref.watch(themeModeProvider);
+    final isLightMode = themeMode != ThemeMode.dark;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -102,6 +105,7 @@ class ProfileTabScreen extends ConsumerWidget {
                   leftLabel: 'Aa',
                   rightLabel: 'ab',
                   isLeftActive: true,
+                  onChanged: (_) {},
                 ),
                 onTap: () => _showComingSoon(context, 'App language'),
               ),
@@ -112,9 +116,16 @@ class ProfileTabScreen extends ConsumerWidget {
                 trailing: _PillToggle(
                   leftLabel: 'Light',
                   rightLabel: 'Dark',
-                  isLeftActive: true,
+                  isLeftActive: isLightMode,
+                  onChanged: (isLeftActive) {
+                    ref.read(themeModeProvider.notifier).setThemeMode(
+                      isLeftActive ? ThemeMode.light : ThemeMode.dark,
+                    );
+                  },
                 ),
-                onTap: () => _showComingSoon(context, 'Mode Switch'),
+                onTap: () {
+                  ref.read(themeModeProvider.notifier).toggleThemeMode();
+                },
               ),
               const _TileDivider(),
               _ProfileMenuTile(
@@ -233,11 +244,13 @@ class _PillToggle extends StatelessWidget {
     required this.leftLabel,
     required this.rightLabel,
     required this.isLeftActive,
+    required this.onChanged,
   });
 
   final String leftLabel;
   final String rightLabel;
   final bool isLeftActive;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -253,10 +266,12 @@ class _PillToggle extends StatelessWidget {
           _ToggleSegment(
             label: leftLabel,
             active: isLeftActive,
+            onTap: () => onChanged(true),
           ),
           _ToggleSegment(
             label: rightLabel,
             active: !isLeftActive,
+            onTap: () => onChanged(false),
           ),
         ],
       ),
@@ -268,27 +283,33 @@ class _ToggleSegment extends StatelessWidget {
   const _ToggleSegment({
     required this.label,
     required this.active,
+    required this.onTap,
   });
 
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
-      decoration: BoxDecoration(
-        color: active ? const Color(0xFF1CB5A2) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: const Color(0xFFEFF2FF),
-              fontWeight: FontWeight.w700,
-            ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF1CB5A2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: const Color(0xFFEFF2FF),
+                fontWeight: FontWeight.w700,
+              ),
+        ),
       ),
     );
   }

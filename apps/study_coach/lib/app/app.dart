@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/state/app_providers.dart';
+import '../core/state/theme_mode_controller.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'splash_screen.dart';
@@ -10,12 +11,12 @@ final startupDelayProvider = FutureProvider<void>((ref) async {
   await Future<void>.delayed(const Duration(milliseconds: 1200));
 });
 
-class StudyCoachApp extends StatelessWidget {
+class StudyCoachApp extends ConsumerWidget {
   const StudyCoachApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const baseScheme = ColorScheme(
+  Widget build(BuildContext context, WidgetRef ref) {
+    const lightScheme = ColorScheme(
       brightness: Brightness.light,
       primary: Color(0xFF6B5CFF),
       onPrimary: Colors.white,
@@ -47,107 +48,128 @@ class StudyCoachApp extends StatelessWidget {
       onInverseSurface: Color(0xFFF6F5FF),
       inversePrimary: Color(0xFFD2CCFF),
     );
-    final textTheme = ThemeData(useMaterial3: true).textTheme.apply(
-      bodyColor: baseScheme.onSurface,
-      displayColor: baseScheme.onSurface,
+    final darkScheme = ColorScheme.fromSeed(
+      seedColor: lightScheme.primary,
+      brightness: Brightness.dark,
     );
+    final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp(
       title: 'Pillar',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: baseScheme,
-        scaffoldBackgroundColor: const Color(0xFFF4F5FB),
-        textTheme: textTheme,
-        appBarTheme: AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: baseScheme.onSurface,
-          titleTextStyle: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        cardTheme: CardThemeData(
-          elevation: 0,
-          color: baseScheme.surface,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: baseScheme.outlineVariant),
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: baseScheme.surface,
-          labelStyle: TextStyle(color: baseScheme.onSurfaceVariant),
-          hintStyle: TextStyle(color: baseScheme.onSurfaceVariant),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 14,
-          ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: baseScheme.outlineVariant),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: baseScheme.outlineVariant),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
-            borderSide: BorderSide(color: baseScheme.primary, width: 1.3),
-          ),
-        ),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          type: BottomNavigationBarType.fixed,
-          elevation: 0,
-          backgroundColor: const Color(0xFFFDFDFF),
-          selectedItemColor: baseScheme.primary,
-          unselectedItemColor: baseScheme.onSurfaceVariant,
-          selectedIconTheme: const IconThemeData(size: 24),
-          unselectedIconTheme: const IconThemeData(size: 22),
-          selectedLabelStyle: textTheme.labelSmall?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            elevation: 0,
-            minimumSize: const Size.fromHeight(50),
-            backgroundColor: baseScheme.primary,
-            foregroundColor: baseScheme.onPrimary,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            textStyle: textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        outlinedButtonTheme: OutlinedButtonThemeData(
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            side: BorderSide(color: baseScheme.outline),
-          ),
-        ),
-        snackBarTheme: SnackBarThemeData(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: const Color(0xFF2E2D43),
-          contentTextStyle: textTheme.bodyMedium?.copyWith(
-            color: const Color(0xFFF7F7FE),
-          ),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        ),
-      ),
+      theme: _buildThemeData(lightScheme),
+      darkTheme: _buildThemeData(darkScheme),
+      themeMode: themeMode,
       home: const _AuthGate(),
     );
   }
+}
+
+ThemeData _buildThemeData(ColorScheme colorScheme) {
+  final isDarkMode = colorScheme.brightness == Brightness.dark;
+  final textTheme = ThemeData(
+    useMaterial3: true,
+    brightness: colorScheme.brightness,
+  ).textTheme.apply(
+    bodyColor: colorScheme.onSurface,
+    displayColor: colorScheme.onSurface,
+  );
+
+  return ThemeData(
+    useMaterial3: true,
+    colorScheme: colorScheme,
+    scaffoldBackgroundColor:
+        isDarkMode ? colorScheme.surface : const Color(0xFFF4F5FB),
+    textTheme: textTheme,
+    appBarTheme: AppBarTheme(
+      centerTitle: true,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      backgroundColor: Colors.transparent,
+      foregroundColor: colorScheme.onSurface,
+      titleTextStyle: textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    cardTheme: CardThemeData(
+      elevation: 0,
+      color: colorScheme.surface,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: colorScheme.outlineVariant),
+      ),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: colorScheme.surface,
+      labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.3),
+      ),
+    ),
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      type: BottomNavigationBarType.fixed,
+      elevation: 0,
+      backgroundColor:
+          isDarkMode ? colorScheme.surfaceContainerLow : const Color(0xFFFDFDFF),
+      selectedItemColor: colorScheme.primary,
+      unselectedItemColor: colorScheme.onSurfaceVariant,
+      selectedIconTheme: const IconThemeData(size: 24),
+      unselectedIconTheme: const IconThemeData(size: 22),
+      selectedLabelStyle: textTheme.labelSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        elevation: 0,
+        minimumSize: const Size.fromHeight(50),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        textStyle: textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(48),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        side: BorderSide(color: colorScheme.outline),
+      ),
+    ),
+    snackBarTheme: SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor:
+          isDarkMode ? colorScheme.inverseSurface : const Color(0xFF2E2D43),
+      contentTextStyle: textTheme.bodyMedium?.copyWith(
+        color: isDarkMode
+            ? colorScheme.onInverseSurface
+            : const Color(0xFFF7F7FE),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    ),
+  );
 }
 
 class _AuthGate extends ConsumerWidget {
