@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../../profile/presentation/screens/profile_tab_screen.dart';
 import '../../../quizzes/presentation/screens/quizzes_tab_screen.dart';
 import '../../../roadmap/presentation/screens/roadmap_tab_screen.dart';
@@ -19,8 +20,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final colorScheme = Theme.of(context).colorScheme;
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
     final pages = <Widget>[
       const HomeDashboardView(),
       const StudyPlanTabScreen(),
@@ -57,42 +58,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
         ),
-        child: SizedBox(
-          height: 58 + bottomInset,
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            showSelectedLabels: false,
-            showUnselectedLabels: false,
-            iconSize: 20,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home),
-                label: 'Home',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.event_note_outlined),
-                activeIcon: Icon(Icons.event_note),
-                label: 'Plan',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.quiz_outlined),
-                activeIcon: Icon(Icons.quiz),
-                label: 'Quiz',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.route_outlined),
-                activeIcon: Icon(Icons.route),
-                label: 'RoadMap',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline_rounded),
-                activeIcon: Icon(Icons.person_rounded),
-                label: 'Profile',
-              ),
-            ],
-          ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
+          selectedFontSize: 0,
+          unselectedFontSize: 0,
+          iconSize: 20,
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: strings.navHome,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.event_note_outlined),
+              activeIcon: const Icon(Icons.event_note),
+              label: strings.navPlan,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.quiz_outlined),
+              activeIcon: const Icon(Icons.quiz),
+              label: strings.navQuiz,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.route_outlined),
+              activeIcon: const Icon(Icons.route),
+              label: strings.navRoadmap,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person_outline_rounded),
+              activeIcon: const Icon(Icons.person_rounded),
+              label: strings.navProfile,
+            ),
+          ],
         ),
       ),
     );

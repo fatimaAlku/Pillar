@@ -1,30 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-String _formatTodayHeader(DateTime d) {
-  const weekdays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${weekdays[d.weekday - 1]}, ${months[d.month - 1]} ${d.day}';
+import '../../../../core/localization/app_strings.dart';
+
+String _formatTodayHeader(DateTime d, String locale) {
+  return DateFormat('EEEE, MMMM d', locale).format(d);
 }
 
 /// Home tab: today’s plan, progress, AI placeholder, and quick actions.
@@ -42,9 +22,16 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
   void initState() {
     super.initState();
     _tasks = [
-      _TodayTask(title: 'Review: Cellular respiration', durationMin: 30),
-      _TodayTask(title: 'Practice quiz: Thermodynamics', durationMin: 15, done: true),
-      _TodayTask(title: 'Read notes: Chapter 7', durationMin: 20),
+      _TodayTask(
+        titleKey: _TodayTaskKey.reviewCellularRespiration,
+        durationMin: 30,
+      ),
+      _TodayTask(
+        titleKey: _TodayTaskKey.practiceQuizThermodynamics,
+        durationMin: 15,
+        done: true,
+      ),
+      _TodayTask(titleKey: _TodayTaskKey.readNotesChapterSeven, durationMin: 20),
     ];
   }
 
@@ -60,9 +47,10 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
   }
 
   void _onQuickAction(BuildContext context, String label) {
+    final strings = AppStrings.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label — coming soon'),
+        content: Text(strings.comingSoonFor(label)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -70,9 +58,13 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final dateStr = _formatTodayHeader(DateTime.now());
+    final dateStr = _formatTodayHeader(
+      DateTime.now(),
+      Localizations.localeOf(context).languageCode,
+    );
     final pct = (_progress * 100).round();
 
     return ListView(
@@ -81,13 +73,13 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
         _WelcomeHero(dateLabel: dateStr),
         const SizedBox(height: 18),
         Text(
-          'Focus today',
+          strings.focusToday,
           style: theme.textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 4),
-        Text('Small steps, consistent progress.',
+        Text(strings.smallStepsConsistentProgress,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             )),
@@ -107,16 +99,16 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
         const _AiSuggestionCard(),
         const SizedBox(height: 16),
         Text(
-          'Quick actions',
+          strings.quickActions,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 12),
         _QuickActionsRow(
-          onAddTask: () => _onQuickAction(context, 'Add Task'),
-          onGenerateQuiz: () => _onQuickAction(context, 'Generate Quiz'),
-          onUploadNotes: () => _onQuickAction(context, 'Upload Notes'),
+          onAddTask: () => _onQuickAction(context, strings.addTask),
+          onGenerateQuiz: () => _onQuickAction(context, strings.generateQuiz),
+          onUploadNotes: () => _onQuickAction(context, strings.uploadNotes),
         ),
       ],
     );
@@ -125,14 +117,30 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
 
 class _TodayTask {
   _TodayTask({
-    required this.title,
+    required this.titleKey,
     required this.durationMin,
     this.done = false,
   });
 
-  final String title;
+  final _TodayTaskKey titleKey;
   final int durationMin;
   bool done;
+
+  String title(AppStrings strings) {
+    return switch (titleKey) {
+      _TodayTaskKey.reviewCellularRespiration =>
+        strings.todayTaskReviewCellularRespiration(),
+      _TodayTaskKey.practiceQuizThermodynamics =>
+        strings.todayTaskPracticeQuizThermodynamics(),
+      _TodayTaskKey.readNotesChapterSeven => strings.todayTaskReadNotesChapterSeven(),
+    };
+  }
+}
+
+enum _TodayTaskKey {
+  reviewCellularRespiration,
+  practiceQuizThermodynamics,
+  readNotesChapterSeven,
 }
 
 class _WelcomeHero extends StatelessWidget {
@@ -142,6 +150,7 @@ class _WelcomeHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -166,7 +175,7 @@ class _WelcomeHero extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Your smart study assistant',
+                    strings.smartStudyAssistant,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: colorScheme.onPrimaryContainer,
@@ -233,6 +242,7 @@ class _ProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -250,7 +260,7 @@ class _ProgressCard extends StatelessWidget {
                 Icon(Icons.trending_up_rounded, color: colorScheme.primary),
                 const SizedBox(width: 8),
                 Text(
-                  'Today’s progress',
+                  strings.todaysProgress,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -273,14 +283,14 @@ class _ProgressCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$percentLabel% complete',
+                  strings.percentComplete(percentLabel),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colorScheme.primary,
                   ),
                 ),
                 Text(
-                  '$completed of $total tasks',
+                  strings.completedTasks(completed, total),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -305,6 +315,7 @@ class _TodayPlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -332,7 +343,7 @@ class _TodayPlanCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Today’s study plan',
+                    strings.todaysStudyPlan,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -376,7 +387,7 @@ class _TodayPlanCard extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                t.title,
+                                t.title(strings),
                                 style: theme.textTheme.bodyLarge?.copyWith(
                                   decoration: t.done
                                       ? TextDecoration.lineThrough
@@ -388,7 +399,7 @@ class _TodayPlanCard extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${t.durationMin} min',
+                                strings.minutesShort(t.durationMin),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: colorScheme.onSurfaceVariant,
                                 ),
@@ -414,6 +425,7 @@ class _AiSuggestionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -448,7 +460,7 @@ class _AiSuggestionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AI suggestion',
+                      strings.aiSuggestion,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colorScheme.onPrimaryContainer,
@@ -456,8 +468,7 @@ class _AiSuggestionCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Your coach will surface personalized tips here based on '
-                      'your schedule and quiz results.',
+                      strings.aiSuggestionBody,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: colorScheme.onPrimaryContainer.withValues(
                           alpha: 0.92,
@@ -489,12 +500,13 @@ class _QuickActionsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     return Row(
       children: [
         Expanded(
           child: _QuickActionCard(
             icon: Icons.add_task_rounded,
-            label: 'Add Task',
+            label: strings.addTask,
             onTap: onAddTask,
           ),
         ),
@@ -502,7 +514,7 @@ class _QuickActionsRow extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: Icons.quiz_rounded,
-            label: 'Generate Quiz',
+            label: strings.generateQuiz,
             onTap: onGenerateQuiz,
           ),
         ),
@@ -510,7 +522,7 @@ class _QuickActionsRow extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: Icons.upload_file_rounded,
-            label: 'Upload Notes',
+            label: strings.uploadNotes,
             onTap: onUploadNotes,
           ),
         ),

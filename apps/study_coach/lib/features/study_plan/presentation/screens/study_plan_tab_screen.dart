@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../controllers/study_plan_controller.dart';
 
@@ -22,6 +24,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final localeCode = Localizations.localeOf(context).languageCode;
     final days = _buildWeekDays(anchor: _selectedDate);
     final input = StudyPlanPersonalizationInput(
       topics: _seedTopics(now: DateTime.now()),
@@ -30,7 +34,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     );
     final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
     final tasks = dynamicResult.updatedPlan;
-    final daySchedule = _buildScheduleForDay(tasks: tasks, date: _selectedDate);
+    final daySchedule = _buildScheduleForDay(
+      tasks: tasks,
+      date: _selectedDate,
+      localeCode: localeCode,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -59,7 +67,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Adaptive schedule personalized from your quiz performance and exam urgency.',
+                      strings.adaptiveScheduleBlurb,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
@@ -81,15 +89,15 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
         FilledButton.icon(
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Scheduling editor coming soon')),
+              SnackBar(content: Text(strings.schedulingEditorComingSoon)),
             );
           },
           icon: const Icon(Icons.add),
-          label: const Text('Add schedule'),
+          label: Text(strings.addSchedule),
         ),
         const SizedBox(height: 18),
         Text(
-          _formatDateHeader(_selectedDate),
+          _formatDateHeader(_selectedDate, localeCode),
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 10),
@@ -132,6 +140,7 @@ class _CalendarHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.primaryContainer;
+    final localeCode = Localizations.localeOf(context).languageCode;
 
     return Card(
       elevation: 0,
@@ -149,7 +158,7 @@ class _CalendarHeader extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    _formatMonthYear(selectedDate),
+                    _formatMonthYear(selectedDate, localeCode),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
@@ -199,6 +208,7 @@ class _DayChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final localeCode = Localizations.localeOf(context).languageCode;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final bg = selected ? colorScheme.onSurface : colorScheme.surface;
@@ -216,7 +226,7 @@ class _DayChip extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                _weekdayShort(date),
+                _weekdayShort(date, localeCode),
                 style: theme.textTheme.labelSmall?.copyWith(color: fg),
               ),
               const SizedBox(height: 6),
@@ -242,6 +252,7 @@ class _ScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final priorityColor = switch (item.priorityBand) {
@@ -304,14 +315,20 @@ class _ScheduleCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${item.subject}  •  ${item.durationMin} min',
+                      strings.scheduleMeta(item.subject, item.durationMin),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Priority ${item.scoreLabel} (U:${item.deadlineLabel} W:${item.weaknessLabel} D:${item.difficultyLabel} R:${item.recencyLabel})',
+                      strings.priorityBreakdown(
+                        item.scoreLabel,
+                        item.deadlineLabel,
+                        item.weaknessLabel,
+                        item.difficultyLabel,
+                        item.recencyLabel,
+                      ),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -337,15 +354,14 @@ class _PriorityLegend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final totalMin = tasks.fold<int>(0, (acc, t) => acc + t.recommendedMinutes);
     return Card(
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Text(
-          'Personalized from exam urgency, weak quiz topics, subject difficulty, and recency. '
-          'Missed sessions are redistributed. Allocated $totalMin minutes today.\n'
-          '$explanationMessage',
+          strings.personalizedPlanFooter(totalMin, explanationMessage),
         ),
       ),
     );
@@ -355,6 +371,7 @@ class _PriorityLegend extends StatelessWidget {
 List<_ScheduleItem> _buildScheduleForDay({
   required List<StudyTaskPriority> tasks,
   required DateTime date,
+  required String localeCode,
 }) {
   if (tasks.isEmpty) return const [];
   final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
@@ -362,7 +379,7 @@ List<_ScheduleItem> _buildScheduleForDay({
   final items = <_ScheduleItem>[];
 
   for (final task in tasks.take(5)) {
-    final timeLabel = _formatTime(current);
+    final timeLabel = _formatTime(current, localeCode);
     items.add(_ScheduleItem.fromTask(task, timeLabel: timeLabel));
     current = current.add(Duration(minutes: task.recommendedMinutes + 10));
   }
@@ -435,47 +452,20 @@ List<DateTime> _buildWeekDays({required DateTime anchor}) {
   return List.generate(7, (i) => monday.add(Duration(days: i)));
 }
 
-String _weekdayShort(DateTime d) {
-  const names = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  return names[d.weekday - 1];
+String _weekdayShort(DateTime d, String localeCode) {
+  return DateFormat('EEE', localeCode).format(d);
 }
 
-String _formatMonthYear(DateTime d) {
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  return '${months[d.month - 1]} ${d.year}';
+String _formatMonthYear(DateTime d, String localeCode) {
+  return DateFormat('MMMM y', localeCode).format(d);
 }
 
-String _formatDateHeader(DateTime d) {
-  const weekdays = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
-  ];
-  return '${weekdays[d.weekday - 1]} ${d.day}';
+String _formatDateHeader(DateTime d, String localeCode) {
+  return DateFormat('EEEE d', localeCode).format(d);
 }
 
-String _formatTime(DateTime d) {
-  final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
-  final minute = d.minute.toString().padLeft(2, '0');
-  final suffix = d.hour >= 12 ? 'PM' : 'AM';
-  return '$hour:$minute $suffix';
+String _formatTime(DateTime d, String localeCode) {
+  return DateFormat.jm(localeCode).format(d);
 }
 
 DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);

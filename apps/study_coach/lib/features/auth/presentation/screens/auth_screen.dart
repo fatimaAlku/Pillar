@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../controllers/auth_controller.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final authFormState = ref.watch(authFormControllerProvider);
 
     ref.listen<AuthFormState>(authFormControllerProvider, (previous, next) {
@@ -37,7 +39,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Pillar')),
+      appBar: AppBar(title: Text(strings.appTitle)),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -49,21 +51,21 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _isSignUp ? 'Create account' : 'Login',
+                    _isSignUp ? strings.createAccount : strings.login,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(labelText: strings.email),
                     validator: (value) {
                       final email = value?.trim() ?? '';
                       if (email.isEmpty) {
-                        return 'Email is required';
+                        return strings.emailRequired;
                       }
                       if (!email.contains('@')) {
-                        return 'Enter a valid email';
+                        return strings.enterValidEmail;
                       }
                       return null;
                     },
@@ -72,14 +74,14 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: InputDecoration(labelText: strings.password),
                     validator: (value) {
                       final password = value ?? '';
                       if (password.isEmpty) {
-                        return 'Password is required';
+                        return strings.passwordRequired;
                       }
                       if (password.length < 6) {
-                        return 'Minimum 6 characters';
+                        return strings.minimumSixChars;
                       }
                       return null;
                     },
@@ -95,7 +97,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                               width: 18,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_isSignUp ? 'Sign up' : 'Login'),
+                          : Text(_isSignUp ? strings.signUp : strings.login),
                     ),
                   ),
                   TextButton(
@@ -108,8 +110,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                           },
                     child: Text(
                       _isSignUp
-                          ? 'Already have an account? Login'
-                          : 'Need an account? Sign up',
+                          ? strings.alreadyHaveAccountLogin
+                          : strings.needAccountSignUp,
                     ),
                   ),
                 ],

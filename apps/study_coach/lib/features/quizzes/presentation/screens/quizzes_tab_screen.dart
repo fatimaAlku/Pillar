@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../controllers/quiz_controller.dart';
 import 'quiz_runner_screen.dart';
 
@@ -26,6 +27,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final quizState = ref.watch(quizRunnerControllerProvider);
@@ -66,7 +68,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Build AI-powered quizzes and target weak topics faster.',
+                      strings.quizzesIntro,
                       style: theme.textTheme.titleSmall?.copyWith(
                         color: colorScheme.onPrimaryContainer,
                       ),
@@ -85,14 +87,14 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Generate AI Quiz',
+                  strings.generateQuizTitle,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Use topics and/or notes to generate a quiz, then review weak topics.',
+                  strings.generateQuizDescription,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -100,33 +102,33 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _topicsController,
-                  decoration: const InputDecoration(
-                    labelText: 'Topics (comma-separated)',
-                    hintText: 'e.g. Trees, Graphs, Hashing',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: strings.topicsCommaSeparated,
+                    hintText: strings.topicsHint,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _notesController,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    hintText: 'Paste notes for quiz generation context',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: strings.notesOptional,
+                    hintText: strings.notesHint,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _difficulty,
-                  decoration: const InputDecoration(
-                    labelText: 'Difficulty',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: strings.difficulty,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'easy', child: Text('Easy')),
-                    DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                    DropdownMenuItem(value: 'hard', child: Text('Hard')),
+                  items: [
+                    DropdownMenuItem(value: 'easy', child: Text(strings.easy)),
+                    DropdownMenuItem(value: 'medium', child: Text(strings.medium)),
+                    DropdownMenuItem(value: 'hard', child: Text(strings.hard)),
                   ],
                   onChanged: (value) {
                     if (value == null) return;
@@ -135,9 +137,9 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 ),
                 const SizedBox(height: 12),
                 InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Number of questions',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: strings.numberOfQuestions,
+                    border: const OutlineInputBorder(),
                   ),
                   child: Row(
                     children: [
@@ -199,7 +201,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                             }
                           },
                     icon: const Icon(Icons.play_arrow),
-                    label: Text(isGenerating ? 'Generating...' : 'Start quiz'),
+                    label: Text(isGenerating ? strings.generating : strings.startQuiz),
                   ),
                 ),
               ],

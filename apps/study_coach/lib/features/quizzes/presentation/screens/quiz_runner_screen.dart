@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/app_strings.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
 import '../controllers/quiz_controller.dart';
@@ -10,10 +11,11 @@ class QuizRunnerScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     final state = ref.watch(quizRunnerControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Quiz')),
+      appBar: AppBar(title: Text(strings.quiz)),
       body: switch (state) {
         QuizRunnerIdle() => const _QuizIdleView(),
         QuizRunnerLoading() => const _QuizLoadingView(),
@@ -30,10 +32,11 @@ class _QuizIdleView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final strings = AppStrings.of(context);
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('No quiz loaded yet. Generate one from the Quiz tab.'),
+        padding: const EdgeInsets.all(24),
+        child: Text(strings.noQuizLoaded),
       ),
     );
   }
@@ -44,13 +47,14 @@ class _QuizLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    final strings = AppStrings.of(context);
+    return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 12),
-          Text('Generating quiz with AI...'),
+          const CircularProgressIndicator(),
+          const SizedBox(height: 12),
+          Text(strings.generatingQuizWithAi),
         ],
       ),
     );
@@ -63,6 +67,7 @@ class _QuizErrorView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -78,7 +83,7 @@ class _QuizErrorView extends ConsumerWidget {
                   .read(quizRunnerControllerProvider.notifier)
                   .retryLastGeneration(),
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry generation'),
+              label: Text(strings.retryGeneration),
             ),
           ],
         ),
@@ -94,6 +99,7 @@ class _QuizInProgressView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     final q = state.currentQuestion;
     final selected = state.selectedFor(q.id);
 
@@ -106,12 +112,12 @@ class _QuizInProgressView extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    'Question ${state.questionNumber}/${state.totalCount}',
+                    strings.questionCounter(state.questionNumber, state.totalCount),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 Text(
-                  '${state.questionNumber} of ${state.totalCount}',
+                  strings.questionOf(state.questionNumber, state.totalCount),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -157,7 +163,7 @@ class _QuizInProgressView extends ConsumerWidget {
                             .read(quizRunnerControllerProvider.notifier)
                             .previous(),
                     icon: const Icon(Icons.chevron_left),
-                    label: const Text('Back'),
+                    label: Text(strings.back),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -173,7 +179,7 @@ class _QuizInProgressView extends ConsumerWidget {
                     icon: Icon(
                       state.isLastQuestion ? Icons.check : Icons.chevron_right,
                     ),
-                    label: Text(state.isLastQuestion ? 'Submit' : 'Next'),
+                    label: Text(state.isLastQuestion ? strings.submit : strings.next),
                   ),
                 ),
               ],
@@ -273,6 +279,7 @@ class _QuizSubmittedView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     final percent = (result.scoreFraction * 100).round();
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -286,7 +293,7 @@ class _QuizSubmittedView extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Score', style: Theme.of(context).textTheme.titleLarge),
+                  Text(strings.score, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 6),
                   Text(
                     '${result.correctCount}/${result.totalCount} ($percent%)',
@@ -300,7 +307,7 @@ class _QuizSubmittedView extends ConsumerWidget {
                           .read(quizRunnerControllerProvider.notifier)
                           .restart(),
                       icon: const Icon(Icons.refresh),
-                      label: const Text('Retake'),
+                      label: Text(strings.retake),
                     ),
                   ),
                 ],
@@ -308,11 +315,11 @@ class _QuizSubmittedView extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          const _SectionTitle(title: 'Weak topics'),
+          _SectionTitle(title: strings.weakTopics),
           const SizedBox(height: 8),
           if (result.weakTopics.isEmpty)
             Text(
-              'No weak topics detected — great job.',
+              strings.noWeakTopics,
               style: Theme.of(context).textTheme.bodyMedium,
             )
           else
@@ -321,12 +328,12 @@ class _QuizSubmittedView extends ConsumerWidget {
                 child: ListTile(
                   leading: Icon(Icons.trending_down, color: colorScheme.error),
                   title: Text(t.topicTitle),
-                  subtitle: Text('${t.incorrectCount} incorrect'),
+                  subtitle: Text(strings.incorrectCount(t.incorrectCount)),
                 ),
               ),
             ),
           const SizedBox(height: 12),
-          const _SectionTitle(title: 'Review'),
+          _SectionTitle(title: strings.review),
           const SizedBox(height: 8),
           ...result.questions.map((q) {
             final selected = result.selectedByQuestionId[q.id];
@@ -354,12 +361,14 @@ class _QuizSubmittedView extends ConsumerWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'Your answer: ${selected == null ? 'Unanswered' : q.options[selected]}',
+                      strings.yourAnswer(
+                        selected == null ? strings.unanswered : q.options[selected],
+                      ),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Correct answer: ${q.options[q.correctIndex]}',
+                      strings.correctAnswer(q.options[q.correctIndex]),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color:
                                 isCorrect ? Colors.green : colorScheme.primary,
@@ -369,7 +378,7 @@ class _QuizSubmittedView extends ConsumerWidget {
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          'Explanation: ${q.explanation}',
+                          strings.explanation(q.explanation!),
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ),
@@ -383,7 +392,7 @@ class _QuizSubmittedView extends ConsumerWidget {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () => Navigator.of(context).maybePop(),
-              child: const Text('Back to quizzes'),
+              child: Text(strings.backToQuizzes),
             ),
           ),
         ],

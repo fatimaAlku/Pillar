@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/localization/app_strings.dart';
+
 class RoadmapTabScreen extends StatelessWidget {
   const RoadmapTabScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -34,7 +37,7 @@ class RoadmapTabScreen extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Pick your major to open a focused roadmap with the most important subjects and topics.',
+                    strings.roadmapIntro,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onPrimaryContainer,
                     ),
@@ -46,7 +49,7 @@ class RoadmapTabScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Majors Roadmap',
+          '',
           textAlign: TextAlign.center,
           style:
               theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
@@ -143,11 +146,12 @@ class _MajorRoadmapScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text('${major.title} Roadmap')),
+      appBar: AppBar(title: Text(strings.majorRoadmap(major.title))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
@@ -160,14 +164,14 @@ class _MajorRoadmapScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Priority roadmap',
+                    strings.priorityRoadmap,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Focus these subjects first to build a strong foundation in ${major.title}.',
+                    strings.focusSubjectsFirst(major.title),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colorScheme.onSurfaceVariant,
                     ),

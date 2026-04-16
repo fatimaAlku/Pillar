@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 
@@ -8,9 +10,10 @@ class ProfileTabScreen extends ConsumerWidget {
   const ProfileTabScreen({super.key});
 
   void _showComingSoon(BuildContext context, String label) {
+    final strings = AppStrings.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label - coming soon'),
+        content: Text(strings.comingSoonFor(label)),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -18,10 +21,13 @@ class ProfileTabScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final themeMode = ref.watch(themeModeProvider);
+    final appLocale = ref.watch(appLocaleProvider);
     final isLightMode = themeMode != ThemeMode.dark;
+    final isEnglish = appLocale.languageCode != 'ar';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -100,22 +106,26 @@ class ProfileTabScreen extends ConsumerWidget {
             children: [
               _ProfileMenuTile(
                 icon: Icons.language_rounded,
-                title: 'App language',
+                title: strings.appLanguage,
                 trailing: _PillToggle(
-                  leftLabel: 'Aa',
-                  rightLabel: 'ab',
-                  isLeftActive: true,
-                  onChanged: (_) {},
+                  leftLabel: 'EN',
+                  rightLabel: 'AR',
+                  isLeftActive: isEnglish,
+                  onChanged: (isLeftActive) {
+                    ref.read(appLocaleProvider.notifier).setLocale(
+                      isLeftActive ? const Locale('en') : const Locale('ar'),
+                    );
+                  },
                 ),
-                onTap: () => _showComingSoon(context, 'App language'),
+                onTap: () => ref.read(appLocaleProvider.notifier).toggleLocale(),
               ),
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.light_mode_rounded,
-                title: 'Mode Switch',
+                title: strings.modeSwitch,
                 trailing: _PillToggle(
-                  leftLabel: 'Light',
-                  rightLabel: 'Dark',
+                  leftLabel: strings.light,
+                  rightLabel: strings.dark,
                   isLeftActive: isLightMode,
                   onChanged: (isLeftActive) {
                     ref.read(themeModeProvider.notifier).setThemeMode(
@@ -130,26 +140,26 @@ class ProfileTabScreen extends ConsumerWidget {
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.insights_outlined,
-                title: 'Progress',
-                onTap: () => _showComingSoon(context, 'Progress'),
+                title: strings.progress,
+                onTap: () => _showComingSoon(context, strings.progress),
               ),
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.lock_outline_rounded,
-                title: 'Password change',
-                onTap: () => _showComingSoon(context, 'Password change'),
+                title: strings.passwordChange,
+                onTap: () => _showComingSoon(context, strings.passwordChange),
               ),
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.privacy_tip_outlined,
-                title: 'Privacy Policy',
-                onTap: () => _showComingSoon(context, 'Privacy Policy'),
+                title: strings.privacyPolicy,
+                onTap: () => _showComingSoon(context, strings.privacyPolicy),
               ),
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.info_outline_rounded,
-                title: 'About',
-                onTap: () => _showComingSoon(context, 'About'),
+                title: strings.about,
+                onTap: () => _showComingSoon(context, strings.about),
               ),
             ],
           ),
@@ -167,7 +177,7 @@ class ProfileTabScreen extends ConsumerWidget {
           onPressed: () =>
               ref.read(authFormControllerProvider.notifier).signOut(),
           child: Text(
-            'Log out',
+            strings.logout,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
               color: Colors.white,
@@ -177,7 +187,7 @@ class ProfileTabScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         Center(
           child: Text(
-            '© 2026 Pillar. All rights reserved.',
+            strings.allRightsReserved,
             style: theme.textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
             ),

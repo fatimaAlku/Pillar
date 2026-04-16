@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/state/app_providers.dart';
+import '../core/state/app_locale_controller.dart';
 import '../core/state/theme_mode_controller.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
@@ -53,6 +55,7 @@ class StudyCoachApp extends ConsumerWidget {
       brightness: Brightness.dark,
     );
     final themeMode = ref.watch(themeModeProvider);
+    final appLocale = ref.watch(appLocaleProvider);
 
     return MaterialApp(
       title: 'Pillar',
@@ -60,6 +63,13 @@ class StudyCoachApp extends ConsumerWidget {
       theme: _buildThemeData(lightScheme),
       darkTheme: _buildThemeData(darkScheme),
       themeMode: themeMode,
+      locale: appLocale,
+      supportedLocales: const [Locale('en'), Locale('ar')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       home: const _AuthGate(),
     );
   }
