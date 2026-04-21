@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/notes/notes_file_text_extractor.dart';
 import '../controllers/quiz_controller.dart';
 import 'quiz_runner_screen.dart';
 
@@ -15,14 +16,99 @@ class QuizzesTabScreen extends ConsumerStatefulWidget {
 class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   final _topicsController = TextEditingController();
   final _notesController = TextEditingController();
+  final _notesFocusNode = FocusNode();
   int _questionCount = 10;
   String _difficulty = 'medium';
+  bool _isImportingNotes = false;
 
   @override
   void dispose() {
     _topicsController.dispose();
     _notesController.dispose();
+    _notesFocusNode.dispose();
     super.dispose();
+  }
+
+  void _insertImportedNotes(String imported) {
+    final value = _notesController.value;
+    final text = value.text;
+    final sel = value.selection;
+    int start;
+    int end;
+    if (sel.isValid) {
+      start = sel.start.clamp(0, text.length);
+      end = sel.end.clamp(0, text.length);
+      if (end < start) {
+        end = start;
+      }
+    } else {
+      start = end = text.length;
+    }
+    final newText = text.replaceRange(start, end, imported);
+    final offset = start + imported.length;
+    _notesController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: offset),
+    );
+  }
+
+  Future<void> _importNotesFromFile() async {
+    if (_isImportingNotes) return;
+    final strings = AppStrings.of(context);
+    setState(() => _isImportingNotes = true);
+    try {
+      final importedText = await NotesFileTextExtractor.pickAndExtractText();
+      if (!mounted || importedText == null) return;
+      _notesFocusNode.requestFocus();
+      _insertImportedNotes(importedText);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.notesImported)),
+      );
+      setState(() {});
+    } on NotesImportException catch (e) {
+      if (!mounted) return;
+      final msg = switch (e.failure) {
+        NotesImportFailure.unsupportedType => strings.unsupportedNotesFile,
+        NotesImportFailure.unreadableText => strings.unreadableNotesFile,
+        NotesImportFailure.unknown => strings.couldNotImportNotes,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotImportNotes)),
+      );
+    } finally {
+      if (mounted) setState(() => _isImportingNotes = false);
+    }
+  }
+
+  Widget _buildNoteActions(AppStrings strings) {
+    return Align(
+      alignment: AlignmentDirectional.centerEnd,
+      child: Wrap(
+        spacing: 6,
+        children: [
+          TextButton.icon(
+            onPressed: _isImportingNotes ? null : _importNotesFromFile,
+            icon: _isImportingNotes
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload_file_rounded, size: 20),
+            label: Text(
+              _isImportingNotes
+                  ? strings.importingNotes
+                  : strings.uploadNotesFile,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -102,6 +188,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _topicsController,
+                  keyboardType: TextInputType.text,
                   decoration: InputDecoration(
                     labelText: strings.topicsCommaSeparated,
                     hintText: strings.topicsHint,
@@ -111,6 +198,9 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                 const SizedBox(height: 12),
                 TextField(
                   controller: _notesController,
+                  focusNode: _notesFocusNode,
+                  keyboardType: TextInputType.multiline,
+                  textInputAction: TextInputAction.newline,
                   maxLines: 4,
                   decoration: InputDecoration(
                     labelText: strings.notesOptional,
@@ -118,7 +208,8 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                _buildNoteActions(strings),
+                const SizedBox(height: 4),
                 DropdownButtonFormField<String>(
                   initialValue: _difficulty,
                   decoration: InputDecoration(
@@ -127,7 +218,8 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                   ),
                   items: [
                     DropdownMenuItem(value: 'easy', child: Text(strings.easy)),
-                    DropdownMenuItem(value: 'medium', child: Text(strings.medium)),
+                    DropdownMenuItem(
+                        value: 'medium', child: Text(strings.medium)),
                     DropdownMenuItem(value: 'hard', child: Text(strings.hard)),
                   ],
                   onChanged: (value) {
@@ -201,7 +293,8 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                             }
                           },
                     icon: const Icon(Icons.play_arrow),
-                    label: Text(isGenerating ? strings.generating : strings.startQuiz),
+                    label: Text(
+                        isGenerating ? strings.generating : strings.startQuiz),
                   ),
                 ),
               ],

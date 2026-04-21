@@ -1,49 +1,56 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/state/app_providers.dart';
+import '../../../study_plan/domain/entities/study_personalization_models.dart';
+import '../../../study_plan/domain/entities/study_session.dart';
+import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 
 String _formatTodayHeader(DateTime d, String locale) {
   return DateFormat('EEEE, MMMM d', locale).format(d);
 }
 
-/// Home tab: today’s plan, progress, AI placeholder, and quick actions.
-class HomeDashboardView extends StatefulWidget {
+String _topicTitle(
+  StudySession session,
+  List<TopicPerformanceInput> topics,
+  AppStrings strings,
+) {
+  if (session.topicId.isEmpty) return strings.studySessionUntitled;
+  for (final t in topics) {
+    if (t.topicId == session.topicId) return t.topicTitle;
+  }
+  return session.topicId;
+}
+
+/// Home tab: today’s plan from Firestore sessions, progress, AI placeholder, and quick actions.
+class HomeDashboardView extends ConsumerStatefulWidget {
   const HomeDashboardView({super.key});
 
   @override
-  State<HomeDashboardView> createState() => _HomeDashboardViewState();
+  ConsumerState<HomeDashboardView> createState() => _HomeDashboardViewState();
 }
 
-class _HomeDashboardViewState extends State<HomeDashboardView> {
-  late List<_TodayTask> _tasks;
-
-  @override
-  void initState() {
-    super.initState();
-    _tasks = [
-      _TodayTask(
-        titleKey: _TodayTaskKey.reviewCellularRespiration,
-        durationMin: 30,
-      ),
-      _TodayTask(
-        titleKey: _TodayTaskKey.practiceQuizThermodynamics,
-        durationMin: 15,
-        done: true,
-      ),
-      _TodayTask(titleKey: _TodayTaskKey.readNotesChapterSeven, durationMin: 20),
-    ];
-  }
-
-  int get _completedCount => _tasks.where((t) => t.done).length;
-
-  double get _progress =>
-      _tasks.isEmpty ? 0 : _completedCount / _tasks.length;
-
-  void _toggleTask(int index) {
-    setState(() {
-      _tasks[index].done = !_tasks[index].done;
-    });
+class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
+  Future<void> _toggleSession({
+    required String uid,
+    required StudySession session,
+  }) async {
+    final strings = AppStrings.of(context);
+    try {
+      await ref.read(studySessionsRepositoryProvider).setSessionCompleted(
+            uid: uid,
+            planId: session.planId,
+            sessionId: session.id,
+            completed: !session.completed,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotUpdateSession)),
+      );
+    }
   }
 
   void _onQuickAction(BuildContext context, String label) {
@@ -65,82 +72,118 @@ class _HomeDashboardViewState extends State<HomeDashboardView> {
       DateTime.now(),
       Localizations.localeOf(context).languageCode,
     );
-    final pct = (_progress * 100).round();
+    final authAsync = ref.watch(currentAuthUserProvider);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-      children: [
-        _WelcomeHero(dateLabel: dateStr),
-        const SizedBox(height: 18),
-        Text(
-          strings.focusToday,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(strings.smallStepsConsistentProgress,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurfaceVariant,
-            )),
-        const SizedBox(height: 24),
-        _ProgressCard(
-          progress: _progress,
-          percentLabel: pct,
-          completed: _completedCount,
-          total: _tasks.length,
-        ),
-        const SizedBox(height: 16),
-        _TodayPlanCard(
-          tasks: _tasks,
-          onToggle: _toggleTask,
-        ),
-        const SizedBox(height: 16),
-        const _AiSuggestionCard(),
-        const SizedBox(height: 16),
-        Text(
-          strings.quickActions,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _QuickActionsRow(
-          onAddTask: () => _onQuickAction(context, strings.addTask),
-          onGenerateQuiz: () => _onQuickAction(context, strings.generateQuiz),
-          onUploadNotes: () => _onQuickAction(context, strings.uploadNotes),
-        ),
-      ],
+    return authAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (user) {
+        if (user == null) {
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            children: [
+              Text(
+                strings.signInToSeeStudyPlan,
+                style: theme.textTheme.bodyLarge,
+              ),
+            ],
+          );
+        }
+        final sessionsAsync =
+            ref.watch(todaysSessionsStreamProvider(user.uid));
+        final topicsAsync =
+            ref.watch(topicPerformanceInputsStreamProvider(user.uid));
+
+        return sessionsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('$e')),
+          data: (sessions) {
+            return topicsAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('$e')),
+              data: (topics) {
+                final rows = sessions
+                    .map(
+                      (s) => _SessionRow(
+                        session: s,
+                        title: _topicTitle(s, topics, strings),
+                      ),
+                    )
+                    .toList();
+                final completedCount =
+                    sessions.where((s) => s.completed).length;
+                final progress =
+                    sessions.isEmpty ? 0.0 : completedCount / sessions.length;
+                final pct = (progress * 100).round();
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  children: [
+                    _WelcomeHero(dateLabel: dateStr),
+                    const SizedBox(height: 18),
+                    Text(
+                      strings.focusToday,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      strings.smallStepsConsistentProgress,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _ProgressCard(
+                      progress: progress,
+                      percentLabel: pct,
+                      completed: completedCount,
+                      total: sessions.length,
+                    ),
+                    const SizedBox(height: 16),
+                    _TodayPlanCard(
+                      rows: rows,
+                      emptyMessage: strings.noSessionsTodayHome,
+                      onToggle: (index) => _toggleSession(
+                        uid: user.uid,
+                        session: rows[index].session,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const _AiSuggestionCard(),
+                    const SizedBox(height: 16),
+                    Text(
+                      strings.quickActions,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _QuickActionsRow(
+                      onAddTask: () =>
+                          _onQuickAction(context, strings.addTask),
+                      onGenerateQuiz: () =>
+                          _onQuickAction(context, strings.generateQuiz),
+                      onUploadNotes: () =>
+                          _onQuickAction(context, strings.uploadNotes),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
     );
   }
 }
 
-class _TodayTask {
-  _TodayTask({
-    required this.titleKey,
-    required this.durationMin,
-    this.done = false,
-  });
+class _SessionRow {
+  _SessionRow({required this.session, required this.title});
 
-  final _TodayTaskKey titleKey;
-  final int durationMin;
-  bool done;
-
-  String title(AppStrings strings) {
-    return switch (titleKey) {
-      _TodayTaskKey.reviewCellularRespiration =>
-        strings.todayTaskReviewCellularRespiration(),
-      _TodayTaskKey.practiceQuizThermodynamics =>
-        strings.todayTaskPracticeQuizThermodynamics(),
-      _TodayTaskKey.readNotesChapterSeven => strings.todayTaskReadNotesChapterSeven(),
-    };
-  }
-}
-
-enum _TodayTaskKey {
-  reviewCellularRespiration,
-  practiceQuizThermodynamics,
-  readNotesChapterSeven,
+  final StudySession session;
+  final String title;
 }
 
 class _WelcomeHero extends StatelessWidget {
@@ -271,7 +314,7 @@ class _ProgressCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: progress,
+                value: total == 0 ? 0 : progress,
                 minHeight: 10,
                 backgroundColor:
                     colorScheme.surfaceContainerHigh.withValues(alpha: 0.9),
@@ -283,7 +326,9 @@ class _ProgressCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  strings.percentComplete(percentLabel),
+                  total == 0
+                      ? strings.todaysProgressNoSessions
+                      : strings.percentComplete(percentLabel),
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: colorScheme.primary,
@@ -306,11 +351,13 @@ class _ProgressCard extends StatelessWidget {
 
 class _TodayPlanCard extends StatelessWidget {
   const _TodayPlanCard({
-    required this.tasks,
+    required this.rows,
+    required this.emptyMessage,
     required this.onToggle,
   });
 
-  final List<_TodayTask> tasks;
+  final List<_SessionRow> rows;
+  final String emptyMessage;
   final void Function(int index) onToggle;
 
   @override
@@ -352,67 +399,79 @@ class _TodayPlanCard extends StatelessWidget {
               ),
             ),
             const Divider(height: 1),
-            ...List.generate(tasks.length, (index) {
-              final t = tasks[index];
-              return Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => onToggle(index),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: t.done,
-                              onChanged: (_) => onToggle(index),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+            if (rows.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Text(
+                  emptyMessage,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              )
+            else
+              ...List.generate(rows.length, (index) {
+                final row = rows[index];
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onToggle(index),
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: row.session.completed,
+                                onChanged: (_) => onToggle(index),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                t.title(strings),
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  decoration: t.done
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: t.done
-                                      ? colorScheme.onSurfaceVariant
-                                      : colorScheme.onSurface,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  row.title,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    decoration: row.session.completed
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: row.session.completed
+                                        ? colorScheme.onSurfaceVariant
+                                        : colorScheme.onSurface,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                strings.minutesShort(t.durationMin),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colorScheme.onSurfaceVariant,
+                                const SizedBox(height: 4),
+                                Text(
+                                  strings.minutesShort(row.session.durationMin),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
           ],
         ),
       ),

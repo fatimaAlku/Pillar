@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/state/app_providers.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../controllers/study_plan_controller.dart';
+import '../controllers/study_plan_firestore_providers.dart';
 
 class StudyPlanTabScreen extends ConsumerStatefulWidget {
   const StudyPlanTabScreen({super.key});
@@ -25,10 +27,42 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
+    final authAsync = ref.watch(currentAuthUserProvider);
+    return authAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('$e')),
+      data: (user) {
+        if (user == null) {
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+            children: [
+              Text(
+                strings.signInToSeeStudyPlan,
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ],
+          );
+        }
+        final topicsAsync =
+            ref.watch(topicPerformanceInputsStreamProvider(user.uid));
+        return topicsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('$e')),
+          data: (topics) => _buildPlanScrollView(context, strings, topics),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlanScrollView(
+    BuildContext context,
+    AppStrings strings,
+    List<TopicPerformanceInput> topics,
+  ) {
     final localeCode = Localizations.localeOf(context).languageCode;
     final days = _buildWeekDays(anchor: _selectedDate);
     final input = StudyPlanPersonalizationInput(
-      topics: _seedTopics(now: DateTime.now()),
+      topics: topics,
       availableStudyMinutes: 180,
       now: DateTime.now(),
     );
@@ -101,7 +135,18 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 10),
-        ...daySchedule.map((item) => _ScheduleCard(item: item)),
+        if (topics.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 8),
+            child: Text(
+              strings.noSubjectsForPersonalizedPlan,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+          )
+        else
+          ...daySchedule.map((item) => _ScheduleCard(item: item)),
         const SizedBox(height: 14),
         _PriorityLegend(
           tasks: tasks,
@@ -384,66 +429,6 @@ List<_ScheduleItem> _buildScheduleForDay({
     current = current.add(Duration(minutes: task.recommendedMinutes + 10));
   }
   return items;
-}
-
-List<TopicPerformanceInput> _seedTopics({required DateTime now}) {
-  return [
-    TopicPerformanceInput(
-      topicId: 'topic_bst',
-      topicTitle: 'Binary Search Trees',
-      subjectId: 'subject_ds',
-      subjectTitle: 'Data Structures',
-      examDate: now.add(const Duration(days: 12)),
-      quizAccuracy: 0.42,
-      subjectDifficulty: 0.8,
-      lastStudiedAt: now.subtract(const Duration(days: 6)),
-      missedSessions: 1,
-    ),
-    TopicPerformanceInput(
-      topicId: 'topic_graphs',
-      topicTitle: 'Graph Traversal',
-      subjectId: 'subject_ds',
-      subjectTitle: 'Data Structures',
-      examDate: now.add(const Duration(days: 12)),
-      quizAccuracy: 0.55,
-      subjectDifficulty: 0.85,
-      lastStudiedAt: now.subtract(const Duration(days: 8)),
-      missedSessions: 0,
-    ),
-    TopicPerformanceInput(
-      topicId: 'topic_thermo',
-      topicTitle: 'Thermodynamics Laws',
-      subjectId: 'subject_phys',
-      subjectTitle: 'Physics',
-      examDate: now.add(const Duration(days: 7)),
-      quizAccuracy: 0.37,
-      subjectDifficulty: 0.75,
-      lastStudiedAt: now.subtract(const Duration(days: 10)),
-      missedSessions: 2,
-    ),
-    TopicPerformanceInput(
-      topicId: 'topic_kinetics',
-      topicTitle: 'Chemical Kinetics',
-      subjectId: 'subject_chem',
-      subjectTitle: 'Chemistry',
-      examDate: now.add(const Duration(days: 18)),
-      quizAccuracy: 0.68,
-      subjectDifficulty: 0.62,
-      lastStudiedAt: now.subtract(const Duration(days: 3)),
-      missedSessions: 0,
-    ),
-    TopicPerformanceInput(
-      topicId: 'topic_calculus',
-      topicTitle: 'Integration Techniques',
-      subjectId: 'subject_math',
-      subjectTitle: 'Calculus',
-      examDate: now.add(const Duration(days: 9)),
-      quizAccuracy: 0.49,
-      subjectDifficulty: 0.7,
-      lastStudiedAt: now.subtract(const Duration(days: 5)),
-      missedSessions: 1,
-    ),
-  ];
 }
 
 List<DateTime> _buildWeekDays({required DateTime anchor}) {
