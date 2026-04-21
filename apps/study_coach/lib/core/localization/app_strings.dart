@@ -63,12 +63,51 @@ class AppStrings {
   String minutesShort(int minutes) =>
       _isArabic ? '$minutes دقيقة' : '$minutes min';
 
-  String get adaptiveScheduleBlurb => _isArabic
-      ? 'جدول تكيفي مخصص بناءً على أدائك في الاختبارات ومدى قرب الامتحانات.'
-      : 'Adaptive schedule personalized from your quiz performance and exam urgency.';
-  String get schedulingEditorComingSoon =>
-      _isArabic ? 'محرر الجدولة قريباً' : 'Scheduling editor coming soon';
-  String get addSchedule => _isArabic ? 'إضافة جدول' : 'Add schedule';
+  String get planDayNothingScheduled => _isArabic
+      ? 'لا توجد جلسات مجدولة لهذا اليوم. اضغط «إضافة إلى الجدول» لإظهار المواضيع هنا.'
+      : 'Nothing scheduled for this day yet. Tap Add to schedule to place topics on your calendar.';
+  String get addSchedule =>
+      _isArabic ? 'إضافة إلى الجدول' : 'Add to schedule';
+  String get addToScheduleSheetTitle =>
+      _isArabic ? 'جدولة جلسة' : 'Schedule a session';
+  String scheduleSessionForDay(String dayLabel) => _isArabic
+      ? 'التاريخ: $dayLabel'
+      : 'Date: $dayLabel';
+  String get topicForSession =>
+      _isArabic ? 'الموضوع' : 'Topic';
+  String get sessionDuration =>
+      _isArabic ? 'المدة (دقائق)' : 'Duration (minutes)';
+  String get saveToSchedule =>
+      _isArabic ? 'حفظ في الجدول' : 'Save to schedule';
+  String get sessionScheduledSuccess => _isArabic
+      ? 'تمت إضافة الجلسة إلى خطتك.'
+      : 'Session added to your plan.';
+  String get couldNotScheduleSession =>
+      _isArabic ? 'تعذّر حفظ الجلسة.' : 'Could not save session.';
+  String get saveToScheduleTimedOut => _isArabic
+      ? 'انتهت مهلة الاتصال. تحقق من الشبكة وحاول مرة أخرى.'
+      : 'Connection timed out. Check your network and try again.';
+  String get addToScheduleFromCard =>
+      _isArabic ? 'إضافة للجدول' : 'Add to schedule';
+  String get editScheduledSessionTooltip =>
+      _isArabic ? 'تعديل الجلسة' : 'Edit session';
+  String get deleteScheduledSessionTooltip =>
+      _isArabic ? 'حذف الجلسة' : 'Delete session';
+  String get editSessionTitle =>
+      _isArabic ? 'تعديل الجلسة' : 'Edit session';
+  String get deleteSessionTitle =>
+      _isArabic ? 'حذف الجلسة؟' : 'Delete session?';
+  String get deleteSessionConfirm => _isArabic
+      ? 'سيتم إزالة هذه الجلسة من جدولك لهذا اليوم.'
+      : 'This session will be removed from your schedule for this day.';
+  String get deleteSessionAction =>
+      _isArabic ? 'حذف' : 'Delete';
+  String get sessionUpdated =>
+      _isArabic ? 'تم تحديث الجلسة.' : 'Session updated.';
+  String get sessionDeleted =>
+      _isArabic ? 'تم حذف الجلسة.' : 'Session deleted.';
+  String get couldNotDeleteSession =>
+      _isArabic ? 'تعذّر حذف الجلسة.' : 'Could not delete session.';
   String scheduleMeta(String subject, int durationMin) => _isArabic
       ? '$subject  •  $durationMin دقيقة'
       : '$subject  •  $durationMin min';
@@ -84,29 +123,23 @@ class AppStrings {
         : 'Priority $score (U:$deadline W:$weakness D:$difficulty R:$recency)';
   }
 
-  String personalizedPlanFooter(int totalMin, String explanation) => _isArabic
-      ? 'تم التخصيص حسب قرب الامتحان، وضعف الاختبارات، وصعوبة المادة، والحداثة. '
-          'تعاد جدولة الجلسات الفائتة. المجموع $totalMin دقيقة اليوم.\n$explanation'
-      : 'Personalized from exam urgency, weak quiz topics, subject difficulty, and recency. '
-          'Missed sessions are redistributed. Allocated $totalMin minutes today.\n$explanation';
-
-  String get quizzesIntro => _isArabic
-      ? 'أنشئ اختبارات بالذكاء الاصطناعي واستهدف نقاط الضعف أسرع.'
-      : 'Build AI-powered quizzes and target weak topics faster.';
   String get generateQuizTitle => _isArabic ? 'إنشاء اختبار' : 'Generate Quiz';
   String get generateQuizDescription => _isArabic
-      ? 'استخدم المواضيع و/أو الملاحظات لإنشاء اختبار ثم راجع نقاط الضعف.'
-      : 'Use topics and/or notes to generate a quiz, then review weak topics.';
+      ? 'استخدم ملاحظاتك لإنشاء اختبار بالذكاء الاصطناعي ثم راجع نقاط الضعف.'
+      : 'Use your notes to generate an AI quiz, then review weak topics.';
   String get topicsCommaSeparated =>
       _isArabic ? 'المواضيع (مفصولة بفواصل)' : 'Topics (comma-separated)';
   String get topicsHint => _isArabic
       ? 'مثال: أشجار، رسوم بيانية، تجزئة'
       : 'e.g. Trees, Graphs, Hashing';
-  String get notesOptional =>
-      _isArabic ? 'الملاحظات (اختياري)' : 'Notes (optional)';
+  String get notesRequired =>
+      _isArabic ? 'الملاحظات (مطلوبة)' : 'Notes (required)';
   String get notesHint => _isArabic
-      ? 'الصق الملاحظات لتوفير سياق إنشاء الاختبار'
-      : 'Paste notes for quiz generation context';
+      ? 'الصق أو ارفع ملاحظاتك ليقوم الذكاء الاصطناعي بإنشاء الأسئلة والإجابات'
+      : 'Paste or upload notes so AI can generate quiz questions and answers';
+  String get notesRequiredForQuiz => _isArabic
+      ? 'يرجى إضافة الملاحظات قبل إنشاء الاختبار.'
+      : 'Please add notes before generating the quiz.';
   String get uploadNotesFile =>
       _isArabic ? 'رفع ملف الملاحظات' : 'Upload notes file';
   String get importingNotes =>
@@ -166,9 +199,6 @@ class AppStrings {
   String get backToQuizzes =>
       _isArabic ? 'العودة للاختبارات' : 'Back to quizzes';
 
-  String get roadmapIntro => _isArabic
-      ? 'اختر تخصصك لفتح خارطة طريق مركزة تضم أهم المواد والمواضيع.'
-      : 'Pick your major to open a focused roadmap with the most important subjects and topics.';
   String majorRoadmap(String majorTitle) =>
       _isArabic ? 'خارطة طريق $majorTitle' : '$majorTitle Roadmap';
   String get priorityRoadmap =>
@@ -191,6 +221,45 @@ class AppStrings {
   String get light => _isArabic ? 'فاتح' : 'Light';
   String get dark => _isArabic ? 'داكن' : 'Dark';
 
+  String get cancel => _isArabic ? 'إلغاء' : 'Cancel';
+  String get save => _isArabic ? 'حفظ' : 'Save';
+  String get myCourses => _isArabic ? 'موادي ومقرراتي' : 'My courses';
+  String get addCourse => _isArabic ? 'إضافة مقرر' : 'Add course';
+  String get courseName => _isArabic ? 'اسم المقرر' : 'Course name';
+  String get examDateOptional =>
+      _isArabic ? 'تاريخ الامتحان (اختياري)' : 'Exam date (optional)';
+  String examDateLabel(String formatted) => _isArabic
+      ? 'الامتحان: $formatted'
+      : 'Exam: $formatted';
+  String get coursesEmptyHint => _isArabic
+      ? 'لم تضف مقررات بعد. اضغط «إضافة مقرر» لإضافة مادة، ثم افتح المقرر لإضافة مواضيع.'
+      : 'No courses yet. Tap “Add course” to create a subject, then open it to add topics.';
+  String get courseNameRequired =>
+      _isArabic ? 'يرجى إدخال اسم المقرر.' : 'Please enter a course name.';
+  String get courseSaved =>
+      _isArabic ? 'تم حفظ المقرر.' : 'Course saved.';
+  String get couldNotSaveCourse =>
+      _isArabic ? 'تعذّر حفظ المقرر.' : 'Could not save course.';
+  String get signInToManageCourses => _isArabic
+      ? 'سجّل الدخول لإدارة مقرراتك ومواضيعك.'
+      : 'Sign in to manage your courses and topics.';
+  String get unnamedCourse => _isArabic ? 'مقرر بدون اسم' : 'Untitled course';
+  String get addTopic => _isArabic ? 'إضافة موضوع' : 'Add topic';
+  String get topicTitleLabel =>
+      _isArabic ? 'عنوان الموضوع' : 'Topic title';
+  String get topicsEmptyHint => _isArabic
+      ? 'لا توجد مواضيع بعد. اضغط «إضافة موضوع» لإضافة وحدة دراسية لهذا المقرر.'
+      : 'No topics yet. Tap “Add topic” to add a study unit to this course.';
+  String topicDifficultyShort(String value) => _isArabic
+      ? 'الصعوبة: $value'
+      : 'Difficulty: $value';
+  String get topicTitleRequired =>
+      _isArabic ? 'يرجى إدخال عنوان الموضوع.' : 'Please enter a topic title.';
+  String get topicSaved =>
+      _isArabic ? 'تم حفظ الموضوع.' : 'Topic saved.';
+  String get couldNotSaveTopic =>
+      _isArabic ? 'تعذّر حفظ الموضوع.' : 'Could not save topic.';
+
   String comingSoonFor(String label) {
     return _isArabic ? '$label - قريباً' : '$label - coming soon';
   }
@@ -207,6 +276,6 @@ class AppStrings {
   String get todaysProgressNoSessions =>
       _isArabic ? 'لا مهام مجدولة بعد' : 'No scheduled tasks yet';
   String get noSubjectsForPersonalizedPlan => _isArabic
-      ? 'لا توجد مواد أو مواضيع بعد. أضف موادك ومواضيعك من لوحة الإدارة أو التطبيق عندما يتوفر ذلك.'
-      : 'No subjects or topics yet. Add your courses and topics (when available in the app) to see a personalized schedule.';
+      ? 'لا توجد مواد أو مواضيع بعد. أضفها من الملف الشخصي ← «موادي ومقرراتي».'
+      : 'No subjects or topics yet. Add them from Profile → My courses.';
 }

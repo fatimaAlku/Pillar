@@ -52,15 +52,20 @@ npm install
 npm run build
 ```
 
-Set the quiz AI provider key in the Flutter client (Spark-compatible mode):
+Set a quiz AI provider key in the Flutter client:
+
+```bash
+flutter run --dart-define=GOOGLE_AI_API_KEY=your_google_ai_studio_key
+```
+
+Optional OpenAI fallback:
 
 ```bash
 flutter run --dart-define=OPENAI_API_KEY=your_openai_key
 ```
 
-If the key is missing or AI output is invalid, the app falls back to Firebase
-callables and then to deterministic locally generated questions so quiz
-generation remains available.
+If both keys are provided, the app tries Gemini first and falls back to OpenAI
+if Gemini fails.
 
 ### 3) Firebase Emulator (optional)
 

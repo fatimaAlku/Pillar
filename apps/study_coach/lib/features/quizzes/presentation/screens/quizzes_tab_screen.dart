@@ -21,6 +21,9 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   String _difficulty = 'medium';
   bool _isImportingNotes = false;
 
+  static const int _minQuestions = 5;
+  static const int _maxQuestions = 15;
+
   @override
   void dispose() {
     _topicsController.dispose();
@@ -120,181 +123,269 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
     final isGenerating = quizState is QuizRunnerLoading;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
       children: [
         Card(
+          elevation: 0,
           clipBehavior: Clip.antiAlias,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  colorScheme.primaryContainer,
-                  colorScheme.secondaryContainer,
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: colorScheme.primary.withValues(alpha: 0.16),
-                    ),
-                    child: Icon(
-                      Icons.psychology_alt_rounded,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      strings.quizzesIntro,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.85),
             ),
           ),
-        ),
-        const SizedBox(height: 14),
-        Card(
+          color: colorScheme.surface,
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 22),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  strings.generateQuizTitle,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer
+                            .withValues(alpha: 0.55),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Icon(
+                          Icons.quiz_rounded,
+                          color: colorScheme.primary,
+                          size: 26,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            strings.generateQuizTitle,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            strings.generateQuizDescription,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  strings.generateQuizDescription,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 22),
                 TextField(
                   controller: _topicsController,
                   keyboardType: TextInputType.text,
+                  textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
                     labelText: strings.topicsCommaSeparated,
                     hintText: strings.topicsHint,
                     border: const OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 TextField(
                   controller: _notesController,
                   focusNode: _notesFocusNode,
                   keyboardType: TextInputType.multiline,
                   textInputAction: TextInputAction.newline,
-                  maxLines: 4,
+                  maxLines: 5,
+                  minLines: 4,
                   decoration: InputDecoration(
-                    labelText: strings.notesOptional,
+                    alignLabelWithHint: true,
+                    labelText: strings.notesRequired,
                     hintText: strings.notesHint,
                     border: const OutlineInputBorder(),
                   ),
                 ),
                 _buildNoteActions(strings),
-                const SizedBox(height: 4),
-                DropdownButtonFormField<String>(
-                  initialValue: _difficulty,
-                  decoration: InputDecoration(
-                    labelText: strings.difficulty,
-                    border: const OutlineInputBorder(),
+                const SizedBox(height: 18),
+                Text(
+                  strings.difficulty,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
-                  items: [
-                    DropdownMenuItem(value: 'easy', child: Text(strings.easy)),
-                    DropdownMenuItem(
-                        value: 'medium', child: Text(strings.medium)),
-                    DropdownMenuItem(value: 'hard', child: Text(strings.hard)),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment<String>(
+                      value: 'easy',
+                      label: Text(strings.easy),
+                      icon: const Icon(Icons.sentiment_satisfied_alt_outlined,
+                          size: 18),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'medium',
+                      label: Text(strings.medium),
+                      icon: const Icon(Icons.balance_outlined, size: 18),
+                    ),
+                    ButtonSegment<String>(
+                      value: 'hard',
+                      label: Text(strings.hard),
+                      icon: const Icon(Icons.local_fire_department_outlined,
+                          size: 18),
+                    ),
                   ],
-                  onChanged: (value) {
-                    if (value == null) return;
-                    setState(() => _difficulty = value);
+                  selected: {_difficulty},
+                  onSelectionChanged: (selection) {
+                    if (selection.isEmpty) return;
+                    setState(() => _difficulty = selection.first);
                   },
                 ),
-                const SizedBox(height: 12),
-                InputDecorator(
-                  decoration: InputDecoration(
-                    labelText: strings.numberOfQuestions,
-                    border: const OutlineInputBorder(),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Slider(
-                          min: 5,
-                          max: 20,
-                          divisions: 15,
-                          value: _questionCount.toDouble(),
-                          label: '$_questionCount',
-                          onChanged: (v) =>
-                              setState(() => _questionCount = v.round()),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        strings.numberOfQuestions,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      Text('$_questionCount'),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer
+                            .withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '$_questionCount',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: isGenerating
-                        ? null
-                        : () async {
-                            final topics = _topicsController.text
-                                .split(',')
-                                .map((e) => e.trim())
-                                .where((e) => e.isNotEmpty)
-                                .toList();
-                            final notes = _notesController.text.trim();
-
-                            await ref
-                                .read(quizRunnerControllerProvider.notifier)
-                                .generateQuiz(
-                                  topics: topics,
-                                  notesText: notes.isEmpty ? null : notes,
-                                  difficulty: _difficulty,
-                                  numberOfQuestions: _questionCount,
-                                );
-
-                            if (!context.mounted) return;
-                            final nextState =
-                                ref.read(quizRunnerControllerProvider);
-                            if (nextState is QuizRunnerInProgress ||
-                                nextState is QuizRunnerSubmitted) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const QuizRunnerScreen(),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$_minQuestions',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Expanded(
+                      child: Slider(
+                        min: _minQuestions.toDouble(),
+                        max: _maxQuestions.toDouble(),
+                        divisions: _maxQuestions - _minQuestions,
+                        value: _questionCount
+                            .clamp(_minQuestions, _maxQuestions)
+                            .toDouble(),
+                        label: '$_questionCount',
+                        onChanged: isGenerating
+                            ? null
+                            : (v) => setState(
+                                  () => _questionCount = v
+                                      .round()
+                                      .clamp(_minQuestions, _maxQuestions),
                                 ),
-                              );
-                              return;
-                            }
+                      ),
+                    ),
+                    Text(
+                      '$_maxQuestions',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    foregroundColor: colorScheme.onPrimary,
+                    minimumSize: const Size.fromHeight(52),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                  ),
+                  onPressed: isGenerating
+                      ? null
+                      : () async {
+                          final topics = _topicsController.text
+                              .split(',')
+                              .map((e) => e.trim())
+                              .where((e) => e.isNotEmpty)
+                              .toList();
+                          final notes = _notesController.text.trim();
+                          if (notes.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(strings.notesRequiredForQuiz),
+                              ),
+                            );
+                            return;
+                          }
 
-                            if (nextState is QuizRunnerError) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(nextState.message)),
+                          await ref
+                              .read(quizRunnerControllerProvider.notifier)
+                              .generateQuiz(
+                                topics: topics,
+                                notesText: notes,
+                                difficulty: _difficulty,
+                                numberOfQuestions: _questionCount,
                               );
-                            }
-                          },
-                    icon: const Icon(Icons.play_arrow),
-                    label: Text(
-                        isGenerating ? strings.generating : strings.startQuiz),
+
+                          if (!context.mounted) return;
+                          final nextState =
+                              ref.read(quizRunnerControllerProvider);
+                          if (nextState is QuizRunnerInProgress ||
+                              nextState is QuizRunnerSubmitted) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const QuizRunnerScreen(),
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (nextState is QuizRunnerError) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(nextState.message)),
+                            );
+                          }
+                        },
+                  icon: isGenerating
+                      ? SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: colorScheme.onPrimary,
+                          ),
+                        )
+                      : Icon(
+                          Icons.play_arrow_rounded,
+                          size: 26,
+                          color: colorScheme.onPrimary,
+                        ),
+                  label: Text(
+                    isGenerating ? strings.generating : strings.startQuiz,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimary,
+                    ),
                   ),
                 ),
               ],

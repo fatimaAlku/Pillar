@@ -5,6 +5,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerWidget {
   const ProfileTabScreen({super.key});
@@ -104,6 +105,18 @@ class ProfileTabScreen extends ConsumerWidget {
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           child: Column(
             children: [
+              _ProfileMenuTile(
+                icon: Icons.menu_book_outlined,
+                title: strings.myCourses,
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SubjectsManageScreen(),
+                    ),
+                  );
+                },
+              ),
+              const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.language_rounded,
                 title: strings.appLanguage,

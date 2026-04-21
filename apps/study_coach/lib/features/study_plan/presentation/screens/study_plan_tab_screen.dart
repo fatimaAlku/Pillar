@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../domain/entities/study_personalization_models.dart';
+import '../../domain/entities/study_session.dart';
 import '../controllers/study_plan_controller.dart';
 import '../controllers/study_plan_firestore_providers.dart';
+import '../widgets/add_to_schedule_bottom_sheet.dart';
 
 class StudyPlanTabScreen extends ConsumerStatefulWidget {
   const StudyPlanTabScreen({super.key});
@@ -48,8 +50,209 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
         return topicsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(child: Text('$e')),
-          data: (topics) => _buildPlanScrollView(context, strings, topics),
+          data: (topics) =>
+              _buildPlanScrollView(context, strings, user.uid, topics),
         );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteScheduledSession({
+    required String uid,
+    required _ScheduleItem item,
+  }) async {
+    final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(strings.deleteSessionTitle),
+        content: Text(strings.deleteSessionConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(strings.deleteSessionAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await ref.read(studySessionsRepositoryProvider).deleteSession(
+            uid: uid,
+            planId: item.planId,
+            sessionId: item.sessionId,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.sessionDeleted)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotDeleteSession)),
+      );
+    }
+  }
+
+  Future<void> _editScheduledSession({
+    required String uid,
+    required List<TopicPerformanceInput> topics,
+    required _ScheduleItem item,
+  }) async {
+    if (topics.isEmpty || item.sessionId.isEmpty || item.planId.isEmpty) {
+      return;
+    }
+    final strings = AppStrings.of(context);
+    final idx = topics.indexWhere((t) => t.topicId == item.topicId);
+    var topicSel = idx >= 0 ? topics[idx] : topics.first;
+    double duration = item.durationMin.toDouble().clamp(15.0, 120.0);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setLocal) {
+            return AlertDialog(
+              title: Text(strings.editSessionTitle),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: strings.topicForSession,
+                        border: const OutlineInputBorder(),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<TopicPerformanceInput>(
+                          isExpanded: true,
+                          value: topicSel,
+                          items: topics
+                              .map(
+                                (t) => DropdownMenuItem(
+                                  value: t,
+                                  child: Text(
+                                    t.topicTitle == t.subjectTitle
+                                        ? t.topicTitle
+                                        : '${t.subjectTitle} — ${t.topicTitle}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v == null) return;
+                            setLocal(() => topicSel = v);
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: strings.sessionDuration,
+                        border: const OutlineInputBorder(),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Slider(
+                              min: 15,
+                              max: 120,
+                              divisions: 21,
+                              value: duration,
+                              label: '${duration.round()}',
+                              onChanged: (v) =>
+                                  setLocal(() => duration = v),
+                            ),
+                          ),
+                          Text('${duration.round()}'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text(strings.cancel),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(strings.save),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved != true || !mounted) return;
+    final newTopicId = topicSel.topicId;
+    final newDuration = duration.round();
+    if (newTopicId == item.topicId && newDuration == item.durationMin) {
+      return;
+    }
+    try {
+      await ref.read(studySessionsRepositoryProvider).updateSession(
+            uid: uid,
+            planId: item.planId,
+            sessionId: item.sessionId,
+            topicId: newTopicId != item.topicId ? newTopicId : null,
+            durationMin: newDuration != item.durationMin ? newDuration : null,
+          );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.sessionUpdated)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotUpdateSession)),
+      );
+    }
+  }
+
+  Future<void> _openAddToSchedule({
+    required String uid,
+    required List<TopicPerformanceInput> topics,
+    required DateTime scheduleDate,
+    String? initialTopicId,
+    int? initialDurationMin,
+  }) async {
+    final strings = AppStrings.of(context);
+    if (topics.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.noSubjectsForPersonalizedPlan)),
+      );
+      return;
+    }
+    final dateIso = DateFormat('yyyy-MM-dd').format(scheduleDate);
+    await showAddToScheduleBottomSheet(
+      context,
+      strings: strings,
+      topics: topics,
+      scheduleDate: scheduleDate,
+      initialTopicId: initialTopicId,
+      initialDurationMin: initialDurationMin,
+      onSave: (topicId, durationMin) async {
+        await ref.read(studySessionsRepositoryProvider).addSession(
+              uid: uid,
+              topicId: topicId,
+              dateIso: dateIso,
+              durationMin: durationMin,
+            );
       },
     );
   }
@@ -57,6 +260,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   Widget _buildPlanScrollView(
     BuildContext context,
     AppStrings strings,
+    String uid,
     List<TopicPerformanceInput> topics,
   ) {
     final localeCode = Localizations.localeOf(context).languageCode;
@@ -66,53 +270,15 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       availableStudyMinutes: 180,
       now: DateTime.now(),
     );
-    final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
-    final tasks = dynamicResult.updatedPlan;
-    final daySchedule = _buildScheduleForDay(
-      tasks: tasks,
-      date: _selectedDate,
-      localeCode: localeCode,
-    );
+    final tasks =
+        ref.watch(studyPlanDynamicResultProvider(input)).updatedPlan;
+    final dateIso = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final sessionsAsync =
+        ref.watch(sessionsForDateStreamProvider(SessionsForDateKey(uid, dateIso)));
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
-        Card(
-          clipBehavior: Clip.antiAlias,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Theme.of(context).colorScheme.primaryContainer,
-                  Theme.of(context).colorScheme.secondaryContainer,
-                ],
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.auto_graph_rounded,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      strings.adaptiveScheduleBlurb,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
         _CalendarHeader(
           selectedDate: _selectedDate,
           days: days,
@@ -121,11 +287,13 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
         ),
         const SizedBox(height: 16),
         FilledButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(strings.schedulingEditorComingSoon)),
-            );
-          },
+          onPressed: topics.isEmpty
+              ? null
+              : () => _openAddToSchedule(
+                    uid: uid,
+                    topics: topics,
+                    scheduleDate: _selectedDate,
+                  ),
           icon: const Icon(Icons.add),
           label: Text(strings.addSchedule),
         ),
@@ -146,12 +314,72 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
             ),
           )
         else
-          ...daySchedule.map((item) => _ScheduleCard(item: item)),
-        const SizedBox(height: 14),
-        _PriorityLegend(
-          tasks: tasks,
-          explanationMessage: dynamicResult.explanationMessage,
-        ),
+          sessionsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Padding(
+              padding: const EdgeInsets.only(top: 8, bottom: 8),
+              child: Text('$e'),
+            ),
+            data: (sessionsForDay) {
+              final daySchedule = _buildScheduleFromSessionsAndTasks(
+                sessions: sessionsForDay,
+                tasks: tasks,
+                topics: topics,
+                date: _selectedDate,
+                localeCode: localeCode,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (daySchedule.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 8),
+                      child: Text(
+                        strings.planDayNothingScheduled,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                      ),
+                    )
+                  else
+                    ...daySchedule.map(
+                      (item) => _ScheduleCard(
+                        item: item,
+                        onAddToSchedule: () => _openAddToSchedule(
+                          uid: uid,
+                          topics: topics,
+                          scheduleDate: _selectedDate,
+                          initialTopicId: item.topicId,
+                          initialDurationMin: item.durationMin,
+                        ),
+                        onEditSession:
+                            item.sessionId.isNotEmpty && item.planId.isNotEmpty
+                                ? () => _editScheduledSession(
+                                      uid: uid,
+                                      topics: topics,
+                                      item: item,
+                                    )
+                                : null,
+                        onDeleteSession:
+                            item.sessionId.isNotEmpty && item.planId.isNotEmpty
+                                ? () => _confirmDeleteScheduledSession(
+                                      uid: uid,
+                                      item: item,
+                                    )
+                                : null,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
       ],
     );
   }
@@ -291,9 +519,17 @@ class _DayChip extends StatelessWidget {
 }
 
 class _ScheduleCard extends StatelessWidget {
-  const _ScheduleCard({required this.item});
+  const _ScheduleCard({
+    required this.item,
+    this.onAddToSchedule,
+    this.onEditSession,
+    this.onDeleteSession,
+  });
 
   final _ScheduleItem item;
+  final VoidCallback? onAddToSchedule;
+  final VoidCallback? onEditSession;
+  final VoidCallback? onDeleteSession;
 
   @override
   Widget build(BuildContext context) {
@@ -351,11 +587,41 @@ class _ScheduleCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
+                        if (onEditSession != null)
+                          IconButton(
+                            onPressed: onEditSession,
+                            tooltip: strings.editScheduledSessionTooltip,
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        if (onDeleteSession != null)
+                          IconButton(
+                            onPressed: onDeleteSession,
+                            tooltip: strings.deleteScheduledSessionTooltip,
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 20,
+                              color: colorScheme.error,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -378,6 +644,20 @@ class _ScheduleCard extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    if (onAddToSchedule != null) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: TextButton.icon(
+                          onPressed: onAddToSchedule,
+                          icon: const Icon(
+                            Icons.event_available_outlined,
+                            size: 18,
+                          ),
+                          label: Text(strings.addToScheduleFromCard),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -389,44 +669,40 @@ class _ScheduleCard extends StatelessWidget {
   }
 }
 
-class _PriorityLegend extends StatelessWidget {
-  const _PriorityLegend({
-    required this.tasks,
-    required this.explanationMessage,
-  });
-  final List<StudyTaskPriority> tasks;
-  final String explanationMessage;
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final totalMin = tasks.fold<int>(0, (acc, t) => acc + t.recommendedMinutes);
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Text(
-          strings.personalizedPlanFooter(totalMin, explanationMessage),
-        ),
-      ),
-    );
-  }
-}
-
-List<_ScheduleItem> _buildScheduleForDay({
+List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
+  required List<StudySession> sessions,
   required List<StudyTaskPriority> tasks,
+  required List<TopicPerformanceInput> topics,
   required DateTime date,
   required String localeCode,
 }) {
-  if (tasks.isEmpty) return const [];
+  if (sessions.isEmpty) return const [];
+  final taskByTopic = <String, StudyTaskPriority>{};
+  for (final t in tasks) {
+    taskByTopic.putIfAbsent(t.topicId, () => t);
+  }
+  final topicById = <String, TopicPerformanceInput>{};
+  for (final t in topics) {
+    topicById[t.topicId] = t;
+  }
+  final sorted = List<StudySession>.from(sessions)
+    ..sort((a, b) => a.topicId.compareTo(b.topicId));
+
   final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
   var current = DateTime(date.year, date.month, date.day, startHour);
   final items = <_ScheduleItem>[];
 
-  for (final task in tasks.take(5)) {
+  for (final session in sorted) {
     final timeLabel = _formatTime(current, localeCode);
-    items.add(_ScheduleItem.fromTask(task, timeLabel: timeLabel));
-    current = current.add(Duration(minutes: task.recommendedMinutes + 10));
+    items.add(
+      _ScheduleItem.fromSessionContext(
+        session: session,
+        timeLabel: timeLabel,
+        task: taskByTopic[session.topicId],
+        topic: topicById[session.topicId],
+      ),
+    );
+    current = current.add(Duration(minutes: session.durationMin + 10));
   }
   return items;
 }
@@ -460,6 +736,9 @@ bool _isSameDay(DateTime a, DateTime b) =>
 
 class _ScheduleItem {
   const _ScheduleItem({
+    required this.planId,
+    required this.sessionId,
+    required this.topicId,
     required this.timeLabel,
     required this.title,
     required this.subject,
@@ -472,9 +751,59 @@ class _ScheduleItem {
     required this.priorityBand,
   });
 
+  factory _ScheduleItem.fromSessionContext({
+    required StudySession session,
+    required String timeLabel,
+    StudyTaskPriority? task,
+    TopicPerformanceInput? topic,
+  }) {
+    if (task != null) {
+      final fromTask = _ScheduleItem.fromTask(
+        task,
+        timeLabel: timeLabel,
+        planId: session.planId,
+        sessionId: session.id,
+      );
+      return _ScheduleItem(
+        planId: fromTask.planId,
+        sessionId: fromTask.sessionId,
+        topicId: fromTask.topicId,
+        timeLabel: fromTask.timeLabel,
+        title: fromTask.title,
+        subject: fromTask.subject,
+        durationMin: session.durationMin,
+        scoreLabel: fromTask.scoreLabel,
+        deadlineLabel: fromTask.deadlineLabel,
+        weaknessLabel: fromTask.weaknessLabel,
+        difficultyLabel: fromTask.difficultyLabel,
+        recencyLabel: fromTask.recencyLabel,
+        priorityBand: fromTask.priorityBand,
+      );
+    }
+    final title = topic?.topicTitle ?? session.topicId;
+    final subject = topic?.subjectTitle ?? '';
+    return _ScheduleItem(
+      planId: session.planId,
+      sessionId: session.id,
+      topicId: session.topicId,
+      timeLabel: timeLabel,
+      title: title.isEmpty ? session.topicId : title,
+      subject: subject,
+      durationMin: session.durationMin,
+      scoreLabel: '–',
+      deadlineLabel: '–',
+      weaknessLabel: '–',
+      difficultyLabel: '–',
+      recencyLabel: '–',
+      priorityBand: _PriorityBand.low,
+    );
+  }
+
   factory _ScheduleItem.fromTask(
     StudyTaskPriority task, {
     required String timeLabel,
+    String planId = '',
+    String sessionId = '',
   }) {
     final band = task.priorityScore >= 3
         ? _PriorityBand.high
@@ -482,6 +811,9 @@ class _ScheduleItem {
             ? _PriorityBand.medium
             : _PriorityBand.low;
     return _ScheduleItem(
+      planId: planId,
+      sessionId: sessionId,
+      topicId: task.topicId,
       timeLabel: timeLabel,
       title: task.topicTitle,
       subject: task.subjectTitle,
@@ -495,6 +827,9 @@ class _ScheduleItem {
     );
   }
 
+  final String planId;
+  final String sessionId;
+  final String topicId;
   final String timeLabel;
   final String title;
   final String subject;

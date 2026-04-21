@@ -29,3 +29,29 @@ final todaysSessionsStreamProvider =
     StreamProvider.family<List<StudySession>, String>((ref, uid) {
   return ref.watch(studySessionsRepositoryProvider).watchTodaysSessions(uid);
 });
+
+/// Watches sessions for [dateIso] (`yyyy-MM-dd`) on the active study plan.
+class SessionsForDateKey {
+  const SessionsForDateKey(this.uid, this.dateIso);
+
+  final String uid;
+  final String dateIso;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SessionsForDateKey &&
+      other.uid == uid &&
+      other.dateIso == dateIso;
+
+  @override
+  int get hashCode => Object.hash(uid, dateIso);
+}
+
+final sessionsForDateStreamProvider =
+    StreamProvider.autoDispose.family<List<StudySession>, SessionsForDateKey>(
+  (ref, key) {
+    return ref
+        .watch(studySessionsRepositoryProvider)
+        .watchSessionsForDate(key.uid, key.dateIso);
+  },
+);

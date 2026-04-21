@@ -7,6 +7,7 @@ import '../../../../core/state/app_providers.dart';
 import '../../../study_plan/domain/entities/study_personalization_models.dart';
 import '../../../study_plan/domain/entities/study_session.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
+import '../../../study_plan/presentation/widgets/add_to_schedule_bottom_sheet.dart';
 
 String _formatTodayHeader(DateTime d, String locale) {
   return DateFormat('EEEE, MMMM d', locale).format(d);
@@ -60,6 +61,36 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
         content: Text(strings.comingSoonFor(label)),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  Future<void> _openAddToSchedule({
+    required String uid,
+    required List<TopicPerformanceInput> topics,
+  }) async {
+    final strings = AppStrings.of(context);
+    if (topics.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.noSubjectsForPersonalizedPlan)),
+      );
+      return;
+    }
+    final n = DateTime.now();
+    final scheduleDate = DateTime(n.year, n.month, n.day);
+    final dateIso = DateFormat('yyyy-MM-dd').format(scheduleDate);
+    await showAddToScheduleBottomSheet(
+      context,
+      strings: strings,
+      topics: topics,
+      scheduleDate: scheduleDate,
+      onSave: (topicId, durationMin) async {
+        await ref.read(studySessionsRepositoryProvider).addSession(
+              uid: uid,
+              topicId: topicId,
+              dateIso: dateIso,
+              durationMin: durationMin,
+            );
+      },
     );
   }
 
@@ -149,6 +180,12 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                         uid: user.uid,
                         session: rows[index].session,
                       ),
+                      onAddToSchedule: topics.isEmpty
+                          ? null
+                          : () => _openAddToSchedule(
+                                uid: user.uid,
+                                topics: topics,
+                              ),
                     ),
                     const SizedBox(height: 16),
                     const _AiSuggestionCard(),
@@ -161,8 +198,10 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                     ),
                     const SizedBox(height: 12),
                     _QuickActionsRow(
-                      onAddTask: () =>
-                          _onQuickAction(context, strings.addTask),
+                      onAddTask: () => _openAddToSchedule(
+                            uid: user.uid,
+                            topics: topics,
+                          ),
                       onGenerateQuiz: () =>
                           _onQuickAction(context, strings.generateQuiz),
                       onUploadNotes: () =>
@@ -354,11 +393,13 @@ class _TodayPlanCard extends StatelessWidget {
     required this.rows,
     required this.emptyMessage,
     required this.onToggle,
+    this.onAddToSchedule,
   });
 
   final List<_SessionRow> rows;
   final String emptyMessage;
   final void Function(int index) onToggle;
+  final VoidCallback? onAddToSchedule;
 
   @override
   Widget build(BuildContext context) {
@@ -402,12 +443,25 @@ class _TodayPlanCard extends StatelessWidget {
             if (rows.isEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Text(
-                  emptyMessage,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      emptyMessage,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        height: 1.35,
+                      ),
+                    ),
+                    if (onAddToSchedule != null) ...[
+                      const SizedBox(height: 14),
+                      FilledButton.tonalIcon(
+                        onPressed: onAddToSchedule,
+                        icon: const Icon(Icons.add, size: 20),
+                        label: Text(strings.addSchedule),
+                      ),
+                    ],
+                  ],
                 ),
               )
             else

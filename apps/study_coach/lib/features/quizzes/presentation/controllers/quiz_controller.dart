@@ -136,6 +136,13 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
         currentIndex: 0,
         selectedByQuestionId: const {},
       );
+    } on QuizAiServiceException catch (e) {
+      final details = e.details?.trim();
+      if (details != null && details.isNotEmpty) {
+        state = QuizRunnerError('${e.message} $details');
+      } else {
+        state = QuizRunnerError(e.message);
+      }
     } on QuizAiException catch (e) {
       state = QuizRunnerError(e.message);
     } catch (_) {

@@ -8,6 +8,7 @@ import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/auth_user.dart';
 import '../../features/subjects/data/repositories/subjects_repository_impl.dart';
 import '../../features/subjects/domain/entities/subject.dart';
+import '../../features/subjects/domain/repositories/subjects_repository.dart';
 import '../ai/ai_service.dart';
 import '../firebase/auth_service.dart';
 import '../firebase/firestore_service.dart';
@@ -53,7 +54,7 @@ final currentAuthUserProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authRepositoryProvider).watchAuthUser();
 });
 
-final subjectsRepositoryProvider = Provider<SubjectsRepositoryImpl>((ref) {
+final subjectsRepositoryProvider = Provider<SubjectsRepository>((ref) {
   return SubjectsRepositoryImpl(ref.watch(firestoreProvider));
 });
 
