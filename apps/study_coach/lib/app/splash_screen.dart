@@ -11,12 +11,15 @@ class SplashScreen extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
             colors: [
               theme.colorScheme.primaryContainer,
+              theme.colorScheme.tertiaryContainer.withValues(alpha: 0.75),
+              theme.colorScheme.secondaryContainer.withValues(alpha: 0.55),
               theme.colorScheme.surface,
             ],
+            stops: const [0.0, 0.32, 0.62, 1.0],
           ),
         ),
         child: Column(
@@ -25,13 +28,18 @@ class SplashScreen extends StatelessWidget {
             CircleAvatar(
               radius: 40,
               backgroundColor: theme.colorScheme.primary,
-              child: const Icon(Icons.school, color: Colors.white, size: 38),
+              child: Icon(
+                Icons.school,
+                color: theme.colorScheme.onPrimary,
+                size: 38,
+              ),
             ),
             const SizedBox(height: 18),
             Text(
               'Pillar',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: 6),
@@ -42,10 +50,13 @@ class SplashScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 28),
-            const SizedBox(
+            SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                color: theme.colorScheme.primary,
+              ),
             ),
             const SizedBox(height: 12),
             Text(

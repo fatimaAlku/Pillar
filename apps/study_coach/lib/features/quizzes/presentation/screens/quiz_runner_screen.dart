@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/pillar_theme.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
 import '../controllers/quiz_controller.dart';
@@ -348,7 +349,7 @@ class _QuizSubmittedView extends ConsumerWidget {
                       children: [
                         Icon(
                           isCorrect ? Icons.check_circle : Icons.cancel,
-                          color: isCorrect ? Colors.green : colorScheme.error,
+                          color: isCorrect ? PillarColors.success : colorScheme.error,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -371,7 +372,9 @@ class _QuizSubmittedView extends ConsumerWidget {
                       strings.correctAnswer(q.options[q.correctIndex]),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color:
-                                isCorrect ? Colors.green : colorScheme.primary,
+                                isCorrect
+                                    ? PillarColors.success
+                                    : colorScheme.primary,
                           ),
                     ),
                     if (q.explanation != null && q.explanation!.trim().isNotEmpty)

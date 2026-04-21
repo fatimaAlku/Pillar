@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/theme/pillar_theme.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../../domain/entities/study_session.dart';
@@ -537,8 +538,8 @@ class _ScheduleCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final priorityColor = switch (item.priorityBand) {
-      _PriorityBand.high => const Color(0xFFD34A6A),
-      _PriorityBand.medium => const Color(0xFFE09B2D),
+      _PriorityBand.high => PillarColors.priorityHigh,
+      _PriorityBand.medium => PillarColors.priorityMedium,
       _PriorityBand.low => colorScheme.primary,
     };
 
@@ -562,7 +563,7 @@ class _ScheduleCard extends StatelessWidget {
             child: Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(22),
                 side: BorderSide(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.75),
                 ),

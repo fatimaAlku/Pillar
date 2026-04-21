@@ -160,25 +160,12 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                     ),
                     const SizedBox(width: 14),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            strings.generateQuizTitle,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            strings.generateQuizDescription,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
+                      child: Text(
+                        strings.generateQuizDescription,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
                       ),
                     ),
                   ],

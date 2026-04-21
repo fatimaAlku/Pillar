@@ -123,7 +123,6 @@ class AppStrings {
         : 'Priority $score (U:$deadline W:$weakness D:$difficulty R:$recency)';
   }
 
-  String get generateQuizTitle => _isArabic ? 'إنشاء اختبار' : 'Generate Quiz';
   String get generateQuizDescription => _isArabic
       ? 'استخدم ملاحظاتك لإنشاء اختبار بالذكاء الاصطناعي ثم راجع نقاط الضعف.'
       : 'Use your notes to generate an AI quiz, then review weak topics.';

@@ -99,10 +99,16 @@ class ProfileTabScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 20),
         Card(
-          elevation: 0,
-          color: const Color(0xFF1F285C),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          elevation: theme.cardTheme.elevation ?? 0,
+          shadowColor: theme.cardTheme.shadowColor,
+          surfaceTintColor: theme.cardTheme.surfaceTintColor,
+          color: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(26),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.85),
+            ),
+          ),
           child: Column(
             children: [
               _ProfileMenuTile(
@@ -180,11 +186,11 @@ class ProfileTabScreen extends ConsumerWidget {
         const SizedBox(height: 24),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: const Color(0xFFF44336),
-            foregroundColor: Colors.white,
+            backgroundColor: colorScheme.error,
+            foregroundColor: colorScheme.onError,
             minimumSize: const Size.fromHeight(54),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(24),
             ),
           ),
           onPressed: () =>
@@ -193,7 +199,7 @@ class ProfileTabScreen extends ConsumerWidget {
             strings.logout,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: colorScheme.onError,
             ),
           ),
         ),
@@ -226,22 +232,23 @@ class _ProfileMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tileTextColor = Color(0xFFEFF2FF);
+    final colorScheme = Theme.of(context).colorScheme;
+    final fg = colorScheme.onSurface;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       onTap: onTap,
-      leading: Icon(icon, color: tileTextColor),
+      leading: Icon(icon, color: colorScheme.primary),
       title: Text(
         title,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: tileTextColor,
+              color: fg,
               fontWeight: FontWeight.w500,
             ),
       ),
       trailing: trailing ??
-          const Icon(
+          Icon(
             Icons.chevron_right_rounded,
-            color: tileTextColor,
+            color: colorScheme.onSurfaceVariant,
           ),
     );
   }
@@ -252,11 +259,12 @@ class _TileDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 14),
+    final outline = Theme.of(context).colorScheme.outlineVariant;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Divider(
         height: 1,
-        color: Color(0x40DDE4FF),
+        color: outline.withValues(alpha: 0.65),
       ),
     );
   }
@@ -277,11 +285,12 @@ class _PillToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xFF33407A),
-        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -315,21 +324,24 @@ class _ToggleSegment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final activeFg = colorScheme.onPrimary;
+    final inactiveFg = colorScheme.onSurfaceVariant;
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFF1CB5A2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: active ? colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           label,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: const Color(0xFFEFF2FF),
+                color: active ? activeFg : inactiveFg,
                 fontWeight: FontWeight.w700,
               ),
         ),
