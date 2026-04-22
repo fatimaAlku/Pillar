@@ -257,7 +257,50 @@ class AppStrings {
       ? 'انتهت صلاحية الجلسة. سجّل الدخول مرة أخرى ثم أعد المحاولة.'
       : 'Session expired. Please sign in again and retry.';
   String get privacyPolicy => _isArabic ? 'سياسة الخصوصية' : 'Privacy Policy';
+  String get privacyPolicyIntro => _isArabic
+      ? 'توضح هذه السياسة كيفية جمع بياناتك واستخدامها وحمايتها داخل تطبيق بيلار.'
+      : 'This policy explains how your data is collected, used, and protected in Pillar.';
+  String get privacyPolicyLastUpdated =>
+      _isArabic ? 'آخر تحديث: 22 أبريل 2026' : 'Last updated: April 22, 2026';
+  String get privacyPolicyDataWeCollectTitle =>
+      _isArabic ? 'البيانات التي نجمعها' : 'Data we collect';
+  String get privacyPolicyDataWeCollectBody => _isArabic
+      ? 'قد نجمع بيانات الحساب مثل البريد الإلكتروني والاسم والصورة الشخصية، بالإضافة إلى بيانات الاستخدام مثل المواد الدراسية والخطط والاختبارات التي تنشئها داخل التطبيق.'
+      : 'We may collect account data such as email, name, and profile photo, plus usage data like the subjects, plans, and quizzes you create in the app.';
+  String get privacyPolicyHowWeUseDataTitle =>
+      _isArabic ? 'كيف نستخدم البيانات' : 'How we use data';
+  String get privacyPolicyHowWeUseDataBody => _isArabic
+      ? 'نستخدم البيانات لتشغيل الميزات الأساسية، مزامنة تقدمك عبر الأجهزة، وتحسين التوصيات الدراسية وتجربة التطبيق.'
+      : 'We use data to power core features, sync your progress across devices, and improve study recommendations and overall app experience.';
+  String get privacyPolicyStorageSecurityTitle =>
+      _isArabic ? 'التخزين والأمان' : 'Storage and security';
+  String get privacyPolicyStorageSecurityBody => _isArabic
+      ? 'يتم تخزين البيانات باستخدام خدمات سحابية آمنة، مع تطبيق ضوابط وصول لحماية حسابك. لا نبيع بياناتك الشخصية لأطراف خارجية.'
+      : 'Data is stored using secure cloud services with access controls to protect your account. We do not sell your personal data to third parties.';
+  String get privacyPolicyYourChoicesTitle =>
+      _isArabic ? 'خياراتك' : 'Your choices';
+  String get privacyPolicyYourChoicesBody => _isArabic
+      ? 'يمكنك تحديث بيانات ملفك الشخصي أو حذف بعض المحتوى الذي تنشئه داخل التطبيق. باستخدام التطبيق، فإنك توافق على هذه السياسة وتحديثاتها.'
+      : 'You can update your profile details and remove content you create in the app. By using Pillar, you agree to this policy and its updates.';
+  String get privacyPolicyContactTitle => _isArabic ? 'التواصل' : 'Contact';
+  String get privacyPolicyContactBody => _isArabic
+      ? 'إذا كانت لديك أسئلة حول الخصوصية، تواصل معنا عبر دعم التطبيق داخل بيلار.'
+      : 'If you have privacy questions, contact us through in-app support in Pillar.';
   String get about => _isArabic ? 'حول التطبيق' : 'About';
+  String get aboutVersion => _isArabic ? 'الإصدار 1.0.0' : 'Version 1.0.0';
+  String get aboutWhatIsPillarTitle =>
+      _isArabic ? 'ما هو بيلار؟' : 'What is Pillar?';
+  String get aboutWhatIsPillarBody => _isArabic
+      ? 'بيلار هو رفيق دراسة ذكي يساعدك على تنظيم المواد، إنشاء خطط يومية، وتتبّع تقدمك بطريقة بسيطة.'
+      : 'Pillar is a smart study companion that helps you organize courses, build daily plans, and track progress with clarity.';
+  String get aboutMissionTitle => _isArabic ? 'رسالتنا' : 'Our mission';
+  String get aboutMissionBody => _isArabic
+      ? 'نهدف إلى جعل التعلّم أكثر تركيزًا واستمرارية عبر أدوات عملية تجمع بين التخطيط، الاختبار، والتوصيات الذكية.'
+      : 'Our mission is to make learning more focused and consistent through practical tools that combine planning, quizzes, and smart recommendations.';
+  String get aboutFeaturesTitle => _isArabic ? 'أهم الميزات' : 'Key features';
+  String get aboutFeaturesBody => _isArabic
+      ? '• خطة دراسة يومية قابلة للتعديل\n• اختبارات مولّدة بالذكاء الاصطناعي\n• تتبع المواد والمواضيع والتقدّم\n• تخصيص اللغة والمظهر والملف الشخصي'
+      : '• Editable daily study planning\n• AI-generated quizzes\n• Subject, topic, and progress tracking\n• Profile, language, and theme personalization';
   String get logout => _isArabic ? 'تسجيل الخروج' : 'Log out';
   String get allRightsReserved => _isArabic
       ? '© 2026 بيلار. جميع الحقوق محفوظة.'

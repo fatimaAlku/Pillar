@@ -6,7 +6,9 @@ import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import 'about_screen.dart';
 import 'password_change_screen.dart';
+import 'privacy_policy_screen.dart';
 import 'profile_editor_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
@@ -206,13 +208,25 @@ class ProfileTabScreen extends ConsumerWidget {
               _ProfileMenuTile(
                 icon: Icons.privacy_tip_outlined,
                 title: strings.privacyPolicy,
-                onTap: () => _showComingSoon(context, strings.privacyPolicy),
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PrivacyPolicyScreen(),
+                    ),
+                  );
+                },
               ),
               const _TileDivider(),
               _ProfileMenuTile(
                 icon: Icons.info_outline_rounded,
                 title: strings.about,
-                onTap: () => _showComingSoon(context, strings.about),
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AboutScreen(),
+                    ),
+                  );
+                },
               ),
             ],
           ),
