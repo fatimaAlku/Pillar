@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_locale_controller.dart';
+import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import 'password_change_screen.dart';
+import 'profile_editor_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerWidget {
@@ -27,6 +30,19 @@ class ProfileTabScreen extends ConsumerWidget {
     final colorScheme = theme.colorScheme;
     final themeMode = ref.watch(themeModeProvider);
     final appLocale = ref.watch(appLocaleProvider);
+    final authUser = ref.watch(currentAuthUserProvider).valueOrNull;
+    final userEmail = authUser?.email?.trim();
+    final hasUserEmail = userEmail != null && userEmail.isNotEmpty;
+    final photoUrl = authUser?.photoUrl?.trim();
+    final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    final profileName = authUser?.displayName?.trim();
+    final hasProfileName = profileName != null && profileName.isNotEmpty;
+    final displayName = hasProfileName
+        ? profileName
+        : (hasUserEmail
+            ? userEmail.split('@').first
+            : strings.profileUserFallback);
+    final displayEmail = hasUserEmail ? userEmail : strings.email;
     final isLightMode = themeMode != ThemeMode.dark;
     final isEnglish = appLocale.languageCode != 'ar';
 
@@ -49,11 +65,14 @@ class ProfileTabScreen extends ConsumerWidget {
               CircleAvatar(
                 radius: 42,
                 backgroundColor: colorScheme.surfaceContainerHigh,
-                child: Icon(
-                  Icons.person_rounded,
-                  size: 46,
-                  color: colorScheme.onSurfaceVariant,
-                ),
+                backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
+                child: hasPhoto
+                    ? null
+                    : Icon(
+                        Icons.person_rounded,
+                        size: 46,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
               ),
               Positioned(
                 right: -2,
@@ -64,7 +83,13 @@ class ProfileTabScreen extends ConsumerWidget {
                   elevation: 2,
                   child: InkWell(
                     customBorder: const CircleBorder(),
-                    onTap: () => _showComingSoon(context, 'Edit profile photo'),
+                    onTap: () {
+                      Navigator.of(context).push<void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const ProfileEditorScreen(),
+                        ),
+                      );
+                    },
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: Icon(
@@ -82,7 +107,7 @@ class ProfileTabScreen extends ConsumerWidget {
         const SizedBox(height: 14),
         Center(
           child: Text(
-            'fatimaa.alkuwaiti',
+            displayName,
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w700,
             ),
@@ -91,7 +116,7 @@ class ProfileTabScreen extends ConsumerWidget {
         const SizedBox(height: 2),
         Center(
           child: Text(
-            'fatimaa.alkuwaiti@gmail.com',
+            displayEmail,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
@@ -132,11 +157,14 @@ class ProfileTabScreen extends ConsumerWidget {
                   isLeftActive: isEnglish,
                   onChanged: (isLeftActive) {
                     ref.read(appLocaleProvider.notifier).setLocale(
-                      isLeftActive ? const Locale('en') : const Locale('ar'),
-                    );
+                          isLeftActive
+                              ? const Locale('en')
+                              : const Locale('ar'),
+                        );
                   },
                 ),
-                onTap: () => ref.read(appLocaleProvider.notifier).toggleLocale(),
+                onTap: () =>
+                    ref.read(appLocaleProvider.notifier).toggleLocale(),
               ),
               const _TileDivider(),
               _ProfileMenuTile(
@@ -148,8 +176,8 @@ class ProfileTabScreen extends ConsumerWidget {
                   isLeftActive: isLightMode,
                   onChanged: (isLeftActive) {
                     ref.read(themeModeProvider.notifier).setThemeMode(
-                      isLeftActive ? ThemeMode.light : ThemeMode.dark,
-                    );
+                          isLeftActive ? ThemeMode.light : ThemeMode.dark,
+                        );
                   },
                 ),
                 onTap: () {
@@ -166,7 +194,13 @@ class ProfileTabScreen extends ConsumerWidget {
               _ProfileMenuTile(
                 icon: Icons.lock_outline_rounded,
                 title: strings.passwordChange,
-                onTap: () => _showComingSoon(context, strings.passwordChange),
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const PasswordChangeScreen(),
+                    ),
+                  );
+                },
               ),
               const _TileDivider(),
               _ProfileMenuTile(

@@ -47,7 +47,10 @@ final aiServiceProvider = Provider<AiService>((ref) {
 });
 
 final authRepositoryProvider = Provider<AuthRepositoryImpl>((ref) {
-  return AuthRepositoryImpl(ref.watch(firebaseAuthProvider));
+  return AuthRepositoryImpl(
+    ref.watch(firebaseAuthProvider),
+    ref.watch(storageProvider),
+  );
 });
 
 final currentAuthUserProvider = StreamProvider<AuthUser?>((ref) {

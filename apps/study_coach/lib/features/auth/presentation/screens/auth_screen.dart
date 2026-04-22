@@ -13,12 +13,14 @@ class AuthScreen extends ConsumerStatefulWidget {
 
 class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -164,6 +166,28 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 14),
+                                if (_isSignUp) ...[
+                                  TextFormField(
+                                    controller: _usernameController,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    autofillHints: const [AutofillHints.name],
+                                    decoration: InputDecoration(
+                                      labelText: strings.username,
+                                      prefixIcon: const Icon(
+                                        Icons.person_outline_rounded,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      final name = value?.trim() ?? '';
+                                      if (name.isEmpty) {
+                                        return strings.usernameRequired;
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
                                 TextFormField(
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
@@ -273,6 +297,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       await controller.signUp(
         email: _emailController.text,
         password: _passwordController.text,
+        displayName: _usernameController.text,
       );
       return;
     }

@@ -22,6 +22,19 @@ class AppStrings {
   String get createAccount => _isArabic ? 'إنشاء حساب' : 'Create account';
   String get login => _isArabic ? 'تسجيل الدخول' : 'Login';
   String get email => _isArabic ? 'البريد الإلكتروني' : 'Email';
+  String get username => _isArabic ? 'اسم المستخدم' : 'Username';
+  String get usernameRequired =>
+      _isArabic ? 'اسم المستخدم مطلوب' : 'Username is required';
+  String get profileUserFallback => _isArabic ? 'مستخدم بيلار' : 'Pillar user';
+  String get editProfile => _isArabic ? 'تعديل الملف الشخصي' : 'Edit profile';
+  String get profilePhoto => _isArabic ? 'الصورة الشخصية' : 'Profile photo';
+  String get changePhoto => _isArabic ? 'تغيير الصورة' : 'Change photo';
+  String get removePhoto => _isArabic ? 'إزالة الصورة' : 'Remove photo';
+  String get saveChanges => _isArabic ? 'حفظ التغييرات' : 'Save changes';
+  String get profileUpdated =>
+      _isArabic ? 'تم تحديث الملف الشخصي.' : 'Profile updated.';
+  String get couldNotUpdateProfile =>
+      _isArabic ? 'تعذّر تحديث الملف الشخصي.' : 'Could not update profile.';
   String get password => _isArabic ? 'كلمة المرور' : 'Password';
   String get emailRequired =>
       _isArabic ? 'البريد الإلكتروني مطلوب' : 'Email is required';
@@ -66,22 +79,17 @@ class AppStrings {
   String get planDayNothingScheduled => _isArabic
       ? 'لا توجد جلسات مجدولة لهذا اليوم. اضغط «إضافة إلى الجدول» لإظهار المواضيع هنا.'
       : 'Nothing scheduled for this day yet. Tap Add to schedule to place topics on your calendar.';
-  String get addSchedule =>
-      _isArabic ? 'إضافة إلى الجدول' : 'Add to schedule';
+  String get addSchedule => _isArabic ? 'إضافة إلى الجدول' : 'Add to schedule';
   String get addToScheduleSheetTitle =>
       _isArabic ? 'جدولة جلسة' : 'Schedule a session';
-  String scheduleSessionForDay(String dayLabel) => _isArabic
-      ? 'التاريخ: $dayLabel'
-      : 'Date: $dayLabel';
-  String get topicForSession =>
-      _isArabic ? 'الموضوع' : 'Topic';
+  String scheduleSessionForDay(String dayLabel) =>
+      _isArabic ? 'التاريخ: $dayLabel' : 'Date: $dayLabel';
+  String get topicForSession => _isArabic ? 'الموضوع' : 'Topic';
   String get sessionDuration =>
       _isArabic ? 'المدة (دقائق)' : 'Duration (minutes)';
-  String get saveToSchedule =>
-      _isArabic ? 'حفظ في الجدول' : 'Save to schedule';
-  String get sessionScheduledSuccess => _isArabic
-      ? 'تمت إضافة الجلسة إلى خطتك.'
-      : 'Session added to your plan.';
+  String get saveToSchedule => _isArabic ? 'حفظ في الجدول' : 'Save to schedule';
+  String get sessionScheduledSuccess =>
+      _isArabic ? 'تمت إضافة الجلسة إلى خطتك.' : 'Session added to your plan.';
   String get couldNotScheduleSession =>
       _isArabic ? 'تعذّر حفظ الجلسة.' : 'Could not save session.';
   String get saveToScheduleTimedOut => _isArabic
@@ -93,15 +101,13 @@ class AppStrings {
       _isArabic ? 'تعديل الجلسة' : 'Edit session';
   String get deleteScheduledSessionTooltip =>
       _isArabic ? 'حذف الجلسة' : 'Delete session';
-  String get editSessionTitle =>
-      _isArabic ? 'تعديل الجلسة' : 'Edit session';
+  String get editSessionTitle => _isArabic ? 'تعديل الجلسة' : 'Edit session';
   String get deleteSessionTitle =>
       _isArabic ? 'حذف الجلسة؟' : 'Delete session?';
   String get deleteSessionConfirm => _isArabic
       ? 'سيتم إزالة هذه الجلسة من جدولك لهذا اليوم.'
       : 'This session will be removed from your schedule for this day.';
-  String get deleteSessionAction =>
-      _isArabic ? 'حذف' : 'Delete';
+  String get deleteSessionAction => _isArabic ? 'حذف' : 'Delete';
   String get sessionUpdated =>
       _isArabic ? 'تم تحديث الجلسة.' : 'Session updated.';
   String get sessionDeleted =>
@@ -211,6 +217,45 @@ class AppStrings {
   String get progress => _isArabic ? 'التقدم' : 'Progress';
   String get passwordChange =>
       _isArabic ? 'تغيير كلمة المرور' : 'Password change';
+  String get passwordChangeDescription => _isArabic
+      ? 'أدخل كلمة المرور الحالية ثم اختر كلمة مرور جديدة.'
+      : 'Enter your current password and set a new password.';
+  String get currentPassword =>
+      _isArabic ? 'كلمة المرور الحالية' : 'Current password';
+  String get currentPasswordRequired =>
+      _isArabic ? 'كلمة المرور الحالية مطلوبة' : 'Current password is required';
+  String get newPassword => _isArabic ? 'كلمة المرور الجديدة' : 'New password';
+  String get newPasswordRequired =>
+      _isArabic ? 'كلمة المرور الجديدة مطلوبة' : 'New password is required';
+  String get confirmNewPassword =>
+      _isArabic ? 'تأكيد كلمة المرور الجديدة' : 'Confirm new password';
+  String get confirmNewPasswordRequired => _isArabic
+      ? 'تأكيد كلمة المرور الجديدة مطلوب'
+      : 'Please confirm your new password';
+  String get newPasswordMustDiffer => _isArabic
+      ? 'يجب أن تختلف كلمة المرور الجديدة عن الحالية'
+      : 'New password must be different from current password';
+  String get passwordsDoNotMatch =>
+      _isArabic ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match';
+  String get updatePassword =>
+      _isArabic ? 'تحديث كلمة المرور' : 'Update password';
+  String get passwordChangeSuccess =>
+      _isArabic ? 'تم تحديث كلمة المرور.' : 'Password updated.';
+  String get passwordChangeFailed => _isArabic
+      ? 'تعذّر تحديث كلمة المرور. حاول مرة أخرى.'
+      : 'Could not update password. Please try again.';
+  String get passwordCurrentIncorrect => _isArabic
+      ? 'كلمة المرور الحالية غير صحيحة.'
+      : 'Current password is incorrect.';
+  String get passwordWeak => _isArabic
+      ? 'كلمة المرور الجديدة ضعيفة (6 أحرف على الأقل).'
+      : 'New password is too weak (minimum 6 characters).';
+  String get passwordTooManyRequests => _isArabic
+      ? 'محاولات كثيرة جدًا. حاول لاحقًا.'
+      : 'Too many attempts. Please try again later.';
+  String get passwordRequiresRecentLogin => _isArabic
+      ? 'انتهت صلاحية الجلسة. سجّل الدخول مرة أخرى ثم أعد المحاولة.'
+      : 'Session expired. Please sign in again and retry.';
   String get privacyPolicy => _isArabic ? 'سياسة الخصوصية' : 'Privacy Policy';
   String get about => _isArabic ? 'حول التطبيق' : 'About';
   String get logout => _isArabic ? 'تسجيل الخروج' : 'Log out';
@@ -227,16 +272,14 @@ class AppStrings {
   String get courseName => _isArabic ? 'اسم المقرر' : 'Course name';
   String get examDateOptional =>
       _isArabic ? 'تاريخ الامتحان (اختياري)' : 'Exam date (optional)';
-  String examDateLabel(String formatted) => _isArabic
-      ? 'الامتحان: $formatted'
-      : 'Exam: $formatted';
+  String examDateLabel(String formatted) =>
+      _isArabic ? 'الامتحان: $formatted' : 'Exam: $formatted';
   String get coursesEmptyHint => _isArabic
       ? 'لم تضف مقررات بعد. اضغط «إضافة مقرر» لإضافة مادة، ثم افتح المقرر لإضافة مواضيع.'
       : 'No courses yet. Tap “Add course” to create a subject, then open it to add topics.';
   String get courseNameRequired =>
       _isArabic ? 'يرجى إدخال اسم المقرر.' : 'Please enter a course name.';
-  String get courseSaved =>
-      _isArabic ? 'تم حفظ المقرر.' : 'Course saved.';
+  String get courseSaved => _isArabic ? 'تم حفظ المقرر.' : 'Course saved.';
   String get couldNotSaveCourse =>
       _isArabic ? 'تعذّر حفظ المقرر.' : 'Could not save course.';
   String get signInToManageCourses => _isArabic
@@ -244,18 +287,15 @@ class AppStrings {
       : 'Sign in to manage your courses and topics.';
   String get unnamedCourse => _isArabic ? 'مقرر بدون اسم' : 'Untitled course';
   String get addTopic => _isArabic ? 'إضافة موضوع' : 'Add topic';
-  String get topicTitleLabel =>
-      _isArabic ? 'عنوان الموضوع' : 'Topic title';
+  String get topicTitleLabel => _isArabic ? 'عنوان الموضوع' : 'Topic title';
   String get topicsEmptyHint => _isArabic
       ? 'لا توجد مواضيع بعد. اضغط «إضافة موضوع» لإضافة وحدة دراسية لهذا المقرر.'
       : 'No topics yet. Tap “Add topic” to add a study unit to this course.';
-  String topicDifficultyShort(String value) => _isArabic
-      ? 'الصعوبة: $value'
-      : 'Difficulty: $value';
+  String topicDifficultyShort(String value) =>
+      _isArabic ? 'الصعوبة: $value' : 'Difficulty: $value';
   String get topicTitleRequired =>
       _isArabic ? 'يرجى إدخال عنوان الموضوع.' : 'Please enter a topic title.';
-  String get topicSaved =>
-      _isArabic ? 'تم حفظ الموضوع.' : 'Topic saved.';
+  String get topicSaved => _isArabic ? 'تم حفظ الموضوع.' : 'Topic saved.';
   String get couldNotSaveTopic =>
       _isArabic ? 'تعذّر حفظ الموضوع.' : 'Could not save topic.';
 

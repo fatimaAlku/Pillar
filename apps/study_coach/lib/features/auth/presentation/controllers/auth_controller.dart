@@ -58,11 +58,13 @@ class AuthFormController extends StateNotifier<AuthFormState> {
   Future<void> signUp({
     required String email,
     required String password,
+    String? displayName,
   }) async {
     await _runAuthAction(() async {
       await _ref.read(authRepositoryProvider).createUserWithEmailAndPassword(
             email: email.trim(),
             password: password,
+            displayName: displayName?.trim(),
           );
     });
   }

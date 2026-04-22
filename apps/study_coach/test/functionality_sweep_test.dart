@@ -62,7 +62,7 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.person_outline_rounded));
     await tester.pumpAndSettle();
-    expect(find.text('fatimaa.alkuwaiti'), findsOneWidget);
+    expect(find.text('test'), findsOneWidget);
   });
 
   testWidgets('Roadmap major card opens detailed roadmap', (

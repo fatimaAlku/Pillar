@@ -23,7 +23,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final strings = AppStrings.of(context);
     final colorScheme = Theme.of(context).colorScheme;
     final pages = <Widget>[
-      const HomeDashboardView(),
+      HomeDashboardView(
+        onGenerateQuizTap: () => setState(() => _currentIndex = 2),
+        onUploadNotesTap: () => setState(() => _currentIndex = 2),
+      ),
       const StudyPlanTabScreen(),
       const QuizzesTabScreen(),
       const RoadmapTabScreen(),

@@ -27,7 +27,14 @@ String _topicTitle(
 
 /// Home tab: today’s plan from Firestore sessions, progress, AI placeholder, and quick actions.
 class HomeDashboardView extends ConsumerStatefulWidget {
-  const HomeDashboardView({super.key});
+  const HomeDashboardView({
+    super.key,
+    this.onGenerateQuizTap,
+    this.onUploadNotesTap,
+  });
+
+  final VoidCallback? onGenerateQuizTap;
+  final VoidCallback? onUploadNotesTap;
 
   @override
   ConsumerState<HomeDashboardView> createState() => _HomeDashboardViewState();
@@ -202,10 +209,10 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                             uid: user.uid,
                             topics: topics,
                           ),
-                      onGenerateQuiz: () =>
-                          _onQuickAction(context, strings.generateQuiz),
-                      onUploadNotes: () =>
-                          _onQuickAction(context, strings.uploadNotes),
+                      onGenerateQuiz: widget.onGenerateQuizTap ??
+                          () => _onQuickAction(context, strings.generateQuiz),
+                      onUploadNotes: widget.onUploadNotesTap ??
+                          () => _onQuickAction(context, strings.uploadNotes),
                     ),
                   ],
                 );
