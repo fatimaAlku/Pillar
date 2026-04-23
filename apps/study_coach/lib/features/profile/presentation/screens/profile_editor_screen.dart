@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../roadmap/domain/major_catalog.dart';
 
 class ProfileEditorScreen extends ConsumerStatefulWidget {
   const ProfileEditorScreen({super.key});
@@ -22,6 +23,7 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   bool _isSaving = false;
   PlatformFile? _selectedImage;
   bool _removePhoto = false;
+  String? _selectedMajorId;
 
   @override
   void initState() {
@@ -36,6 +38,12 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
           ? profileName
           : (hasEmail ? email.split('@').first : ''),
     );
+    if (authUser != null) {
+      _selectedMajorId = ref
+          .read(userProfileStreamProvider(authUser.uid))
+          .valueOrNull
+          ?.majorId;
+    }
   }
 
   @override
@@ -90,6 +98,14 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
             displayName: _usernameController.text,
             photoUrl: _removePhoto ? '' : uploadedPhotoUrl,
           );
+      final selectedMajor = _selectedMajorId?.trim();
+      if (selectedMajor != null && selectedMajor.isNotEmpty) {
+        await ref.read(userProfileRepositoryProvider).setMajor(
+              uid: authUser.uid,
+              majorId: selectedMajor,
+              source: 'profile',
+            );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.profileUpdated)),
@@ -130,6 +146,10 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final authUser = ref.watch(currentAuthUserProvider).valueOrNull;
+    final profile = authUser == null
+        ? null
+        : ref.watch(userProfileStreamProvider(authUser.uid)).valueOrNull;
+    final majorIdForForm = _selectedMajorId ?? profile?.majorId;
     final photoUrl = authUser?.photoUrl?.trim();
     final hasRemotePhoto = photoUrl != null && photoUrl.isNotEmpty;
     final canRemovePhoto = _selectedImage != null || hasRemotePhoto;
@@ -205,6 +225,27 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
                     labelText: strings.email,
                     prefixIcon: const Icon(Icons.mail_outline_rounded),
                   ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: majorIdForForm,
+                  decoration: InputDecoration(
+                    labelText: strings.chooseMajor,
+                    prefixIcon: const Icon(Icons.school_outlined),
+                  ),
+                  items: majorCatalog
+                      .map(
+                        (major) => DropdownMenuItem<String>(
+                          value: major.id,
+                          child: Text(major.title),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedMajorId = value;
+                    });
+                  },
                 ),
                 const SizedBox(height: 20),
                 SizedBox(

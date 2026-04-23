@@ -9,4 +9,5 @@ class FirestorePaths {
   static const questions = 'questions';
   static const attempts = 'attempts';
   static const insights = 'insights';
+  static const roadmapProgress = 'roadmapProgress';
 }

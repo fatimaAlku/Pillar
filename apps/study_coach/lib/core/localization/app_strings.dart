@@ -45,6 +45,13 @@ class AppStrings {
   String get minimumSixChars =>
       _isArabic ? '6 أحرف على الأقل' : 'Minimum 6 characters';
   String get signUp => _isArabic ? 'إنشاء حساب' : 'Sign up';
+  String get chooseMajor => _isArabic ? 'اختر التخصص' : 'Choose major';
+  String get majorOptional => _isArabic
+      ? 'اختياري - يمكنك الاختيار لاحقًا'
+      : 'Optional - you can choose later';
+  String get skipForNow => _isArabic ? 'تخطي الآن' : 'Skip for now';
+  String get majorRequiredMessage =>
+      _isArabic ? 'يرجى اختيار التخصص.' : 'Please select your major.';
   String get alreadyHaveAccountLogin => _isArabic
       ? 'لديك حساب بالفعل؟ سجّل الدخول'
       : 'Already have an account? Login';
@@ -211,6 +218,28 @@ class AppStrings {
   String focusSubjectsFirst(String majorTitle) => _isArabic
       ? 'ركّز على هذه المواد أولاً لبناء أساس قوي في $majorTitle.'
       : 'Focus these subjects first to build a strong foundation in $majorTitle.';
+  String get successBlueprint => _isArabic ? 'خطة النجاح' : 'Success blueprint';
+  String howToSucceedInMajor(String majorTitle) => _isArabic
+      ? 'كيف تنجح في تخصص $majorTitle'
+      : 'How to succeed in $majorTitle';
+  String get roadmapPhases =>
+      _isArabic ? 'مراحل التنفيذ المقترحة' : 'Suggested execution phases';
+  String get keyResources =>
+      _isArabic ? 'مصادر خارجية مفيدة' : 'Helpful external resources';
+  String get projectIdeas =>
+      _isArabic ? 'أفكار مشاريع وتطبيق' : 'Project and application ideas';
+  String get openResource => _isArabic ? 'فتح المصدر' : 'Open resource';
+  String get couldNotOpenResource => _isArabic
+      ? 'تعذّر فتح الرابط حالياً.'
+      : 'Could not open this link right now.';
+  String get weeksShort => _isArabic ? 'أسابيع' : 'weeks';
+  String get chooseMajorToTrackProgress => _isArabic
+      ? 'اختر تخصصك لتفعيل تتبع التقدم.'
+      : 'Choose your major to enable progress tracking.';
+  String get setAsMyMajor => _isArabic ? 'تعيين كتخصصي' : 'Set as my major';
+  String get majorSaved => _isArabic ? 'تم حفظ التخصص.' : 'Major saved.';
+  String yourMajor(String majorTitle) =>
+      _isArabic ? 'تخصصك: $majorTitle' : 'Your major: $majorTitle';
 
   String get appLanguage => _isArabic ? 'لغة التطبيق' : 'App language';
   String get modeSwitch => _isArabic ? 'تبديل الوضع' : 'Mode Switch';
@@ -309,6 +338,7 @@ class AppStrings {
   String get dark => _isArabic ? 'داكن' : 'Dark';
 
   String get cancel => _isArabic ? 'إلغاء' : 'Cancel';
+  String get ok => _isArabic ? 'موافق' : 'OK';
   String get save => _isArabic ? 'حفظ' : 'Save';
   String get myCourses => _isArabic ? 'موادي ومقرراتي' : 'My courses';
   String get addCourse => _isArabic ? 'إضافة مقرر' : 'Add course';
@@ -330,6 +360,7 @@ class AppStrings {
       : 'Sign in to manage your courses and topics.';
   String get unnamedCourse => _isArabic ? 'مقرر بدون اسم' : 'Untitled course';
   String get addTopic => _isArabic ? 'إضافة موضوع' : 'Add topic';
+  String get major => _isArabic ? 'التخصص' : 'Major';
   String get topicTitleLabel => _isArabic ? 'عنوان الموضوع' : 'Topic title';
   String get topicsEmptyHint => _isArabic
       ? 'لا توجد مواضيع بعد. اضغط «إضافة موضوع» لإضافة وحدة دراسية لهذا المقرر.'
@@ -341,6 +372,16 @@ class AppStrings {
   String get topicSaved => _isArabic ? 'تم حفظ الموضوع.' : 'Topic saved.';
   String get couldNotSaveTopic =>
       _isArabic ? 'تعذّر حفظ الموضوع.' : 'Could not save topic.';
+  String get progressOverview =>
+      _isArabic ? 'نظرة على التقدم' : 'Progress overview';
+  String get overallProgress => _isArabic ? 'التقدم العام' : 'Overall progress';
+  String get roadmapProgress =>
+      _isArabic ? 'تقدم خارطة الطريق' : 'Roadmap progress';
+  String get sessionsProgress =>
+      _isArabic ? 'تقدم الجلسات' : 'Sessions progress';
+  String get quizAverage => _isArabic ? 'متوسط الاختبارات' : 'Quiz average';
+  String get noWeakAreasYet =>
+      _isArabic ? 'لا توجد نقاط ضعف حالياً.' : 'No weak areas yet.';
 
   String comingSoonFor(String label) {
     return _isArabic ? '$label - قريباً' : '$label - coming soon';

@@ -59,6 +59,7 @@ class AuthFormController extends StateNotifier<AuthFormState> {
     required String email,
     required String password,
     String? displayName,
+    String? majorId,
   }) async {
     await _runAuthAction(() async {
       await _ref.read(authRepositoryProvider).createUserWithEmailAndPassword(
@@ -66,6 +67,15 @@ class AuthFormController extends StateNotifier<AuthFormState> {
             password: password,
             displayName: displayName?.trim(),
           );
+      final selectedMajor = majorId?.trim();
+      final uid = _ref.read(firebaseAuthProvider).currentUser?.uid;
+      if (uid != null && selectedMajor != null && selectedMajor.isNotEmpty) {
+        await _ref.read(userProfileRepositoryProvider).setMajor(
+              uid: uid,
+              majorId: selectedMajor,
+              source: 'signup',
+            );
+      }
     });
   }
 

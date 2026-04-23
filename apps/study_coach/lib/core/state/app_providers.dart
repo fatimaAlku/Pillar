@@ -6,6 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/auth_user.dart';
+import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
+import '../../features/profile/domain/entities/user_profile_data.dart';
+import '../../features/profile/domain/repositories/user_profile_repository.dart';
+import '../../features/progress/data/repositories/progress_repository_impl.dart';
+import '../../features/progress/domain/repositories/progress_repository.dart';
 import '../../features/subjects/data/repositories/subjects_repository_impl.dart';
 import '../../features/subjects/domain/entities/subject.dart';
 import '../../features/subjects/domain/repositories/subjects_repository.dart';
@@ -59,6 +64,19 @@ final currentAuthUserProvider = StreamProvider<AuthUser?>((ref) {
 
 final subjectsRepositoryProvider = Provider<SubjectsRepository>((ref) {
   return SubjectsRepositoryImpl(ref.watch(firestoreProvider));
+});
+
+final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
+  return UserProfileRepositoryImpl(ref.watch(firestoreProvider));
+});
+
+final userProfileStreamProvider =
+    StreamProvider.family<UserProfileData?, String>((ref, uid) {
+  return ref.watch(userProfileRepositoryProvider).watchProfile(uid);
+});
+
+final progressRepositoryImplProvider = Provider<ProgressRepository>((ref) {
+  return ProgressRepositoryImpl(ref.watch(firestoreProvider));
 });
 
 final subjectsStreamProvider =

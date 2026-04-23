@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../roadmap/domain/major_catalog.dart';
 import '../controllers/auth_controller.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -17,6 +18,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isSignUp = false;
+  String? _selectedMajorId;
 
   @override
   void dispose() {
@@ -187,6 +189,36 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                     },
                                   ),
                                   const SizedBox(height: 12),
+                                  DropdownButtonFormField<String>(
+                                    initialValue: _selectedMajorId,
+                                    decoration: InputDecoration(
+                                      labelText: strings.chooseMajor,
+                                      prefixIcon: const Icon(
+                                        Icons.school_outlined,
+                                      ),
+                                    ),
+                                    items: [
+                                      ...majorCatalog.map(
+                                        (major) => DropdownMenuItem<String>(
+                                          value: major.id,
+                                          child: Text(major.title),
+                                        ),
+                                      ),
+                                    ],
+                                    validator: (value) {
+                                      final selected = value?.trim() ?? '';
+                                      if (selected.isEmpty) {
+                                        return strings.majorRequiredMessage;
+                                      }
+                                      return null;
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedMajorId = value;
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
                                 ],
                                 TextFormField(
                                   controller: _emailController,
@@ -298,6 +330,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         email: _emailController.text,
         password: _passwordController.text,
         displayName: _usernameController.text,
+        majorId: _selectedMajorId,
       );
       return;
     }

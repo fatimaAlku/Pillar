@@ -6,6 +6,7 @@ import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../progress/presentation/screens/progress_details_screen.dart';
 import 'about_screen.dart';
 import 'password_change_screen.dart';
 import 'privacy_policy_screen.dart';
@@ -14,16 +15,6 @@ import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerWidget {
   const ProfileTabScreen({super.key});
-
-  void _showComingSoon(BuildContext context, String label) {
-    final strings = AppStrings.of(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(strings.comingSoonFor(label)),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -190,7 +181,13 @@ class ProfileTabScreen extends ConsumerWidget {
               _ProfileMenuTile(
                 icon: Icons.insights_outlined,
                 title: strings.progress,
-                onTap: () => _showComingSoon(context, strings.progress),
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const ProgressDetailsScreen(),
+                    ),
+                  );
+                },
               ),
               const _TileDivider(),
               _ProfileMenuTile(
