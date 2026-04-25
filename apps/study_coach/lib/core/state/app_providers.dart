@@ -11,6 +11,9 @@ import '../../features/profile/domain/entities/user_profile_data.dart';
 import '../../features/profile/domain/repositories/user_profile_repository.dart';
 import '../../features/progress/data/repositories/progress_repository_impl.dart';
 import '../../features/progress/domain/repositories/progress_repository.dart';
+import '../../features/quizzes/data/repositories/quiz_history_repository_impl.dart';
+import '../../features/quizzes/domain/entities/quiz_history_entry.dart';
+import '../../features/quizzes/domain/repositories/quiz_history_repository.dart';
 import '../../features/subjects/data/repositories/subjects_repository_impl.dart';
 import '../../features/subjects/domain/entities/subject.dart';
 import '../../features/subjects/domain/repositories/subjects_repository.dart';
@@ -79,7 +82,16 @@ final progressRepositoryImplProvider = Provider<ProgressRepository>((ref) {
   return ProgressRepositoryImpl(ref.watch(firestoreProvider));
 });
 
+final quizHistoryRepositoryProvider = Provider<QuizHistoryRepository>((ref) {
+  return QuizHistoryRepositoryImpl(ref.watch(firestoreProvider));
+});
+
 final subjectsStreamProvider =
     StreamProvider.family<List<Subject>, String>((ref, uid) {
   return ref.watch(subjectsRepositoryProvider).watchSubjects(uid);
+});
+
+final quizHistoryStreamProvider =
+    StreamProvider.family<List<QuizHistoryEntry>, String>((ref, uid) {
+  return ref.watch(quizHistoryRepositoryProvider).watchHistory(uid);
 });

@@ -1,13 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/state/app_providers.dart';
 import '../../data/services/quiz_ai_service.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
+import '../../domain/repositories/quiz_history_repository.dart';
 
 /// Holds client-side quiz runner state (answer selection, progress, submission).
 final quizRunnerControllerProvider =
     StateNotifierProvider<QuizRunnerController, QuizRunnerState>((ref) {
-  return QuizRunnerController(ref.watch(quizAiServiceProvider));
+  return QuizRunnerController(
+    ref.watch(quizAiServiceProvider),
+    ref.watch(quizHistoryRepositoryProvider),
+    () => ref.read(currentAuthUserProvider).valueOrNull?.uid,
+  );
 });
 
 sealed class QuizRunnerState {
@@ -85,9 +93,16 @@ class QuizGenerationRequest {
 }
 
 class QuizRunnerController extends StateNotifier<QuizRunnerState> {
-  QuizRunnerController(this._quizAiService) : super(const QuizRunnerIdle());
+  QuizRunnerController(
+    this._quizAiService,
+    this._quizHistoryRepository,
+    this._currentUserId,
+  ) : super(const QuizRunnerIdle());
+  static const Duration _generationTimeout = Duration(seconds: 70);
 
   final QuizAiService _quizAiService;
+  final QuizHistoryRepository _quizHistoryRepository;
+  final String? Function() _currentUserId;
   QuizGenerationRequest? _lastRequest;
   List<QuizQuestion>? _lastGeneratedQuestions;
 
@@ -110,7 +125,8 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     required int numberOfQuestions,
     String? notesText,
   }) async {
-    final trimmedTopics = topics.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final trimmedTopics =
+        topics.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final normalizedNotes = notesText?.trim();
 
     _lastRequest = QuizGenerationRequest(
@@ -123,12 +139,18 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     state = const QuizRunnerLoading();
 
     try {
-      final questions = await _quizAiService.generateQuiz(
+      final questions = await _quizAiService
+          .generateQuiz(
         topics: trimmedTopics,
         difficulty: difficulty,
         numberOfQuestions: numberOfQuestions,
         notesText: normalizedNotes,
-      );
+      )
+          .timeout(_generationTimeout, onTimeout: () {
+        throw const QuizAiServiceException(
+          'Quiz generation is taking too long. Please try again.',
+        );
+      });
 
       _lastGeneratedQuestions = questions;
       state = QuizRunnerInProgress(
@@ -146,7 +168,8 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     } on QuizAiException catch (e) {
       state = QuizRunnerError(e.message);
     } catch (_) {
-      state = const QuizRunnerError('Failed to generate quiz. Please try again.');
+      state =
+          const QuizRunnerError('Failed to generate quiz. Please try again.');
     }
   }
 
@@ -207,7 +230,8 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
 
     for (final q in questions) {
       final selectedIndex = selected[q.id];
-      final isCorrect = selectedIndex != null && selectedIndex == q.correctIndex;
+      final isCorrect =
+          selectedIndex != null && selectedIndex == q.correctIndex;
       if (isCorrect) {
         correctCount += 1;
       } else {
@@ -223,14 +247,28 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     final weakTopics = incorrectByTopicId.values.toList()
       ..sort((a, b) => b.incorrectCount.compareTo(a.incorrectCount));
 
-    state = QuizRunnerSubmitted(
-      QuizSubmissionResult(
-        questions: questions,
-        selectedByQuestionId: selected,
-        correctCount: correctCount,
-        totalCount: questions.length,
-        weakTopics: weakTopics,
-      ),
+    final result = QuizSubmissionResult(
+      questions: questions,
+      selectedByQuestionId: selected,
+      correctCount: correctCount,
+      totalCount: questions.length,
+      weakTopics: weakTopics,
     );
+    state = QuizRunnerSubmitted(result);
+    unawaited(_persistHistory(result));
+  }
+
+  Future<void> _persistHistory(QuizSubmissionResult result) async {
+    final uid = _currentUserId()?.trim();
+    if (uid == null || uid.isEmpty) return;
+    try {
+      await _quizHistoryRepository.saveAttempt(
+        uid: uid,
+        result: result,
+        completedAt: DateTime.now(),
+      );
+    } catch (_) {
+      // History persistence failure should not block quiz submission UX.
+    }
   }
 }

@@ -52,20 +52,11 @@ npm install
 npm run build
 ```
 
-Set a quiz AI provider key in the Flutter client:
-
-```bash
-flutter run --dart-define=GOOGLE_AI_API_KEY=your_google_ai_studio_key
-```
-
-Optional OpenAI fallback:
+Set the quiz AI provider key in the Flutter client:
 
 ```bash
 flutter run --dart-define=OPENAI_API_KEY=your_openai_key
 ```
-
-If both keys are provided, the app tries Gemini first and falls back to OpenAI
-if Gemini fails.
 
 ### 3) Firebase Emulator (optional)
 

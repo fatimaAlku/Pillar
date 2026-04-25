@@ -244,6 +244,11 @@ class AppStrings {
   String get appLanguage => _isArabic ? 'لغة التطبيق' : 'App language';
   String get modeSwitch => _isArabic ? 'تبديل الوضع' : 'Mode Switch';
   String get progress => _isArabic ? 'التقدم' : 'Progress';
+  String get history => _isArabic ? 'السجل' : 'History';
+  String get noQuizHistory =>
+      _isArabic ? 'لا يوجد سجل اختبارات بعد.' : 'No quiz history yet.';
+  String get couldNotLoadHistory =>
+      _isArabic ? 'تعذّر تحميل السجل.' : 'Could not load history.';
   String get passwordChange =>
       _isArabic ? 'تغيير كلمة المرور' : 'Password change';
   String get passwordChangeDescription => _isArabic

@@ -587,6 +587,11 @@ You may add screenshots of your **project plan** or **progress plan** if require
 - **Cost and abuse:** Callable endpoints tied to billing and API keys create **financial** and **operational** risk if rates are not guarded (**professional** controls: auth-only, quotas, monitoring).
 - **Notes privacy:** Pasting lecture notes into the app sends **personal/academic text** to a third-party model unless we add redaction or on-device-only modes—**legal/privacy** implications depending on jurisdiction and university policy.
 
+**Describe how this relates to your project?**
+
+In this project, LESPI is not abstract; it is embedded in how the AI-powered quiz feature is designed and deployed. Legally and ethically, generated questions can be inaccurate or misleading, so presenting them without clear framing could unfairly affect students' revision and confidence; this is why quiz output should be positioned as assistive rather than authoritative. Socially and professionally, student notes may include personal or sensitive academic material, and sending that text to third-party AI providers creates clear privacy and compliance responsibilities around disclosure, minimisation, and retention. Economically and operationally, the callable model pipeline introduces direct cost and abuse risk, so safeguards such as authentication, rate limits/App Check, monitoring, and secure secret handling are core engineering requirements. Overall, LESPI considerations shape both user experience decisions and backend controls in this project, not just the write-up.
+
+
 **Mitigation**
 
 - In-app copy that quizzes are **assistive**, not a sole source of truth; README guidance on **secrets** and environment separation; next steps could include **rate limits**, **content warnings**, and **data minimisation** (e.g. truncate or hash notes server-side per policy).

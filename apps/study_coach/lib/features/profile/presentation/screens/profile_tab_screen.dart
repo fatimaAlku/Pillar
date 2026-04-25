@@ -11,6 +11,7 @@ import 'about_screen.dart';
 import 'password_change_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'profile_editor_screen.dart';
+import 'quiz_history_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerWidget {
@@ -185,6 +186,18 @@ class ProfileTabScreen extends ConsumerWidget {
                   Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
                       builder: (_) => const ProgressDetailsScreen(),
+                    ),
+                  );
+                },
+              ),
+              const _TileDivider(),
+              _ProfileMenuTile(
+                icon: Icons.history_rounded,
+                title: strings.history,
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const QuizHistoryScreen(),
                     ),
                   );
                 },

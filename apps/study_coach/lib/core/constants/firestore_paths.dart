@@ -8,6 +8,7 @@ class FirestorePaths {
   static const quizzes = 'quizzes';
   static const questions = 'questions';
   static const attempts = 'attempts';
+  static const quizHistory = 'quizHistory';
   static const insights = 'insights';
   static const roadmapProgress = 'roadmapProgress';
 }

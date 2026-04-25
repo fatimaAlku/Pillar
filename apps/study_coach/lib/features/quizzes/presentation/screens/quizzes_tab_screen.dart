@@ -24,6 +24,18 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   static const int _minQuestions = 5;
   static const int _maxQuestions = 15;
 
+  void _showMessage(String message) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.fixed,
+          content: Text(message),
+        ),
+      );
+  }
+
   @override
   void dispose() {
     _topicsController.dispose();
@@ -64,9 +76,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
       if (!mounted || importedText == null) return;
       _notesFocusNode.requestFocus();
       _insertImportedNotes(importedText);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.notesImported)),
-      );
+      _showMessage(strings.notesImported);
       setState(() {});
     } on NotesImportException catch (e) {
       if (!mounted) return;
@@ -75,14 +85,10 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
         NotesImportFailure.unreadableText => strings.unreadableNotesFile,
         NotesImportFailure.unknown => strings.couldNotImportNotes,
       };
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg)),
-      );
+      _showMessage(msg);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.couldNotImportNotes)),
-      );
+      _showMessage(strings.couldNotImportNotes);
     } finally {
       if (mounted) setState(() => _isImportingNotes = false);
     }
@@ -317,11 +323,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                               .toList();
                           final notes = _notesController.text.trim();
                           if (notes.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(strings.notesRequiredForQuiz),
-                              ),
-                            );
+                            _showMessage(strings.notesRequiredForQuiz);
                             return;
                           }
 
@@ -348,9 +350,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                           }
 
                           if (nextState is QuizRunnerError) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(nextState.message)),
-                            );
+                            _showMessage(nextState.message);
                           }
                         },
                   icon: isGenerating
