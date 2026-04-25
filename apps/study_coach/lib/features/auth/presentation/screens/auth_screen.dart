@@ -332,6 +332,15 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
         displayName: _usernameController.text,
         majorId: _selectedMajorId,
       );
+      if (!mounted) {
+        return;
+      }
+      final hasError = ref.read(authFormControllerProvider).errorMessage != null;
+      if (!hasError) {
+        setState(() {
+          _isSignUp = false;
+        });
+      }
       return;
     }
 

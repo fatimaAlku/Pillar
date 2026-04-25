@@ -90,12 +90,13 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
       strings: strings,
       topics: topics,
       scheduleDate: scheduleDate,
-      onSave: (topicId, durationMin) async {
+      onSave: (topicId, durationMin, startMinute) async {
         await ref.read(studySessionsRepositoryProvider).addSession(
               uid: uid,
               topicId: topicId,
               dateIso: dateIso,
               durationMin: durationMin,
+              startMinute: startMinute,
             );
       },
     );

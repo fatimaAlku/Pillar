@@ -64,6 +64,43 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
   }
 
   @override
+  Future<void> updateSubject({
+    required String uid,
+    required String subjectId,
+    required String name,
+    String examDateIso = '',
+    String? color,
+  }) async {
+    final data = <String, dynamic>{
+      'name': name.trim(),
+      'examDate': examDateIso,
+    };
+    if (color != null) {
+      data['color'] = color;
+    }
+    await _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.subjects)
+        .doc(subjectId)
+        .update(data);
+  }
+
+  @override
+  Future<void> deleteSubject({
+    required String uid,
+    required String subjectId,
+  }) async {
+    final subjectRef = _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.subjects)
+        .doc(subjectId);
+    await _deleteTopicsCollection(subjectRef);
+    await subjectRef.delete();
+  }
+
+  @override
   Future<String> addTopic({
     required String uid,
     required String subjectId,
@@ -81,5 +118,57 @@ class SubjectsRepositoryImpl implements SubjectsRepository {
       'difficultyEstimate': difficultyEstimate.clamp(0.0, 1.0),
     });
     return ref.id;
+  }
+
+  @override
+  Future<void> updateTopic({
+    required String uid,
+    required String subjectId,
+    required String topicId,
+    required String title,
+    double difficultyEstimate = 0.5,
+  }) async {
+    await _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.subjects)
+        .doc(subjectId)
+        .collection(FirestorePaths.topics)
+        .doc(topicId)
+        .update({
+      'title': title.trim(),
+      'difficultyEstimate': difficultyEstimate.clamp(0.0, 1.0),
+    });
+  }
+
+  @override
+  Future<void> deleteTopic({
+    required String uid,
+    required String subjectId,
+    required String topicId,
+  }) async {
+    await _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.subjects)
+        .doc(subjectId)
+        .collection(FirestorePaths.topics)
+        .doc(topicId)
+        .delete();
+  }
+
+  Future<void> _deleteTopicsCollection(DocumentReference<Object?> subjectRef) async {
+    while (true) {
+      final snapshot = await subjectRef
+          .collection(FirestorePaths.topics)
+          .limit(200)
+          .get();
+      if (snapshot.docs.isEmpty) break;
+      final batch = _db.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    }
   }
 }

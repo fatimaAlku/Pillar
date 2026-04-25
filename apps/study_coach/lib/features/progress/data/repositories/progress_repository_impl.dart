@@ -13,9 +13,22 @@ class ProgressRepositoryImpl implements ProgressRepository {
 
   @override
   Stream<ProgressSnapshot> watchProgress(String uid) async* {
-    yield await _compute(uid);
-    yield* Stream.periodic(const Duration(seconds: 20))
-        .asyncMap((_) => _compute(uid));
+    ProgressSnapshot? lastSnapshot;
+    while (true) {
+      try {
+        final snapshot = await _compute(uid);
+        lastSnapshot = snapshot;
+        yield snapshot;
+      } on FirebaseException catch (e) {
+        if (e.code == 'unavailable') {
+          // Keep UI usable during transient Firestore outages.
+          yield lastSnapshot ?? ProgressSnapshot.empty;
+        } else {
+          rethrow;
+        }
+      }
+      await Future<void>.delayed(const Duration(seconds: 20));
+    }
   }
 
   Future<ProgressSnapshot> _compute(String uid) async {

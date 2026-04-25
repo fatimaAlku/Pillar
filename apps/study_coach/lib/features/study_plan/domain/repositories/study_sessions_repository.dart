@@ -12,6 +12,7 @@ abstract class StudySessionsRepository {
     required String topicId,
     required String dateIso,
     required int durationMin,
+    required int startMinute,
   });
 
   Future<void> setSessionCompleted({
@@ -27,6 +28,7 @@ abstract class StudySessionsRepository {
     required String sessionId,
     String? topicId,
     int? durationMin,
+    int? startMinute,
   });
 
   Future<void> deleteSession({

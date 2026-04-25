@@ -49,12 +49,15 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     required String topicId,
     required String dateIso,
     required int durationMin,
+    required int startMinute,
   }) async {
     final minutes = durationMin.clamp(5, 240);
+    final clampedStartMinute = startMinute.clamp(0, 1439);
     final sessionPayload = <String, dynamic>{
       'date': dateIso,
       'topicId': topicId,
       'durationMin': minutes,
+      'startMinute': clampedStartMinute,
       'completed': false,
     };
 
@@ -105,12 +108,14 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     required String topicId,
     required String dateIso,
     required int durationMin,
+    required int startMinute,
   }) async {
     await _commitSessionWrite(
       uid: uid,
       topicId: topicId,
       dateIso: dateIso,
       durationMin: durationMin,
+      startMinute: startMinute,
     ).timeout(
       _writeTimeout,
       onTimeout: () => throw TimeoutException(
@@ -162,12 +167,17 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     final completed = data['completed'] == true;
     final topicId = data['topicId'] as String? ?? '';
     final date = data['date'] as String? ?? '';
+    final startMinuteRaw = data['startMinute'];
+    final startMinute = startMinuteRaw is int
+        ? startMinuteRaw.clamp(0, 1439)
+        : (startMinuteRaw is num ? startMinuteRaw.toInt().clamp(0, 1439) : null);
     return StudySession(
       id: id,
       planId: planId,
       topicId: topicId,
       date: date,
       durationMin: durationMin,
+      startMinute: startMinute,
       completed: completed,
     );
   }
@@ -196,11 +206,15 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     required String sessionId,
     String? topicId,
     int? durationMin,
+    int? startMinute,
   }) async {
     final updates = <String, dynamic>{};
     if (topicId != null) updates['topicId'] = topicId;
     if (durationMin != null) {
       updates['durationMin'] = durationMin.clamp(5, 240);
+    }
+    if (startMinute != null) {
+      updates['startMinute'] = startMinute.clamp(0, 1439);
     }
     if (updates.isEmpty) return;
     await _db

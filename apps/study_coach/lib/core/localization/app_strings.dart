@@ -98,6 +98,8 @@ class AppStrings {
   String scheduleSessionForDay(String dayLabel) =>
       _isArabic ? 'التاريخ: $dayLabel' : 'Date: $dayLabel';
   String get topicForSession => _isArabic ? 'الموضوع' : 'Topic';
+  String get studyTime => _isArabic ? 'وقت الدراسة' : 'Study time';
+  String get pickTime => _isArabic ? 'اختيار الوقت' : 'Pick time';
   String get sessionDuration =>
       _isArabic ? 'المدة (دقائق)' : 'Duration (minutes)';
   String get saveToSchedule => _isArabic ? 'حفظ في الجدول' : 'Save to schedule';
@@ -352,6 +354,8 @@ class AppStrings {
   String get save => _isArabic ? 'حفظ' : 'Save';
   String get myCourses => _isArabic ? 'موادي ومقرراتي' : 'My courses';
   String get addCourse => _isArabic ? 'إضافة مقرر' : 'Add course';
+  String get editCourse => _isArabic ? 'تعديل المقرر' : 'Edit course';
+  String get deleteCourse => _isArabic ? 'حذف المقرر' : 'Delete course';
   String get courseName => _isArabic ? 'اسم المقرر' : 'Course name';
   String get examDateOptional =>
       _isArabic ? 'تاريخ الامتحان (اختياري)' : 'Exam date (optional)';
@@ -363,13 +367,27 @@ class AppStrings {
   String get courseNameRequired =>
       _isArabic ? 'يرجى إدخال اسم المقرر.' : 'Please enter a course name.';
   String get courseSaved => _isArabic ? 'تم حفظ المقرر.' : 'Course saved.';
+  String get courseUpdated =>
+      _isArabic ? 'تم تحديث المقرر.' : 'Course updated.';
+  String get courseDeleted => _isArabic ? 'تم حذف المقرر.' : 'Course deleted.';
   String get couldNotSaveCourse =>
       _isArabic ? 'تعذّر حفظ المقرر.' : 'Could not save course.';
+  String get couldNotUpdateCourse =>
+      _isArabic ? 'تعذّر تحديث المقرر.' : 'Could not update course.';
+  String get couldNotDeleteCourse =>
+      _isArabic ? 'تعذّر حذف المقرر.' : 'Could not delete course.';
+  String get deleteCourseTitle =>
+      _isArabic ? 'حذف المقرر؟' : 'Delete course?';
+  String get deleteCourseConfirm => _isArabic
+      ? 'سيتم حذف هذا المقرر وجميع المواضيع التابعة له.'
+      : 'This will delete the course and all its topics.';
   String get signInToManageCourses => _isArabic
       ? 'سجّل الدخول لإدارة مقرراتك ومواضيعك.'
       : 'Sign in to manage your courses and topics.';
   String get unnamedCourse => _isArabic ? 'مقرر بدون اسم' : 'Untitled course';
   String get addTopic => _isArabic ? 'إضافة موضوع' : 'Add topic';
+  String get editTopic => _isArabic ? 'تعديل الموضوع' : 'Edit topic';
+  String get deleteTopic => _isArabic ? 'حذف الموضوع' : 'Delete topic';
   String get major => _isArabic ? 'التخصص' : 'Major';
   String get topicTitleLabel => _isArabic ? 'عنوان الموضوع' : 'Topic title';
   String get topicsEmptyHint => _isArabic
@@ -380,8 +398,20 @@ class AppStrings {
   String get topicTitleRequired =>
       _isArabic ? 'يرجى إدخال عنوان الموضوع.' : 'Please enter a topic title.';
   String get topicSaved => _isArabic ? 'تم حفظ الموضوع.' : 'Topic saved.';
+  String get topicUpdated => _isArabic ? 'تم تحديث الموضوع.' : 'Topic updated.';
+  String get topicDeleted => _isArabic ? 'تم حذف الموضوع.' : 'Topic deleted.';
   String get couldNotSaveTopic =>
       _isArabic ? 'تعذّر حفظ الموضوع.' : 'Could not save topic.';
+  String get couldNotUpdateTopic =>
+      _isArabic ? 'تعذّر تحديث الموضوع.' : 'Could not update topic.';
+  String get couldNotDeleteTopic =>
+      _isArabic ? 'تعذّر حذف الموضوع.' : 'Could not delete topic.';
+  String get deleteTopicTitle =>
+      _isArabic ? 'حذف الموضوع؟' : 'Delete topic?';
+  String get deleteTopicConfirm => _isArabic
+      ? 'سيتم حذف هذا الموضوع من المقرر.'
+      : 'This topic will be removed from the course.';
+  String get clearExamDate => _isArabic ? 'إزالة التاريخ' : 'Clear date';
   String get progressOverview =>
       _isArabic ? 'نظرة على التقدم' : 'Progress overview';
   String get overallProgress => _isArabic ? 'التقدم العام' : 'Overall progress';
@@ -392,6 +422,10 @@ class AppStrings {
   String get quizAverage => _isArabic ? 'متوسط الاختبارات' : 'Quiz average';
   String get noWeakAreasYet =>
       _isArabic ? 'لا توجد نقاط ضعف حالياً.' : 'No weak areas yet.';
+  String get progressLoadFailed => _isArabic
+      ? 'تعذّر تحميل التقدم حالياً. تحقق من الاتصال وحاول مرة أخرى.'
+      : 'Could not load progress right now. Check your connection and try again.';
+  String get retry => _isArabic ? 'إعادة المحاولة' : 'Retry';
 
   String comingSoonFor(String label) {
     return _isArabic ? '$label - قريباً' : '$label - coming soon';

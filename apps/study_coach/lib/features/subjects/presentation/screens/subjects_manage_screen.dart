@@ -4,10 +4,25 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../domain/entities/subject.dart';
 import 'subject_detail_screen.dart';
 
 class SubjectsManageScreen extends ConsumerWidget {
   const SubjectsManageScreen({super.key});
+
+  DateTime? _parseExamDate(String examDateIso) {
+    if (examDateIso.trim().isEmpty) return null;
+    return DateTime.tryParse(examDateIso);
+  }
+
+  String _toExamDateIso(DateTime? examDate) {
+    if (examDate == null) return '';
+    return DateTime(
+      examDate.year,
+      examDate.month,
+      examDate.day,
+    ).toIso8601String();
+  }
 
   Future<void> _showAddSubjectDialog(
     BuildContext context,
@@ -96,11 +111,7 @@ class SubjectsManageScreen extends ConsumerWidget {
       }
       final examIso = examDate == null
           ? ''
-          : DateTime(
-              examDate!.year,
-              examDate!.month,
-              examDate!.day,
-            ).toIso8601String();
+          : _toExamDateIso(examDate);
       try {
         await ref.read(subjectsRepositoryProvider).createSubject(
               uid: uid,
@@ -119,8 +130,167 @@ class SubjectsManageScreen extends ConsumerWidget {
           );
         }
       }
-    } finally {
-      nameController.dispose();
+    } finally {}
+  }
+
+  Future<void> _showEditSubjectDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String uid,
+    Subject subject,
+  ) async {
+    final strings = AppStrings.of(context);
+    final nameController = TextEditingController(text: subject.name);
+    DateTime? examDate = _parseExamDate(subject.examDateIso);
+    try {
+      final saved = await showDialog<bool>(
+        context: context,
+        builder: (ctx) {
+          return StatefulBuilder(
+            builder: (context, setLocal) {
+              final locale = Localizations.localeOf(context).languageCode;
+              String examLabel() {
+                if (examDate == null) return strings.examDateOptional;
+                return DateFormat.yMMMd(locale).format(examDate!);
+              }
+
+              return AlertDialog(
+                title: Text(strings.editCourse),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: strings.courseName,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: examDate ?? DateTime.now(),
+                            firstDate: DateTime.now()
+                                .subtract(const Duration(days: 365)),
+                            lastDate:
+                                DateTime.now().add(const Duration(days: 365 * 4)),
+                          );
+                          if (picked != null) {
+                            setLocal(() => examDate = DateTime(
+                                  picked.year,
+                                  picked.month,
+                                  picked.day,
+                                ));
+                          }
+                        },
+                        icon:
+                            const Icon(Icons.calendar_today_outlined, size: 18),
+                        label: Text(examLabel()),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: examDate == null
+                              ? null
+                              : () => setLocal(() => examDate = null),
+                          child: Text(strings.clearExamDate),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(strings.cancel),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(strings.save),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (saved != true || !context.mounted) return;
+      final name = nameController.text.trim();
+      if (name.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.courseNameRequired)),
+        );
+        return;
+      }
+      try {
+        await ref.read(subjectsRepositoryProvider).updateSubject(
+              uid: uid,
+              subjectId: subject.id,
+              name: name,
+              examDateIso: _toExamDateIso(examDate),
+            );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(strings.courseUpdated)),
+          );
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(strings.couldNotUpdateCourse)),
+          );
+        }
+      }
+    } finally {}
+  }
+
+  Future<void> _deleteSubject(
+    BuildContext context,
+    WidgetRef ref,
+    String uid,
+    Subject subject,
+  ) async {
+    final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(strings.deleteCourseTitle),
+        content: Text(strings.deleteCourseConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(strings.deleteCourse),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(subjectsRepositoryProvider).deleteSubject(
+            uid: uid,
+            subjectId: subject.id,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.courseDeleted)),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.couldNotDeleteCourse)),
+        );
+      }
     }
   }
 
@@ -223,7 +393,27 @@ class SubjectsManageScreen extends ConsumerWidget {
                           ),
                         );
                       }(),
-                      trailing: const Icon(Icons.chevron_right),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _showEditSubjectDialog(context, ref, user.uid, s);
+                            return;
+                          }
+                          if (value == 'delete') {
+                            _deleteSubject(context, ref, user.uid, s);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Text(strings.editCourse),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Text(strings.deleteCourse),
+                          ),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.of(context).push<void>(
                           MaterialPageRoute<void>(

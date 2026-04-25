@@ -17,11 +17,38 @@ abstract class SubjectsRepository {
     String color = '',
   });
 
+  Future<void> updateSubject({
+    required String uid,
+    required String subjectId,
+    required String name,
+    String examDateIso = '',
+    String? color,
+  });
+
+  Future<void> deleteSubject({
+    required String uid,
+    required String subjectId,
+  });
+
   /// Creates `users/{uid}/subjects/{subjectId}/topics/{autoId}`; returns topic id.
   Future<String> addTopic({
     required String uid,
     required String subjectId,
     required String title,
     double difficultyEstimate = 0.5,
+  });
+
+  Future<void> updateTopic({
+    required String uid,
+    required String subjectId,
+    required String topicId,
+    required String title,
+    double difficultyEstimate = 0.5,
+  });
+
+  Future<void> deleteTopic({
+    required String uid,
+    required String subjectId,
+    required String topicId,
   });
 }

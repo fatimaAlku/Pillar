@@ -14,4 +14,13 @@ class ProgressSnapshot {
   final double avgScore;
   final List<String> weakAreas;
   final String? majorId;
+
+  static const empty = ProgressSnapshot(
+    overallProgress: 0,
+    roadmapCompletion: 0,
+    sessionsCompletion: 0,
+    avgScore: 0,
+    weakAreas: <String>[],
+    majorId: null,
+  );
 }

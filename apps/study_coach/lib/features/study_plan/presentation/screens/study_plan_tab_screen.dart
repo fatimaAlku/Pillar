@@ -115,6 +115,10 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final idx = topics.indexWhere((t) => t.topicId == item.topicId);
     var topicSel = idx >= 0 ? topics[idx] : topics.first;
     double duration = item.durationMin.toDouble().clamp(15.0, 120.0);
+    var sessionTime = TimeOfDay(
+      hour: (item.startMinute ?? (17 * 60)) ~/ 60,
+      minute: (item.startMinute ?? (17 * 60)) % 60,
+    );
 
     final saved = await showDialog<bool>(
       context: context,
@@ -154,6 +158,31 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                             if (v == null) return;
                             setLocal(() => topicSel = v);
                           },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    InputDecorator(
+                      decoration: InputDecoration(
+                        labelText: strings.studyTime,
+                        border: const OutlineInputBorder(),
+                      ),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: TextButton.icon(
+                          onPressed: () async {
+                            final picked = await showTimePicker(
+                              context: context,
+                              initialTime: sessionTime,
+                            );
+                            if (picked == null) return;
+                            setLocal(() => sessionTime = picked);
+                          },
+                          icon: const Icon(Icons.schedule_outlined, size: 18),
+                          label: Text(
+                            MaterialLocalizations.of(context)
+                                .formatTimeOfDay(sessionTime),
+                          ),
                         ),
                       ),
                     ),
@@ -202,7 +231,10 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     if (saved != true || !mounted) return;
     final newTopicId = topicSel.topicId;
     final newDuration = duration.round();
-    if (newTopicId == item.topicId && newDuration == item.durationMin) {
+    final newStartMinute = (sessionTime.hour * 60) + sessionTime.minute;
+    if (newTopicId == item.topicId &&
+        newDuration == item.durationMin &&
+        newStartMinute == item.startMinute) {
       return;
     }
     try {
@@ -212,6 +244,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
             sessionId: item.sessionId,
             topicId: newTopicId != item.topicId ? newTopicId : null,
             durationMin: newDuration != item.durationMin ? newDuration : null,
+            startMinute:
+                newStartMinute != item.startMinute ? newStartMinute : null,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -231,6 +265,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     required DateTime scheduleDate,
     String? initialTopicId,
     int? initialDurationMin,
+    int? initialStartMinute,
   }) async {
     final strings = AppStrings.of(context);
     if (topics.isEmpty) {
@@ -247,12 +282,14 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       scheduleDate: scheduleDate,
       initialTopicId: initialTopicId,
       initialDurationMin: initialDurationMin,
-      onSave: (topicId, durationMin) async {
+      initialStartMinute: initialStartMinute,
+      onSave: (topicId, durationMin, startMinute) async {
         await ref.read(studySessionsRepositoryProvider).addSession(
               uid: uid,
               topicId: topicId,
               dateIso: dateIso,
               durationMin: durationMin,
+              startMinute: startMinute,
             );
       },
     );
@@ -353,13 +390,6 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                     ...daySchedule.map(
                       (item) => _ScheduleCard(
                         item: item,
-                        onAddToSchedule: () => _openAddToSchedule(
-                          uid: uid,
-                          topics: topics,
-                          scheduleDate: _selectedDate,
-                          initialTopicId: item.topicId,
-                          initialDurationMin: item.durationMin,
-                        ),
                         onEditSession:
                             item.sessionId.isNotEmpty && item.planId.isNotEmpty
                                 ? () => _editScheduledSession(
@@ -522,13 +552,11 @@ class _DayChip extends StatelessWidget {
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.item,
-    this.onAddToSchedule,
     this.onEditSession,
     this.onDeleteSession,
   });
 
   final _ScheduleItem item;
-  final VoidCallback? onAddToSchedule;
   final VoidCallback? onEditSession;
   final VoidCallback? onDeleteSession;
 
@@ -645,20 +673,6 @@ class _ScheduleCard extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    if (onAddToSchedule != null) ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: TextButton.icon(
-                          onPressed: onAddToSchedule,
-                          icon: const Icon(
-                            Icons.event_available_outlined,
-                            size: 18,
-                          ),
-                          label: Text(strings.addToScheduleFromCard),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
@@ -683,27 +697,53 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
     taskByTopic.putIfAbsent(t.topicId, () => t);
   }
   final topicById = <String, TopicPerformanceInput>{};
+  final subjectTitleById = <String, String>{};
   for (final t in topics) {
     topicById[t.topicId] = t;
+    if (t.subjectId.trim().isNotEmpty && t.subjectTitle.trim().isNotEmpty) {
+      subjectTitleById[t.subjectId] = t.subjectTitle;
+    }
   }
   final sorted = List<StudySession>.from(sessions)
-    ..sort((a, b) => a.topicId.compareTo(b.topicId));
+    ..sort((a, b) {
+      final aMinute = a.startMinute;
+      final bMinute = b.startMinute;
+      if (aMinute != null && bMinute != null) {
+        final byTime = aMinute.compareTo(bMinute);
+        if (byTime != 0) return byTime;
+      } else if (aMinute != null) {
+        return -1;
+      } else if (bMinute != null) {
+        return 1;
+      }
+      return a.topicId.compareTo(b.topicId);
+    });
 
   final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
   var current = DateTime(date.year, date.month, date.day, startHour);
   final items = <_ScheduleItem>[];
 
   for (final session in sorted) {
-    final timeLabel = _formatTime(current, localeCode);
+    final sessionStart = session.startMinute == null
+        ? current
+        : DateTime(
+            date.year,
+            date.month,
+            date.day,
+            session.startMinute! ~/ 60,
+            session.startMinute! % 60,
+          );
+    final timeLabel = _formatTime(sessionStart, localeCode);
     items.add(
       _ScheduleItem.fromSessionContext(
         session: session,
         timeLabel: timeLabel,
         task: taskByTopic[session.topicId],
         topic: topicById[session.topicId],
+        subjectTitleById: subjectTitleById,
       ),
     );
-    current = current.add(Duration(minutes: session.durationMin + 10));
+    current = sessionStart.add(Duration(minutes: session.durationMin + 10));
   }
   return items;
 }
@@ -744,6 +784,7 @@ class _ScheduleItem {
     required this.title,
     required this.subject,
     required this.durationMin,
+    required this.startMinute,
     required this.scoreLabel,
     required this.deadlineLabel,
     required this.weaknessLabel,
@@ -757,6 +798,7 @@ class _ScheduleItem {
     required String timeLabel,
     StudyTaskPriority? task,
     TopicPerformanceInput? topic,
+    Map<String, String> subjectTitleById = const {},
   }) {
     if (task != null) {
       final fromTask = _ScheduleItem.fromTask(
@@ -773,6 +815,7 @@ class _ScheduleItem {
         title: fromTask.title,
         subject: fromTask.subject,
         durationMin: session.durationMin,
+        startMinute: session.startMinute,
         scoreLabel: fromTask.scoreLabel,
         deadlineLabel: fromTask.deadlineLabel,
         weaknessLabel: fromTask.weaknessLabel,
@@ -781,16 +824,26 @@ class _ScheduleItem {
         priorityBand: fromTask.priorityBand,
       );
     }
-    final title = topic?.topicTitle ?? session.topicId;
+    final title = topic?.topicTitle ??
+        _fallbackTitleFromTopicId(
+          session.topicId,
+          subjectTitleById: subjectTitleById,
+        );
     final subject = topic?.subjectTitle ?? '';
     return _ScheduleItem(
       planId: session.planId,
       sessionId: session.id,
       topicId: session.topicId,
       timeLabel: timeLabel,
-      title: title.isEmpty ? session.topicId : title,
+      title: title.isEmpty
+          ? _fallbackTitleFromTopicId(
+              session.topicId,
+              subjectTitleById: subjectTitleById,
+            )
+          : title,
       subject: subject,
       durationMin: session.durationMin,
+      startMinute: session.startMinute,
       scoreLabel: '–',
       deadlineLabel: '–',
       weaknessLabel: '–',
@@ -819,6 +872,7 @@ class _ScheduleItem {
       title: task.topicTitle,
       subject: task.subjectTitle,
       durationMin: task.recommendedMinutes,
+      startMinute: null,
       scoreLabel: task.priorityScore.toStringAsFixed(2),
       deadlineLabel: task.deadlineUrgency.toStringAsFixed(2),
       weaknessLabel: task.weakness.toStringAsFixed(2),
@@ -835,6 +889,7 @@ class _ScheduleItem {
   final String title;
   final String subject;
   final int durationMin;
+  final int? startMinute;
   final String scoreLabel;
   final String deadlineLabel;
   final String weaknessLabel;
@@ -844,4 +899,24 @@ class _ScheduleItem {
 }
 
 enum _PriorityBand { high, medium, low }
+
+String _fallbackTitleFromTopicId(
+  String topicId, {
+  Map<String, String> subjectTitleById = const {},
+}) {
+  final raw = topicId.trim();
+  if (raw.isEmpty) return 'Topic';
+  const syntheticPrefix = 'subject_';
+  const syntheticSuffix = '_overview';
+  if (raw.startsWith(syntheticPrefix) && raw.endsWith(syntheticSuffix)) {
+    final subjectId =
+        raw.substring(syntheticPrefix.length, raw.length - syntheticSuffix.length);
+    final subjectTitle = subjectTitleById[subjectId]?.trim() ?? '';
+    if (subjectTitle.isNotEmpty) {
+      return '$subjectTitle overview';
+    }
+    return 'Course overview';
+  }
+  return raw;
+}
 

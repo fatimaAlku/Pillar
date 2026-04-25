@@ -14,7 +14,12 @@ Future<void> showAddToScheduleBottomSheet(
   required DateTime scheduleDate,
   String? initialTopicId,
   int? initialDurationMin,
-  required Future<void> Function(String topicId, int durationMin) onSave,
+  int? initialStartMinute,
+  required Future<void> Function(
+    String topicId,
+    int durationMin,
+    int startMinute,
+  ) onSave,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -30,11 +35,15 @@ Future<void> showAddToScheduleBottomSheet(
       final selected =
           idx >= 0 ? topics[idx] : topics.first;
       return _AddToScheduleBody(
+        hostContext: context,
         strings: strings,
         dayLabel: dayLabel,
         topics: topics,
         initialTopic: selected,
         initialDurationMin: (initialDurationMin ?? 30).clamp(15, 120),
+        initialStartMinute:
+            (initialStartMinute ?? (DateTime.now().hour * 60) + DateTime.now().minute)
+                .clamp(0, 1439),
         onSave: onSave,
       );
     },
@@ -43,20 +52,28 @@ Future<void> showAddToScheduleBottomSheet(
 
 class _AddToScheduleBody extends StatefulWidget {
   const _AddToScheduleBody({
+    required this.hostContext,
     required this.strings,
     required this.dayLabel,
     required this.topics,
     required this.initialTopic,
     required this.initialDurationMin,
+    required this.initialStartMinute,
     required this.onSave,
   });
 
+  final BuildContext hostContext;
   final AppStrings strings;
   final String dayLabel;
   final List<TopicPerformanceInput> topics;
   final TopicPerformanceInput initialTopic;
   final int initialDurationMin;
-  final Future<void> Function(String topicId, int durationMin) onSave;
+  final int initialStartMinute;
+  final Future<void> Function(
+    String topicId,
+    int durationMin,
+    int startMinute,
+  ) onSave;
 
   @override
   State<_AddToScheduleBody> createState() => _AddToScheduleBodyState();
@@ -65,6 +82,7 @@ class _AddToScheduleBody extends StatefulWidget {
 class _AddToScheduleBodyState extends State<_AddToScheduleBody> {
   late TopicPerformanceInput _topic;
   late double _duration;
+  late TimeOfDay _time;
 
   bool _busy = false;
 
@@ -73,30 +91,37 @@ class _AddToScheduleBodyState extends State<_AddToScheduleBody> {
     super.initState();
     _topic = widget.initialTopic;
     _duration = widget.initialDurationMin.toDouble();
+    _time = TimeOfDay(
+      hour: widget.initialStartMinute ~/ 60,
+      minute: widget.initialStartMinute % 60,
+    );
   }
 
   Future<void> _submit() async {
     if (_busy) return;
-    final messenger = ScaffoldMessenger.of(context);
-    final nav = Navigator.of(context);
     setState(() => _busy = true);
-    try {
-      await widget.onSave(_topic.topicId, _duration.round());
-      if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(widget.strings.sessionScheduledSuccess)),
-      );
-      nav.pop();
-    } catch (e) {
-      final message = e is TimeoutException
-          ? widget.strings.saveToScheduleTimedOut
-          : widget.strings.couldNotScheduleSession;
-      messenger.showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    final hostMessenger = ScaffoldMessenger.maybeOf(widget.hostContext);
+    Navigator.of(context).pop();
+    hostMessenger?.showSnackBar(
+      SnackBar(content: Text(widget.strings.sessionScheduledSuccess)),
+    );
+
+    unawaited(
+      widget
+          .onSave(
+            _topic.topicId,
+            _duration.round(),
+            (_time.hour * 60) + _time.minute,
+          )
+          .catchError((error) {
+        final message = error is TimeoutException
+            ? widget.strings.saveToScheduleTimedOut
+            : widget.strings.couldNotScheduleSession;
+        hostMessenger?.showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      }),
+    );
   }
 
   @override
@@ -154,6 +179,32 @@ class _AddToScheduleBodyState extends State<_AddToScheduleBody> {
                         if (v == null) return;
                         setState(() => _topic = v);
                       },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: strings.studyTime,
+              border: const OutlineInputBorder(),
+            ),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _time,
+                        );
+                        if (picked == null || !mounted) return;
+                        setState(() => _time = picked);
+                      },
+                icon: const Icon(Icons.schedule_outlined, size: 18),
+                label: Text(
+                  MaterialLocalizations.of(context).formatTimeOfDay(_time),
+                ),
               ),
             ),
           ),

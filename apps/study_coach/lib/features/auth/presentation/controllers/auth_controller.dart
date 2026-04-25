@@ -76,6 +76,9 @@ class AuthFormController extends StateNotifier<AuthFormState> {
               source: 'signup',
             );
       }
+      // Firebase signs users in immediately after account creation.
+      // Keep sign-up flow explicit by returning them to the login step.
+      await _ref.read(authRepositoryProvider).signOut();
     });
   }
 

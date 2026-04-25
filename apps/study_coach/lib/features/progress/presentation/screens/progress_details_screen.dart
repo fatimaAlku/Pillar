@@ -17,7 +17,33 @@ class ProgressDetailsScreen extends ConsumerWidget {
       appBar: AppBar(title: Text(strings.progressOverview)),
       body: progressAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('$error')),
+        error: (_, __) => Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.cloud_off_rounded,
+                  size: 34,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  strings.progressLoadFailed,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => ref.invalidate(progressSnapshotProvider),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: Text(strings.retry),
+                ),
+              ],
+            ),
+          ),
+        ),
         data: (snapshot) {
           if (snapshot == null) {
             return Center(child: Text(strings.login));

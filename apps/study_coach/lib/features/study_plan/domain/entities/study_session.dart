@@ -5,6 +5,7 @@ class StudySession {
     required this.topicId,
     required this.date,
     required this.durationMin,
+    required this.startMinute,
     required this.completed,
   });
 
@@ -13,5 +14,6 @@ class StudySession {
   final String topicId;
   final String date;
   final int durationMin;
+  final int? startMinute;
   final bool completed;
 }
