@@ -1,12 +1,10 @@
-import 'dart:io';
-
-import 'package:firebase_core/firebase_core.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../data/local/local_profile_avatar_store.dart';
 import '../../../roadmap/domain/major_catalog.dart';
 
 class ProfileEditorScreen extends ConsumerStatefulWidget {
@@ -21,8 +19,7 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _usernameController;
   bool _isSaving = false;
-  PlatformFile? _selectedImage;
-  bool _removePhoto = false;
+  String? _selectedAvatarId;
   String? _selectedMajorId;
 
   @override
@@ -43,6 +40,8 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
           .read(userProfileStreamProvider(authUser.uid))
           .valueOrNull
           ?.majorId;
+      _selectedAvatarId =
+          ref.read(localProfileAvatarIdProvider(authUser.uid)).valueOrNull;
     }
   }
 
@@ -52,27 +51,9 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     super.dispose();
   }
 
-  Future<void> _pickPhoto() async {
-    final result = await FilePicker.pickFiles(
-      allowMultiple: false,
-      type: FileType.image,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
-    final selected = result.files.single;
-    final hasPath = selected.path != null && selected.path!.isNotEmpty;
-    final hasBytes = selected.bytes != null && selected.bytes!.isNotEmpty;
-    if (!hasPath && !hasBytes) return;
+  void _choosePresetAvatar(String avatarId) {
     setState(() {
-      _selectedImage = selected;
-      _removePhoto = false;
-    });
-  }
-
-  void _removePhotoSelection() {
-    setState(() {
-      _selectedImage = null;
-      _removePhoto = true;
+      _selectedAvatarId = avatarId;
     });
   }
 
@@ -84,54 +65,47 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     final strings = AppStrings.of(context);
     setState(() => _isSaving = true);
     try {
-      String? uploadedPhotoUrl;
-      if (_selectedImage != null) {
-        uploadedPhotoUrl =
-            await ref.read(authRepositoryProvider).uploadProfilePhoto(
-                  uid: authUser.uid,
-                  filePath: _selectedImage!.path,
-                  fileBytes: _selectedImage!.bytes,
-                  fileName: _selectedImage!.name,
-                );
+      final localAvatarStore = ref.read(localProfileAvatarStoreProvider);
+      if (_selectedAvatarId != null) {
+        await localAvatarStore.setSelectedAvatarId(
+          uid: authUser.uid,
+          avatarId: _selectedAvatarId!,
+        );
+      } else {
+        await localAvatarStore.clearSelectedAvatarId(authUser.uid);
       }
       await ref.read(authRepositoryProvider).updateProfile(
             displayName: _usernameController.text,
-            photoUrl: _removePhoto ? '' : uploadedPhotoUrl,
           );
       final selectedMajor = _selectedMajorId?.trim();
       if (selectedMajor != null && selectedMajor.isNotEmpty) {
-        await ref.read(userProfileRepositoryProvider).setMajor(
-              uid: authUser.uid,
-              majorId: selectedMajor,
-              source: 'profile',
-            );
+        try {
+          await ref.read(userProfileRepositoryProvider).setMajor(
+                uid: authUser.uid,
+                majorId: selectedMajor,
+                source: 'profile',
+              );
+        } catch (_) {
+          // Non-blocking: keep profile update successful even if major sync fails.
+        }
       }
+      ref.invalidate(localProfileAvatarIdProvider(authUser.uid));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.profileUpdated)),
       );
       Navigator.of(context).pop();
-    } on FirebaseException catch (e) {
+    } catch (e) {
       if (!mounted) return;
-      final details = switch (e.code) {
-        'object-not-found' =>
-          '${strings.couldNotUpdateProfile} Uploaded image could not be read back from Storage. Check Storage rules for authenticated read/write access.',
-        'unauthorized' =>
-          '${strings.couldNotUpdateProfile} Storage permission denied. Check Firebase Storage rules.',
-        _ => (() {
-            final message = e.message?.trim();
-            return message != null && message.isNotEmpty
-                ? '${strings.couldNotUpdateProfile} $message'
-                : strings.couldNotUpdateProfile;
-          })(),
-      };
+      final details = e.toString().trim();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(details)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.couldNotUpdateProfile)),
+        SnackBar(
+          content: Text(
+            details.isEmpty
+                ? strings.couldNotUpdateProfile
+                : '${strings.couldNotUpdateProfile} $details',
+          ),
+        ),
       );
     } finally {
       if (mounted) {
@@ -152,18 +126,20 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     final majorIdForForm = _selectedMajorId ?? profile?.majorId;
     final photoUrl = authUser?.photoUrl?.trim();
     final hasRemotePhoto = photoUrl != null && photoUrl.isNotEmpty;
-    final canRemovePhoto = _selectedImage != null || hasRemotePhoto;
+    final savedAvatarId = authUser == null
+        ? null
+        : ref.watch(localProfileAvatarIdProvider(authUser.uid)).valueOrNull;
+    final avatarId = _selectedAvatarId ?? savedAvatarId;
+    final hasPresetAvatar = avatarId != null && avatarId.isNotEmpty;
     ImageProvider<Object>? imageProvider;
-    if (_selectedImage != null && !_removePhoto) {
-      if (_selectedImage!.bytes != null && _selectedImage!.bytes!.isNotEmpty) {
-        imageProvider = MemoryImage(_selectedImage!.bytes!);
-      } else if (_selectedImage!.path != null &&
-          _selectedImage!.path!.isNotEmpty) {
-        imageProvider = FileImage(File(_selectedImage!.path!));
-      }
-    } else if (hasRemotePhoto && !_removePhoto) {
+    if (!hasPresetAvatar && hasRemotePhoto) {
       imageProvider = NetworkImage(photoUrl);
     }
+    final presetAvatarAsset = switch (avatarId) {
+      LocalProfileAvatarStore.maleAvatarId => 'assets/avatars/male.svg',
+      LocalProfileAvatarStore.femaleAvatarId => 'assets/avatars/female.svg',
+      _ => null,
+    };
 
     return Scaffold(
       appBar: AppBar(title: Text(strings.editProfile)),
@@ -174,30 +150,57 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
             child: CircleAvatar(
               radius: 52,
               backgroundColor: colorScheme.surfaceContainerHigh,
-              backgroundImage: imageProvider,
-              child: imageProvider == null
-                  ? Icon(
-                      Icons.person_rounded,
-                      size: 54,
-                      color: colorScheme.onSurfaceVariant,
+              backgroundImage: presetAvatarAsset == null ? imageProvider : null,
+              child: presetAvatarAsset != null
+                  ? ClipOval(
+                      child: SvgPicture.asset(
+                        presetAvatarAsset,
+                        width: 104,
+                        height: 104,
+                        fit: BoxFit.cover,
+                      ),
                     )
-                  : null,
+                  : imageProvider == null
+                      ? Icon(
+                          Icons.person_rounded,
+                          size: 54,
+                          color: colorScheme.onSurfaceVariant,
+                        )
+                      : null,
             ),
           ),
           const SizedBox(height: 12),
-          Center(
-            child: TextButton.icon(
-              onPressed: _isSaving ? null : _pickPhoto,
-              icon: const Icon(Icons.photo_library_outlined),
-              label: Text(strings.changePhoto),
+          Text(
+            strings.chooseAvatar,
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          Center(
-            child: TextButton(
-              onPressed:
-                  (_isSaving || !canRemovePhoto) ? null : _removePhotoSelection,
-              child: Text(strings.removePhoto),
-            ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _AvatarOption(
+                label: strings.avatarMale,
+                assetPath: 'assets/avatars/male.svg',
+                selected: avatarId == LocalProfileAvatarStore.maleAvatarId,
+                onTap: _isSaving
+                    ? null
+                    : () => _choosePresetAvatar(
+                        LocalProfileAvatarStore.maleAvatarId),
+              ),
+              const SizedBox(width: 16),
+              _AvatarOption(
+                label: strings.avatarFemale,
+                assetPath: 'assets/avatars/female.svg',
+                selected: avatarId == LocalProfileAvatarStore.femaleAvatarId,
+                onTap: _isSaving
+                    ? null
+                    : () => _choosePresetAvatar(
+                        LocalProfileAvatarStore.femaleAvatarId),
+              ),
+            ],
           ),
           const SizedBox(height: 18),
           Form(
@@ -266,6 +269,55 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AvatarOption extends StatelessWidget {
+  const _AvatarOption({
+    required this.label,
+    required this.assetPath,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String assetPath;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color:
+                    selected ? colorScheme.primary : colorScheme.outlineVariant,
+                width: selected ? 2.5 : 1.2,
+              ),
+            ),
+            child: ClipOval(
+              child: SvgPicture.asset(
+                assetPath,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
   }
 }

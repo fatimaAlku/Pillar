@@ -113,7 +113,8 @@ class _QuizInProgressView extends ConsumerWidget {
               children: [
                 Expanded(
                   child: Text(
-                    strings.questionCounter(state.questionNumber, state.totalCount),
+                    strings.questionCounter(
+                        state.questionNumber, state.totalCount),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -172,7 +173,9 @@ class _QuizInProgressView extends ConsumerWidget {
                   child: FilledButton.icon(
                     onPressed: () {
                       if (state.isLastQuestion) {
-                        ref.read(quizRunnerControllerProvider.notifier).submit();
+                        ref
+                            .read(quizRunnerControllerProvider.notifier)
+                            .submit();
                       } else {
                         ref.read(quizRunnerControllerProvider.notifier).next();
                       }
@@ -180,7 +183,8 @@ class _QuizInProgressView extends ConsumerWidget {
                     icon: Icon(
                       state.isLastQuestion ? Icons.check : Icons.chevron_right,
                     ),
-                    label: Text(state.isLastQuestion ? strings.submit : strings.next),
+                    label: Text(
+                        state.isLastQuestion ? strings.submit : strings.next),
                   ),
                 ),
               ],
@@ -255,7 +259,9 @@ class _OptionTile extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                isSelected
+                    ? Icons.radio_button_checked
+                    : Icons.radio_button_off,
                 color: isSelected ? colorScheme.primary : colorScheme.outline,
               ),
               const SizedBox(width: 12),
@@ -294,7 +300,8 @@ class _QuizSubmittedView extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(strings.score, style: Theme.of(context).textTheme.titleLarge),
+                  Text(strings.score,
+                      style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 6),
                   Text(
                     '${result.correctCount}/${result.totalCount} ($percent%)',
@@ -349,7 +356,9 @@ class _QuizSubmittedView extends ConsumerWidget {
                       children: [
                         Icon(
                           isCorrect ? Icons.check_circle : Icons.cancel,
-                          color: isCorrect ? PillarColors.success : colorScheme.error,
+                          color: isCorrect
+                              ? PillarColors.success
+                              : colorScheme.error,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -363,7 +372,9 @@ class _QuizSubmittedView extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Text(
                       strings.yourAnswer(
-                        selected == null ? strings.unanswered : q.options[selected],
+                        selected == null
+                            ? strings.unanswered
+                            : q.options[selected],
                       ),
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
@@ -371,13 +382,13 @@ class _QuizSubmittedView extends ConsumerWidget {
                     Text(
                       strings.correctAnswer(q.options[q.correctIndex]),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color:
-                                isCorrect
-                                    ? PillarColors.success
-                                    : colorScheme.primary,
+                            color: isCorrect
+                                ? PillarColors.success
+                                : colorScheme.primary,
                           ),
                     ),
-                    if (q.explanation != null && q.explanation!.trim().isNotEmpty)
+                    if (q.explanation != null &&
+                        q.explanation!.trim().isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
@@ -394,7 +405,7 @@ class _QuizSubmittedView extends ConsumerWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () => Navigator.of(context).maybePop(),
+              onPressed: () => Navigator.of(context).pop(true),
               child: Text(strings.backToQuizzes),
             ),
           ),
@@ -413,4 +424,3 @@ class _SectionTitle extends StatelessWidget {
     return Text(title, style: Theme.of(context).textTheme.titleMedium);
   }
 }
-

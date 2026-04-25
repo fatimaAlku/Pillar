@@ -24,6 +24,16 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   static const int _minQuestions = 5;
   static const int _maxQuestions = 15;
 
+  void _resetQuizForm() {
+    setState(() {
+      _topicsController.clear();
+      _notesController.clear();
+      _difficulty = 'medium';
+      _questionCount = 10;
+    });
+    ref.read(quizRunnerControllerProvider.notifier).resetSession();
+  }
+
   void _showMessage(String message) {
     final messenger = ScaffoldMessenger.of(context);
     messenger
@@ -341,11 +351,16 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                               ref.read(quizRunnerControllerProvider);
                           if (nextState is QuizRunnerInProgress ||
                               nextState is QuizRunnerSubmitted) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
+                            final shouldReset =
+                                await Navigator.of(context).push<bool>(
+                              MaterialPageRoute<bool>(
                                 builder: (_) => const QuizRunnerScreen(),
                               ),
                             );
+                            if (!context.mounted) return;
+                            if (shouldReset == true) {
+                              _resetQuizForm();
+                            }
                             return;
                           }
 

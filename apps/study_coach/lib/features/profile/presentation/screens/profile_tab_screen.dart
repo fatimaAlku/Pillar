@@ -1,10 +1,14 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/theme_mode_controller.dart';
+import '../../data/local/local_profile_avatar_store.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../progress/presentation/screens/progress_details_screen.dart';
 import 'about_screen.dart';
@@ -29,6 +33,24 @@ class ProfileTabScreen extends ConsumerWidget {
     final hasUserEmail = userEmail != null && userEmail.isNotEmpty;
     final photoUrl = authUser?.photoUrl?.trim();
     final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
+    final avatarId = authUser == null
+        ? null
+        : ref.watch(localProfileAvatarIdProvider(authUser.uid)).valueOrNull;
+    final avatarAssetPath = switch (avatarId) {
+      LocalProfileAvatarStore.maleAvatarId => 'assets/avatars/male.svg',
+      LocalProfileAvatarStore.femaleAvatarId => 'assets/avatars/female.svg',
+      _ => null,
+    };
+    final localPhotoPath = authUser == null
+        ? null
+        : ref.watch(localProfilePhotoPathProvider(authUser.uid)).valueOrNull;
+    final hasLocalPhoto = localPhotoPath != null && localPhotoPath.isNotEmpty;
+    ImageProvider<Object>? profileImage;
+    if (hasLocalPhoto) {
+      profileImage = FileImage(File(localPhotoPath));
+    } else if (hasPhoto) {
+      profileImage = NetworkImage(photoUrl);
+    }
     final profileName = authUser?.displayName?.trim();
     final hasProfileName = profileName != null && profileName.isNotEmpty;
     final displayName = hasProfileName
@@ -59,14 +81,23 @@ class ProfileTabScreen extends ConsumerWidget {
               CircleAvatar(
                 radius: 42,
                 backgroundColor: colorScheme.surfaceContainerHigh,
-                backgroundImage: hasPhoto ? NetworkImage(photoUrl) : null,
-                child: hasPhoto
-                    ? null
-                    : Icon(
-                        Icons.person_rounded,
-                        size: 46,
-                        color: colorScheme.onSurfaceVariant,
-                      ),
+                backgroundImage: avatarAssetPath == null ? profileImage : null,
+                child: avatarAssetPath != null
+                    ? ClipOval(
+                        child: SvgPicture.asset(
+                          avatarAssetPath,
+                          width: 84,
+                          height: 84,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : profileImage != null
+                        ? null
+                        : Icon(
+                            Icons.person_rounded,
+                            size: 46,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
               ),
               Positioned(
                 right: -2,

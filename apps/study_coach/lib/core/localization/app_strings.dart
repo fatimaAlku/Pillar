@@ -30,9 +30,15 @@ class AppStrings {
   String get profilePhoto => _isArabic ? 'الصورة الشخصية' : 'Profile photo';
   String get changePhoto => _isArabic ? 'تغيير الصورة' : 'Change photo';
   String get removePhoto => _isArabic ? 'إزالة الصورة' : 'Remove photo';
+  String get chooseAvatar => _isArabic ? 'اختر صورة رمزية' : 'Choose avatar';
+  String get avatarMale => _isArabic ? 'ذكر' : 'Male';
+  String get avatarFemale => _isArabic ? 'أنثى' : 'Female';
   String get saveChanges => _isArabic ? 'حفظ التغييرات' : 'Save changes';
   String get profileUpdated =>
       _isArabic ? 'تم تحديث الملف الشخصي.' : 'Profile updated.';
+  String get profileUpdatedLocally => _isArabic
+      ? 'تم حفظ الصورة على جهازك مؤقتًا. لتتم مزامنتها عبر الأجهزة، فعّل Firebase Storage.'
+      : 'Photo saved locally on this device. Enable Firebase Storage to sync it across devices.';
   String get couldNotUpdateProfile =>
       _isArabic ? 'تعذّر تحديث الملف الشخصي.' : 'Could not update profile.';
   String get password => _isArabic ? 'كلمة المرور' : 'Password';
@@ -208,8 +214,7 @@ class AppStrings {
   String explanation(String text) =>
       _isArabic ? 'الشرح: $text' : 'Explanation: $text';
   String get unanswered => _isArabic ? 'بدون إجابة' : 'Unanswered';
-  String get backToQuizzes =>
-      _isArabic ? 'العودة للاختبارات' : 'Back to quizzes';
+  String get backToQuizzes => _isArabic ? 'رجوع' : 'Back';
 
   String majorRoadmap(String majorTitle) =>
       _isArabic ? 'خارطة طريق $majorTitle' : '$majorTitle Roadmap';

@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/auth_user.dart';
 import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
+import '../../features/profile/data/local/local_profile_photo_store.dart';
+import '../../features/profile/data/local/local_profile_avatar_store.dart';
 import '../../features/profile/domain/entities/user_profile_data.dart';
 import '../../features/profile/domain/repositories/user_profile_repository.dart';
 import '../../features/progress/data/repositories/progress_repository_impl.dart';
@@ -76,6 +78,25 @@ final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
 final userProfileStreamProvider =
     StreamProvider.family<UserProfileData?, String>((ref, uid) {
   return ref.watch(userProfileRepositoryProvider).watchProfile(uid);
+});
+
+final localProfilePhotoStoreProvider = Provider<LocalProfilePhotoStore>((ref) {
+  return LocalProfilePhotoStore();
+});
+
+final localProfilePhotoPathProvider =
+    FutureProvider.family<String?, String>((ref, uid) {
+  return ref.watch(localProfilePhotoStoreProvider).getPhotoPath(uid);
+});
+
+final localProfileAvatarStoreProvider =
+    Provider<LocalProfileAvatarStore>((ref) {
+  return LocalProfileAvatarStore();
+});
+
+final localProfileAvatarIdProvider =
+    FutureProvider.family<String?, String>((ref, uid) {
+  return ref.watch(localProfileAvatarStoreProvider).getSelectedAvatarId(uid);
 });
 
 final progressRepositoryImplProvider = Provider<ProgressRepository>((ref) {

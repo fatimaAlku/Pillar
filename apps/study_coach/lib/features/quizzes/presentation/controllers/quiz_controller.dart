@@ -119,6 +119,12 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     );
   }
 
+  void resetSession() {
+    _lastRequest = null;
+    _lastGeneratedQuestions = null;
+    state = const QuizRunnerIdle();
+  }
+
   Future<void> generateQuiz({
     required List<String> topics,
     required String difficulty,
