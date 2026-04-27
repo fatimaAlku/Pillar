@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../data/services/quiz_ai_service.dart';
 import '../../domain/entities/quiz_question.dart';
@@ -15,6 +16,7 @@ final quizRunnerControllerProvider =
     ref.watch(quizAiServiceProvider),
     ref.watch(quizHistoryRepositoryProvider),
     () => ref.read(currentAuthUserProvider).valueOrNull?.uid,
+    () => ref.read(appLocaleProvider).languageCode,
   );
 });
 
@@ -97,12 +99,14 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     this._quizAiService,
     this._quizHistoryRepository,
     this._currentUserId,
+    this._currentLanguageCode,
   ) : super(const QuizRunnerIdle());
   static const Duration _generationTimeout = Duration(seconds: 70);
 
   final QuizAiService _quizAiService;
   final QuizHistoryRepository _quizHistoryRepository;
   final String? Function() _currentUserId;
+  final String Function() _currentLanguageCode;
   QuizGenerationRequest? _lastRequest;
   List<QuizQuestion>? _lastGeneratedQuestions;
 
@@ -151,6 +155,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
         difficulty: difficulty,
         numberOfQuestions: numberOfQuestions,
         notesText: normalizedNotes,
+        languageCode: _currentLanguageCode(),
       )
           .timeout(_generationTimeout, onTimeout: () {
         throw const QuizAiServiceException(

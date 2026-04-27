@@ -4,8 +4,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
-import '../../data/local/local_profile_avatar_store.dart';
 import '../../../roadmap/domain/major_catalog.dart';
+import '../../data/local/local_profile_avatar_store.dart';
 
 class ProfileEditorScreen extends ConsumerStatefulWidget {
   const ProfileEditorScreen({super.key});
@@ -20,7 +20,6 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   late final TextEditingController _usernameController;
   bool _isSaving = false;
   String? _selectedAvatarId;
-  String? _selectedMajorId;
 
   @override
   void initState() {
@@ -36,10 +35,6 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
           : (hasEmail ? email.split('@').first : ''),
     );
     if (authUser != null) {
-      _selectedMajorId = ref
-          .read(userProfileStreamProvider(authUser.uid))
-          .valueOrNull
-          ?.majorId;
       _selectedAvatarId =
           ref.read(localProfileAvatarIdProvider(authUser.uid)).valueOrNull;
     }
@@ -77,18 +72,6 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
       await ref.read(authRepositoryProvider).updateProfile(
             displayName: _usernameController.text,
           );
-      final selectedMajor = _selectedMajorId?.trim();
-      if (selectedMajor != null && selectedMajor.isNotEmpty) {
-        try {
-          await ref.read(userProfileRepositoryProvider).setMajor(
-                uid: authUser.uid,
-                majorId: selectedMajor,
-                source: 'profile',
-              );
-        } catch (_) {
-          // Non-blocking: keep profile update successful even if major sync fails.
-        }
-      }
       ref.invalidate(localProfileAvatarIdProvider(authUser.uid));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +106,7 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     final profile = authUser == null
         ? null
         : ref.watch(userProfileStreamProvider(authUser.uid)).valueOrNull;
-    final majorIdForForm = _selectedMajorId ?? profile?.majorId;
+    final majorTitle = majorTitleFromId(profile?.majorId).trim();
     final photoUrl = authUser?.photoUrl?.trim();
     final hasRemotePhoto = photoUrl != null && photoUrl.isNotEmpty;
     final savedAvatarId = authUser == null
@@ -230,25 +213,13 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: majorIdForForm,
+                TextFormField(
+                  initialValue: majorTitle.isEmpty ? '-' : majorTitle,
+                  enabled: false,
                   decoration: InputDecoration(
-                    labelText: strings.chooseMajor,
+                    labelText: strings.major,
                     prefixIcon: const Icon(Icons.school_outlined),
                   ),
-                  items: majorCatalog
-                      .map(
-                        (major) => DropdownMenuItem<String>(
-                          value: major.id,
-                          child: Text(major.title),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedMajorId = value;
-                    });
-                  },
                 ),
                 const SizedBox(height: 20),
                 SizedBox(

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 import '../../../study_plan/domain/entities/study_personalization_models.dart';
 import '../../../study_plan/domain/entities/study_session.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
@@ -30,11 +31,11 @@ class HomeDashboardView extends ConsumerStatefulWidget {
   const HomeDashboardView({
     super.key,
     this.onGenerateQuizTap,
-    this.onUploadNotesTap,
+    this.onAddTopicTap,
   });
 
   final VoidCallback? onGenerateQuizTap;
-  final VoidCallback? onUploadNotesTap;
+  final VoidCallback? onAddTopicTap;
 
   @override
   ConsumerState<HomeDashboardView> createState() => _HomeDashboardViewState();
@@ -212,8 +213,14 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                           ),
                       onGenerateQuiz: widget.onGenerateQuizTap ??
                           () => _onQuickAction(context, strings.generateQuiz),
-                      onUploadNotes: widget.onUploadNotesTap ??
-                          () => _onQuickAction(context, strings.uploadNotes),
+                      onAddTopic: widget.onAddTopicTap ??
+                          () {
+                            Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SubjectsManageScreen(),
+                              ),
+                            );
+                          },
                     ),
                   ],
                 );
@@ -612,12 +619,12 @@ class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow({
     required this.onAddTask,
     required this.onGenerateQuiz,
-    required this.onUploadNotes,
+    required this.onAddTopic,
   });
 
   final VoidCallback onAddTask;
   final VoidCallback onGenerateQuiz;
-  final VoidCallback onUploadNotes;
+  final VoidCallback onAddTopic;
 
   @override
   Widget build(BuildContext context) {
@@ -642,9 +649,9 @@ class _QuickActionsRow extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: _QuickActionCard(
-            icon: Icons.upload_file_rounded,
-            label: strings.uploadNotes,
-            onTap: onUploadNotes,
+            icon: Icons.topic_outlined,
+            label: strings.addCourse,
+            onTap: onAddTopic,
           ),
         ),
       ],

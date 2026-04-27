@@ -25,7 +25,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final pages = <Widget>[
       HomeDashboardView(
         onGenerateQuizTap: () => setState(() => _currentIndex = 2),
-        onUploadNotesTap: () => setState(() => _currentIndex = 2),
       ),
       const StudyPlanTabScreen(),
       const QuizzesTabScreen(),

@@ -15,6 +15,7 @@ abstract class QuizAiService {
     required String difficulty,
     required int numberOfQuestions,
     String? notesText,
+    String languageCode = 'en',
   });
 }
 
@@ -33,6 +34,7 @@ class OpenAiQuizAiService implements QuizAiService {
     required String difficulty,
     required int numberOfQuestions,
     String? notesText,
+    String languageCode = 'en',
   }) async {
     final trimmedTopics =
         topics.map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
@@ -68,6 +70,7 @@ class OpenAiQuizAiService implements QuizAiService {
         notesText: normalizedNotes,
         difficulty: difficulty,
         numberOfQuestions: numberOfQuestions,
+        languageCode: languageCode,
       );
 
       final parsed = QuizAiResponseParser.parseToQuestions(
@@ -86,6 +89,7 @@ class OpenAiQuizAiService implements QuizAiService {
         notesText: normalizedNotes,
         numberOfQuestions: numberOfQuestions,
         fallbackTopic: fallbackTopic,
+        languageCode: languageCode,
       );
     }
   }
@@ -94,7 +98,9 @@ class OpenAiQuizAiService implements QuizAiService {
     required String notesText,
     required int numberOfQuestions,
     required String fallbackTopic,
+    required String languageCode,
   }) {
+    final isArabic = languageCode == 'ar';
     final facts = notesText
         .split(RegExp(r'[\n\r]+'))
         .map((e) => e.trim())
@@ -102,10 +108,17 @@ class OpenAiQuizAiService implements QuizAiService {
         .toList();
     final normalizedFacts = facts.isEmpty
         ? <String>[
-            'Review the topic fundamentals and definitions carefully',
-            'Break problems into clear step-by-step actions',
-            'Test with small examples before scaling complexity',
-            'Check and correct mistakes after each attempt',
+            if (isArabic) ...[
+              'راجع أساسيات الموضوع والتعريفات بعناية',
+              'قسّم المسألة إلى خطوات واضحة ومتسلسلة',
+              'اختبر بأمثلة صغيرة قبل زيادة التعقيد',
+              'تحقّق من الأخطاء وصححها بعد كل محاولة',
+            ] else ...[
+              'Review the topic fundamentals and definitions carefully',
+              'Break problems into clear step-by-step actions',
+              'Test with small examples before scaling complexity',
+              'Check and correct mistakes after each attempt',
+            ],
           ]
         : facts;
 
@@ -121,9 +134,15 @@ class OpenAiQuizAiService implements QuizAiService {
 
       final options = <String>[
         fact,
-        'Ignore this and instead focus on: $distractorA',
-        'Use only memorization and skip reasoning ($distractorB)',
-        'Do the opposite approach: $distractorC',
+        if (isArabic) ...[
+          'تجاهل هذا وركّز بدلًا من ذلك على: $distractorA',
+          'اعتمد على الحفظ فقط وتجاوز الفهم ($distractorB)',
+          'اتبع العكس تمامًا: $distractorC',
+        ] else ...[
+          'Ignore this and instead focus on: $distractorA',
+          'Use only memorization and skip reasoning ($distractorB)',
+          'Do the opposite approach: $distractorC',
+        ],
       ];
 
       questions.add(
@@ -131,10 +150,14 @@ class OpenAiQuizAiService implements QuizAiService {
           id: 'local_q_${i + 1}',
           topicId: 'topic_${QuizAiResponseParser._slug(fallbackTopic)}',
           topicTitle: fallbackTopic,
-          prompt: 'According to your notes, which statement is most accurate?',
+          prompt: isArabic
+              ? 'وفقًا لملاحظاتك، أي عبارة هي الأدق؟'
+              : 'According to your notes, which statement is most accurate?',
           options: options,
           correctIndex: 0,
-          explanation: 'Generated from your notes while AI service is busy.',
+          explanation: isArabic
+              ? 'تم إنشاء هذا السؤال من ملاحظاتك أثناء انشغال خدمة الذكاء الاصطناعي.'
+              : 'Generated from your notes while AI service is busy.',
         ),
       );
     }
@@ -147,7 +170,9 @@ class OpenAiQuizAiService implements QuizAiService {
     required String difficulty,
     required int numberOfQuestions,
     required String? notesText,
+    required String languageCode,
   }) async {
+    final isArabic = languageCode == 'ar';
     final systemPrompt = [
       'You generate high-quality MCQ quizzes for university students.',
       'Return JSON only with shape: {"questions":[{"prompt":"string","options":["a","b","c","d"],"correctIndex":0,"explanation":"string","topicTitle":"string"}]}',
@@ -159,6 +184,10 @@ class OpenAiQuizAiService implements QuizAiService {
       '- correctIndex must be 0,1,2,3.',
       '- Return exactly $numberOfQuestions questions.',
       '- Difficulty level is $difficulty.',
+      if (isArabic)
+        '- Write all questions, options, explanations, and topic titles in Arabic.'
+      else
+        '- Write all questions, options, explanations, and topic titles in English.',
     ].join('\n');
     final userPrompt = [
       'Topics: ${topics.isEmpty ? 'General' : topics.join(', ')}',
