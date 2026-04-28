@@ -335,6 +335,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           icon: const Icon(Icons.add),
           label: Text(strings.addSchedule),
         ),
+        const SizedBox(height: 12),
+        _ScheduleRecommendationsCard(
+          uid: uid,
+          topics: topics,
+        ),
         const SizedBox(height: 18),
         Text(
           _formatDateHeader(_selectedDate, localeCode),
@@ -679,6 +684,139 @@ class _ScheduleCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ScheduleRecommendationsCard extends ConsumerWidget {
+  const _ScheduleRecommendationsCard({
+    required this.uid,
+    required this.topics,
+  });
+
+  final String uid;
+  final List<TopicPerformanceInput> topics;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final history = ref.watch(quizHistoryStreamProvider(uid)).valueOrNull ?? const [];
+
+    String mapWeakAreaToTitle(String weakArea) {
+      final normalizedWeak = weakArea.toLowerCase().replaceAll('_', ' ').trim();
+      for (final topic in topics) {
+        final title = topic.topicTitle.trim();
+        if (title.isEmpty) continue;
+        final normalizedTitle = title.toLowerCase();
+        if (normalizedTitle.contains(normalizedWeak) ||
+            normalizedWeak.contains(normalizedTitle)) {
+          return title;
+        }
+      }
+      return weakArea.replaceAll('_', ' ');
+    }
+
+    final weakCounts = <String, int>{};
+    for (final entry in history.take(10)) {
+      for (final weak in entry.weakTopicTitles) {
+        final key = weak.trim();
+        if (key.isEmpty) continue;
+        weakCounts[key] = (weakCounts[key] ?? 0) + 1;
+      }
+    }
+    final visibleWeakAreas = weakCounts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final weakTopicTitles = visibleWeakAreas
+        .map((e) => mapWeakAreaToTitle(e.key))
+        .where((item) => item.trim().isNotEmpty)
+        .take(4)
+        .toList(growable: false);
+    final recommendationText = weakTopicTitles.isEmpty
+        ? (history.isEmpty
+            ? 'Complete a quiz to unlock personalized recommendations.'
+            : strings.noWeakTopics)
+        : 'Focus on ${weakTopicTitles.take(2).join(' and ')} in your next sessions.';
+
+    return ExcludeSemantics(
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Material(
+                    color: colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: () => ref.invalidate(quizHistoryStreamProvider(uid)),
+                      borderRadius: BorderRadius.circular(10),
+                      child: SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: Icon(
+                          Icons.psychology_alt_outlined,
+                          color: colorScheme.primary,
+                          size: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      strings.aiSuggestion,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                recommendationText,
+                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                strings.weakTopics,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Builder(
+                builder: (_) {
+                  if (weakTopicTitles.isEmpty) {
+                    return Text(
+                      strings.noWeakTopics,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    );
+                  }
+                  return Text(
+                    weakTopicTitles.join(' • '),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

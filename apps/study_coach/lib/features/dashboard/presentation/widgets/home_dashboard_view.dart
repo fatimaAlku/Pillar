@@ -197,8 +197,6 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                               ),
                     ),
                     const SizedBox(height: 16),
-                    const _AiSuggestionCard(),
-                    const SizedBox(height: 16),
                     Text(
                       strings.quickActions,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -542,73 +540,6 @@ class _TodayPlanCard extends StatelessWidget {
                 );
               }),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AiSuggestionCard extends StatelessWidget {
-  const _AiSuggestionCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final strings = AppStrings.of(context);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primaryContainer.withValues(alpha: 0.85),
-              colorScheme.tertiaryContainer.withValues(alpha: 0.55),
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.auto_awesome_rounded,
-                color: colorScheme.onPrimaryContainer,
-                size: 28,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      strings.aiSuggestion,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      strings.aiSuggestionBody,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onPrimaryContainer.withValues(
-                          alpha: 0.92,
-                        ),
-                        height: 1.35,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

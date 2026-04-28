@@ -362,3 +362,4 @@ export const generateRecommendations = onCall(async (request) => {
 
   return {insightId: insightRef.id, generatedAt: now};
 });
+

@@ -82,6 +82,16 @@ class AppStrings {
   String get aiSuggestionBody => _isArabic
       ? 'سيعرض لك مساعدك نصائح مخصصة هنا بناءً على جدولك ونتائج اختباراتك.'
       : 'Your coach will surface personalized tips here based on your schedule and quiz results.';
+  String get refreshRecommendations =>
+      _isArabic ? 'تحديث التوصيات' : 'Refresh recommendations';
+  String get recommendationsUpdated =>
+      _isArabic ? 'تم تحديث التوصيات.' : 'Recommendations updated.';
+  String get couldNotGenerateRecommendations => _isArabic
+      ? 'تعذّر إنشاء التوصيات الآن.'
+      : 'Could not generate recommendations right now.';
+  String get justNow => _isArabic ? 'الآن' : 'Just now';
+  String lastGeneratedAt(String label) =>
+      _isArabic ? 'آخر إنشاء: $label' : 'Last generated: $label';
   String percentComplete(int percent) =>
       _isArabic ? 'مكتمل $percent٪' : '$percent% complete';
   String completedTasks(int completed, int total) =>

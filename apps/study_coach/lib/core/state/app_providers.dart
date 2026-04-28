@@ -16,6 +16,9 @@ import '../../features/progress/domain/repositories/progress_repository.dart';
 import '../../features/quizzes/data/repositories/quiz_history_repository_impl.dart';
 import '../../features/quizzes/domain/entities/quiz_history_entry.dart';
 import '../../features/quizzes/domain/repositories/quiz_history_repository.dart';
+import '../../features/recommendations/data/repositories/recommendations_repository_impl.dart';
+import '../../features/recommendations/domain/entities/recommendation.dart';
+import '../../features/recommendations/domain/repositories/recommendations_repository.dart';
 import '../../features/subjects/data/repositories/subjects_repository_impl.dart';
 import '../../features/subjects/domain/entities/subject.dart';
 import '../../features/subjects/domain/repositories/subjects_repository.dart';
@@ -107,6 +110,13 @@ final quizHistoryRepositoryProvider = Provider<QuizHistoryRepository>((ref) {
   return QuizHistoryRepositoryImpl(ref.watch(firestoreProvider));
 });
 
+final recommendationsRepositoryProvider = Provider<RecommendationsRepository>((ref) {
+  return RecommendationsRepositoryImpl(
+    ref.watch(functionsProvider),
+    ref.watch(firestoreProvider),
+  );
+});
+
 final subjectsStreamProvider =
     StreamProvider.family<List<Subject>, String>((ref, uid) {
   return ref.watch(subjectsRepositoryProvider).watchSubjects(uid);
@@ -115,4 +125,9 @@ final subjectsStreamProvider =
 final quizHistoryStreamProvider =
     StreamProvider.family<List<QuizHistoryEntry>, String>((ref, uid) {
   return ref.watch(quizHistoryRepositoryProvider).watchHistory(uid);
+});
+
+final latestRecommendationProvider =
+    StreamProvider.family<Recommendation?, String>((ref, uid) {
+  return ref.watch(recommendationsRepositoryProvider).watchLatestRecommendation(uid);
 });
