@@ -260,6 +260,23 @@ class AppStrings {
 
   String get appLanguage => _isArabic ? 'لغة التطبيق' : 'App language';
   String get modeSwitch => _isArabic ? 'تبديل الوضع' : 'Mode Switch';
+  String get focusMode => _isArabic ? 'وضع التركيز' : 'Focus Mode';
+  String get focusModeSettings =>
+      _isArabic ? 'إعدادات وضع التركيز' : 'Focus mode settings';
+  String get focusModeEnableHint => _isArabic
+      ? 'عند التفعيل، سيتم قفل التطبيق ومنع التنقّل أو فتح الروابط الخارجية.'
+      : 'When enabled, the app is locked and external navigation is disabled.';
+  String get focusModeExternalBlocked => _isArabic
+      ? 'وضع التركيز مفعّل: لا يمكنك فتح الروابط الخارجية.'
+      : 'Focus Mode is active: you can’t open external links.';
+  String get focusModeLockedTitle =>
+      _isArabic ? 'تم قفل التطبيق' : 'App Locked';
+  String get focusModeLockedBody => _isArabic
+      ? 'لن تتمكّن من التبديل بين الصفحات أو فتح عناصر خارجية أثناء وضع التركيز.'
+      : 'You can’t switch pages or open external items while Focus Mode is ON.';
+  String get focusModeExit => _isArabic ? 'إيقاف وضع التركيز' : 'Exit Focus Mode';
+  String get on => _isArabic ? 'تشغيل' : 'ON';
+  String get off => _isArabic ? 'إيقاف' : 'OFF';
   String get progress => _isArabic ? 'التقدم' : 'Progress';
   String get history => _isArabic ? 'السجل' : 'History';
   String get noQuizHistory =>

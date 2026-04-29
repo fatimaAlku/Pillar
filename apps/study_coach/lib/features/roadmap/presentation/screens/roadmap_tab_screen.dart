@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../../core/state/focus_mode_controller.dart';
 import '../controllers/roadmap_progress_providers.dart';
 
 class RoadmapTabScreen extends ConsumerStatefulWidget {
@@ -236,6 +237,11 @@ class _MajorRoadmapScreenState extends ConsumerState<_MajorRoadmapScreen> {
       _showOpenResourceError(context, strings);
       return;
     }
+    final focusMode = ref.read(focusModeProvider);
+    if (focusMode.enabled) {
+      await _showFocusModeLockedExternalDialog(context, strings);
+      return;
+    }
 
     try {
       final launched = await launchUrl(uri, mode: LaunchMode.platformDefault);
@@ -251,6 +257,24 @@ class _MajorRoadmapScreenState extends ConsumerState<_MajorRoadmapScreen> {
         _showOpenResourceError(context, strings);
       }
     }
+  }
+
+  Future<void> _showFocusModeLockedExternalDialog(
+    BuildContext context,
+    AppStrings strings,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Text(strings.focusModeExternalBlocked),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(strings.ok),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showOpenResourceError(

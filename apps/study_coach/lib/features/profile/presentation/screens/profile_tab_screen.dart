@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../../core/state/focus_mode_controller.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../data/local/local_profile_avatar_store.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
@@ -61,6 +62,7 @@ class ProfileTabScreen extends ConsumerWidget {
     final displayEmail = hasUserEmail ? userEmail : strings.email;
     final isLightMode = themeMode != ThemeMode.dark;
     final isEnglish = appLocale.languageCode != 'ar';
+    final focusModeState = ref.watch(focusModeProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -208,6 +210,23 @@ class ProfileTabScreen extends ConsumerWidget {
                 onTap: () {
                   ref.read(themeModeProvider.notifier).toggleThemeMode();
                 },
+              ),
+              const _TileDivider(),
+              _ProfileMenuTile(
+                icon: Icons.center_focus_strong_rounded,
+                title: strings.focusMode,
+                trailing: _PillToggle(
+                  leftLabel: strings.off,
+                  rightLabel: strings.on,
+                  isLeftActive: !focusModeState.enabled,
+                  onChanged: (isLeftActive) {
+                    ref
+                        .read(focusModeProvider.notifier)
+                        .setEnabled(!isLeftActive);
+                  },
+                ),
+                onTap: () =>
+                    ref.read(focusModeProvider.notifier).toggle(),
               ),
               const _TileDivider(),
               _ProfileMenuTile(

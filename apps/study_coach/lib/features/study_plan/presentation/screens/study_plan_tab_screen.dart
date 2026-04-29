@@ -312,8 +312,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       availableStudyMinutes: 180,
       now: DateTime.now(),
     );
-    final tasks =
-        ref.watch(studyPlanDynamicResultProvider(input)).updatedPlan;
+    final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
+    final tasks = dynamicResult.updatedPlan;
     final dateIso = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final sessionsAsync =
         ref.watch(sessionsForDateStreamProvider(SessionsForDateKey(uid, dateIso)));
@@ -343,6 +343,9 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
         _ScheduleRecommendationsCard(
           uid: uid,
           topics: topics,
+          selectedDate: _selectedDate,
+          history: quizHistory,
+          dynamicResult: dynamicResult,
         ),
         const SizedBox(height: 18),
         Text(
@@ -753,17 +756,22 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
   const _ScheduleRecommendationsCard({
     required this.uid,
     required this.topics,
+    required this.selectedDate,
+    required this.history,
+    required this.dynamicResult,
   });
 
   final String uid;
   final List<TopicPerformanceInput> topics;
+  final DateTime selectedDate;
+  final List<QuizHistoryEntry> history;
+  final StudyPlanAdjustmentResult dynamicResult;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final history = ref.watch(quizHistoryStreamProvider(uid)).valueOrNull ?? const [];
 
     String mapWeakAreaToTitle(String weakArea) {
       final normalizedWeak = weakArea.toLowerCase().replaceAll('_', ' ').trim();
@@ -799,6 +807,15 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
             ? 'Complete a quiz to unlock personalized recommendations.'
             : strings.noWeakTopics)
         : 'Focus on ${weakTopicTitles.take(2).join(' and ')} in your next sessions.';
+    final showPlanChangeExplanation =
+        _isTomorrow(selectedDate) && dynamicResult.updatedPlan.isNotEmpty;
+    final topAdjustedTopics = dynamicResult.updatedPlan
+        .take(2)
+        .map((item) {
+          final reason = (item.adjustmentReason ?? 'personalized signals').trim();
+          return '${item.topicTitle}: $reason';
+        })
+        .toList(growable: false);
 
     return ExcludeSemantics(
       child: Card(
@@ -845,6 +862,35 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                 recommendationText,
                 style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
               ),
+              if (showPlanChangeExplanation) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Why this plan changed',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  dynamicResult.explanationMessage,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+                if (topAdjustedTopics.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    topAdjustedTopics.join('\n'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
               const SizedBox(height: 10),
               Text(
                 strings.weakTopics,
