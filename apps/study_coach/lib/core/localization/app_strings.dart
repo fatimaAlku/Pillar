@@ -228,6 +228,13 @@ class AppStrings {
   String get unanswered => _isArabic ? 'بدون إجابة' : 'Unanswered';
   String get backToQuizzes => _isArabic ? 'رجوع' : 'Back';
 
+  String get quizReport => _isArabic ? 'تقرير الاختبار' : 'Quiz report';
+  String get downloadQuizReport =>
+      _isArabic ? 'تنزيل تقرير الاختبار' : 'Download quiz report';
+  String get couldNotExportQuizReport => _isArabic
+      ? 'تعذّر إنشاء تقرير الاختبار. حاول مرة أخرى.'
+      : 'Could not generate the quiz report. Please try again.';
+
   String majorRoadmap(String majorTitle) =>
       _isArabic ? 'خارطة طريق $majorTitle' : '$majorTitle Roadmap';
   String get priorityRoadmap =>

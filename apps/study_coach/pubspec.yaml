@@ -27,6 +27,7 @@ dependencies:
   url_launcher: ^6.3.1
   flutter_svg: ^2.0.17
   path_provider: ^2.1.5
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +38,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/avatars/
+    - assets/icons/

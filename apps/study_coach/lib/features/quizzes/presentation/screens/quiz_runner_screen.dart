@@ -1,28 +1,132 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/pillar_theme.dart';
+import '../quiz_report_exporter.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
 import '../controllers/quiz_controller.dart';
 
-class QuizRunnerScreen extends ConsumerWidget {
+class QuizRunnerScreen extends ConsumerStatefulWidget {
   const QuizRunnerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QuizRunnerScreen> createState() => _QuizRunnerScreenState();
+}
+
+class _QuizRunnerScreenState extends ConsumerState<QuizRunnerScreen> {
+  final _reportExporter = const QuizReportExporter();
+  bool _isExporting = false;
+  static const _quizReportShareChannel = MethodChannel('pillar.quiz_report_share');
+
+  @override
+  Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
-    final state = ref.watch(quizRunnerControllerProvider);
+    final quizState = ref.watch(quizRunnerControllerProvider);
+    final submittedState =
+        quizState is QuizRunnerSubmitted ? quizState : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.quiz)),
-      body: switch (state) {
+      appBar: AppBar(
+        title: Text(strings.quiz),
+        actions: [
+          if (submittedState != null)
+            IconButton(
+              tooltip: strings.downloadQuizReport,
+              onPressed: _isExporting
+                  ? null
+                  : () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      setState(() {
+                        _isExporting = true;
+                      });
+                      final result = submittedState.result;
+                      String filePath = '';
+                      try {
+                        final bytes = await _reportExporter
+                            .buildQuizReviewReportPdfBytes(
+                          result: result,
+                          strings: strings,
+                          generatedAt: DateTime.now(),
+                        );
+
+                        final dir = await getTemporaryDirectory();
+                        filePath =
+                            '${dir.path}/quiz_review_report_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+                        final file = File(filePath);
+                        await file.writeAsBytes(bytes, flush: true);
+
+                        if (!await file.exists() || await file.length() == 0) {
+                          throw Exception('Quiz report PDF file not created');
+                        }
+                      } catch (e, st) {
+                        if (!mounted) return;
+                        debugPrint('Quiz report export failed: $e');
+                        debugPrintStack(stackTrace: st);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('${strings.couldNotExportQuizReport}\n$e'),
+                          ),
+                        );
+                        return;
+                      }
+
+                      try {
+                        if (Platform.isIOS) {
+                          await _quizReportShareChannel.invokeMethod(
+                            'sharePdf',
+                            {'filePath': filePath},
+                          );
+                        } else {
+                          await SharePlus.instance.share(
+                            ShareParams(
+                              files: [XFile(filePath)],
+                              subject: strings.quizReport,
+                              text: strings.quizReport,
+                            ),
+                          );
+                        }
+                      } catch (e, st) {
+                        if (!mounted) return;
+                        debugPrint('Quiz report share failed: $e');
+                        debugPrintStack(stackTrace: st);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              '${strings.couldNotExportQuizReport}\n$e',
+                            ),
+                          ),
+                        );
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isExporting = false;
+                          });
+                        }
+                      }
+                    },
+              icon: Image.asset(
+                'assets/icons/quiz_report_icon.png',
+                width: 22,
+                height: 22,
+              ),
+            ),
+        ],
+      ),
+      body: switch (quizState) {
         QuizRunnerIdle() => const _QuizIdleView(),
         QuizRunnerLoading() => const _QuizLoadingView(),
-        QuizRunnerError() => _QuizErrorView(message: state.message),
-        QuizRunnerInProgress() => _QuizInProgressView(state: state),
-        QuizRunnerSubmitted() => _QuizSubmittedView(result: state.result),
+        QuizRunnerError() => _QuizErrorView(message: quizState.message),
+        QuizRunnerInProgress() => _QuizInProgressView(state: quizState),
+        QuizRunnerSubmitted() => _QuizSubmittedView(result: quizState.result),
       },
     );
   }
@@ -287,6 +391,7 @@ class _QuizSubmittedView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final strings = AppStrings.of(context);
+    final result = this.result;
     final percent = (result.scoreFraction * 100).round();
     final colorScheme = Theme.of(context).colorScheme;
 
