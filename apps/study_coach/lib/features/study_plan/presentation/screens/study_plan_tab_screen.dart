@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/pillar_theme.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../quizzes/domain/entities/quiz_history_entry.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../../domain/entities/study_session.dart';
 import '../controllers/study_plan_controller.dart';
@@ -303,8 +304,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   ) {
     final localeCode = Localizations.localeOf(context).languageCode;
     final days = _buildWeekDays(anchor: _selectedDate);
+    final quizHistory =
+        ref.watch(quizHistoryStreamProvider(uid)).valueOrNull ?? const [];
+    final topicsForPlanning = _applyPerformanceSignals(topics, quizHistory);
     final input = StudyPlanPersonalizationInput(
-      topics: topics,
+      topics: topicsForPlanning,
       availableStudyMinutes: 180,
       now: DateTime.now(),
     );
@@ -665,19 +669,75 @@ class _ScheduleCard extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      strings.priorityBreakdown(
-                        item.scoreLabel,
-                        item.deadlineLabel,
-                        item.weaknessLabel,
-                        item.difficultyLabel,
-                        item.recencyLabel,
+                    if (item.isAiSuggested) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          'AI Suggested',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colorScheme.onSecondaryContainer,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
+                    ],
+                    if (item.performancePercentLabel != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.insights_outlined,
+                            size: 14,
+                            color: colorScheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Performance: ${item.performancePercentLabel}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              item.performanceStatusLabel ?? 'Baseline',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
+                    ],
+                    if (item.adjustmentReason != null &&
+                        item.adjustmentReason!.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Adapted for ${item.adjustmentReason}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -829,7 +889,13 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
   required DateTime date,
   required String localeCode,
 }) {
-  if (sessions.isEmpty) return const [];
+  if (sessions.isEmpty && _isTomorrow(date)) {
+    return _buildSuggestedScheduleFromTasks(
+      tasks: tasks,
+      date: date,
+      localeCode: localeCode,
+    );
+  }
   final taskByTopic = <String, StudyTaskPriority>{};
   for (final t in tasks) {
     taskByTopic.putIfAbsent(t.topicId, () => t);
@@ -886,6 +952,24 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
   return items;
 }
 
+List<_ScheduleItem> _buildSuggestedScheduleFromTasks({
+  required List<StudyTaskPriority> tasks,
+  required DateTime date,
+  required String localeCode,
+}) {
+  if (tasks.isEmpty) return const [];
+  final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
+  var current = DateTime(date.year, date.month, date.day, startHour);
+  final items = <_ScheduleItem>[];
+  for (final task in tasks) {
+    if (task.recommendedMinutes <= 0) continue;
+    final timeLabel = _formatTime(current, localeCode);
+    items.add(_ScheduleItem.fromTask(task, timeLabel: timeLabel));
+    current = current.add(Duration(minutes: task.recommendedMinutes + 10));
+  }
+  return items;
+}
+
 List<DateTime> _buildWeekDays({required DateTime anchor}) {
   final day = _dateOnly(anchor);
   final monday = day.subtract(Duration(days: day.weekday - 1));
@@ -913,6 +997,11 @@ DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
+bool _isTomorrow(DateTime date) {
+  final tomorrow = _dateOnly(DateTime.now().add(const Duration(days: 1)));
+  return _isSameDay(_dateOnly(date), tomorrow);
+}
+
 class _ScheduleItem {
   const _ScheduleItem({
     required this.planId,
@@ -928,6 +1017,10 @@ class _ScheduleItem {
     required this.weaknessLabel,
     required this.difficultyLabel,
     required this.recencyLabel,
+    required this.performancePercentLabel,
+    required this.performanceStatusLabel,
+    required this.adjustmentReason,
+    required this.isAiSuggested,
     required this.priorityBand,
   });
 
@@ -959,6 +1052,10 @@ class _ScheduleItem {
         weaknessLabel: fromTask.weaknessLabel,
         difficultyLabel: fromTask.difficultyLabel,
         recencyLabel: fromTask.recencyLabel,
+        performancePercentLabel: fromTask.performancePercentLabel,
+        performanceStatusLabel: fromTask.performanceStatusLabel,
+        adjustmentReason: fromTask.adjustmentReason,
+        isAiSuggested: fromTask.isAiSuggested,
         priorityBand: fromTask.priorityBand,
       );
     }
@@ -987,6 +1084,10 @@ class _ScheduleItem {
       weaknessLabel: '–',
       difficultyLabel: '–',
       recencyLabel: '–',
+      performancePercentLabel: null,
+      performanceStatusLabel: null,
+      adjustmentReason: null,
+      isAiSuggested: false,
       priorityBand: _PriorityBand.low,
     );
   }
@@ -1016,6 +1117,11 @@ class _ScheduleItem {
       weaknessLabel: task.weakness.toStringAsFixed(2),
       difficultyLabel: task.difficulty.toStringAsFixed(2),
       recencyLabel: task.timeSinceLastStudied.toStringAsFixed(2),
+      performancePercentLabel:
+          '${((1 - task.weakness).clamp(0.0, 1.0) * 100).round()}%',
+      performanceStatusLabel: _performanceStatusLabel(task.weakness),
+      adjustmentReason: task.adjustmentReason,
+      isAiSuggested: planId.isEmpty && sessionId.isEmpty,
       priorityBand: band,
     );
   }
@@ -1033,10 +1139,70 @@ class _ScheduleItem {
   final String weaknessLabel;
   final String difficultyLabel;
   final String recencyLabel;
+  final String? performancePercentLabel;
+  final String? performanceStatusLabel;
+  final String? adjustmentReason;
+  final bool isAiSuggested;
   final _PriorityBand priorityBand;
 }
 
+String _performanceStatusLabel(double weakness) {
+  if (weakness >= 0.7) return 'Needs focus';
+  if (weakness >= 0.45) return 'Improving';
+  return 'Strong';
+}
+
 enum _PriorityBand { high, medium, low }
+
+List<TopicPerformanceInput> _applyPerformanceSignals(
+  List<TopicPerformanceInput> topics,
+  List<QuizHistoryEntry> history,
+) {
+  if (topics.isEmpty) return const [];
+  if (history.isEmpty) return topics;
+
+  final scores = history.map((entry) => entry.scoreFraction).toList(growable: false);
+  final baseline = scores.isEmpty
+      ? 0.5
+      : (scores.reduce((a, b) => a + b) / scores.length).clamp(0.0, 1.0);
+
+  final weakCounts = <String, int>{};
+  for (final entry in history.take(20)) {
+    for (final weak in entry.weakTopicTitles) {
+      final key = _normalizePerformanceKey(weak);
+      if (key.isEmpty) continue;
+      weakCounts[key] = (weakCounts[key] ?? 0) + 1;
+    }
+  }
+
+  return topics.map((topic) {
+    final normalizedTopic = _normalizePerformanceKey(topic.topicTitle);
+    var weakHits = 0;
+    weakCounts.forEach((weakKey, count) {
+      if (weakKey.contains(normalizedTopic) ||
+          normalizedTopic.contains(weakKey)) {
+        weakHits += count;
+      }
+    });
+    final penalty = weakHits <= 0 ? 0.0 : (weakHits * 0.12).clamp(0.0, 0.45);
+    final derivedAccuracy = (baseline - penalty).clamp(0.0, 1.0);
+    return TopicPerformanceInput(
+      topicId: topic.topicId,
+      topicTitle: topic.topicTitle,
+      subjectId: topic.subjectId,
+      subjectTitle: topic.subjectTitle,
+      examDate: topic.examDate,
+      quizAccuracy: derivedAccuracy,
+      subjectDifficulty: topic.subjectDifficulty,
+      lastStudiedAt: topic.lastStudiedAt,
+      missedSessions: topic.missedSessions,
+    );
+  }).toList(growable: false);
+}
+
+String _normalizePerformanceKey(String value) {
+  return value.trim().toLowerCase().replaceAll('_', ' ');
+}
 
 String _fallbackTitleFromTopicId(
   String topicId, {
