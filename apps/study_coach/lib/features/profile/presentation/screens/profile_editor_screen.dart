@@ -20,6 +20,8 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   late final TextEditingController _usernameController;
   bool _isSaving = false;
   String? _selectedAvatarId;
+  /// Local major selection; when null, [UserProfileData.majorId] is used.
+  String? _majorOverride;
 
   @override
   void initState() {
@@ -72,6 +74,15 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
       await ref.read(authRepositoryProvider).updateProfile(
             displayName: _usernameController.text,
           );
+      final profile = ref.read(userProfileStreamProvider(authUser.uid)).valueOrNull;
+      final majorToSave = _majorOverride ?? profile?.majorId;
+      if (majorToSave != null && majorToSave.isNotEmpty) {
+        await ref.read(userProfileRepositoryProvider).setMajor(
+              uid: authUser.uid,
+              majorId: majorToSave,
+              source: 'profile_edit',
+            );
+      }
       ref.invalidate(localProfileAvatarIdProvider(authUser.uid));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,7 +117,9 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
     final profile = authUser == null
         ? null
         : ref.watch(userProfileStreamProvider(authUser.uid)).valueOrNull;
-    final majorTitle = majorTitleFromId(profile?.majorId).trim();
+    final catalogMajorId = _catalogMajorId(
+      _majorOverride ?? profile?.majorId,
+    );
     final photoUrl = authUser?.photoUrl?.trim();
     final hasRemotePhoto = photoUrl != null && photoUrl.isNotEmpty;
     final savedAvatarId = authUser == null
@@ -213,13 +226,28 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextFormField(
-                  initialValue: majorTitle.isEmpty ? '-' : majorTitle,
-                  enabled: false,
+                DropdownButtonFormField<String>(
+                  key: ValueKey<String?>(
+                    _majorOverride ?? profile?.majorId,
+                  ),
+                  initialValue: catalogMajorId,
                   decoration: InputDecoration(
                     labelText: strings.major,
                     prefixIcon: const Icon(Icons.school_outlined),
                   ),
+                  items: [
+                    ...majorCatalog.map(
+                      (major) => DropdownMenuItem<String>(
+                        value: major.id,
+                        child: Text(major.title),
+                      ),
+                    ),
+                  ],
+                  onChanged: _isSaving
+                      ? null
+                      : (value) {
+                          setState(() => _majorOverride = value);
+                        },
                 ),
                 const SizedBox(height: 20),
                 SizedBox(
@@ -242,6 +270,14 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
       ),
     );
   }
+}
+
+String? _catalogMajorId(String? majorId) {
+  if (majorId == null || majorId.isEmpty) return null;
+  for (final m in majorCatalog) {
+    if (m.id == majorId) return majorId;
+  }
+  return null;
 }
 
 class _AvatarOption extends StatelessWidget {

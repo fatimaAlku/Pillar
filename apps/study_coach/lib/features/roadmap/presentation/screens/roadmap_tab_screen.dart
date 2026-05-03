@@ -7,159 +7,461 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
 import '../controllers/roadmap_progress_providers.dart';
 
-class RoadmapTabScreen extends ConsumerStatefulWidget {
+class RoadmapTabScreen extends ConsumerWidget {
   const RoadmapTabScreen({super.key});
 
   @override
-  ConsumerState<RoadmapTabScreen> createState() => _RoadmapTabScreenState();
-}
-
-enum _RoadmapScope { all, yours }
-
-class _RoadmapTabScreenState extends ConsumerState<RoadmapTabScreen> {
-  _RoadmapScope _scope = _RoadmapScope.all;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final authUser = ref.watch(currentAuthUserProvider).valueOrNull;
     final userProfile = authUser == null
         ? null
         : ref.watch(userProfileStreamProvider(authUser.uid)).valueOrNull;
     final userMajorId = userProfile?.majorId;
-    final showingYourRoadmap = _scope == _RoadmapScope.yours;
-    final majors = showingYourRoadmap
-        ? _majors.where((major) => major.id == userMajorId).toList()
-        : _majors;
+    final majors = (userMajorId == null || userMajorId.isEmpty)
+        ? <_RoadmapMajor>[]
+        : _majors.where((major) => major.id == userMajorId).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE5E1F4),
-            borderRadius: BorderRadius.circular(18),
+        if (majors.isEmpty) ...[
+          _RoadmapEmptyState(
+            message: authUser == null
+                ? _roadmapText(context, 'Sign in to see your roadmap.')
+                : _roadmapText(
+                    context,
+                    'Set your major in profile to see your roadmap.',
+                  ),
           ),
-          child: SegmentedButton<_RoadmapScope>(
-            style: SegmentedButton.styleFrom(
-              backgroundColor: Colors.white,
-              selectedBackgroundColor: Theme.of(context).colorScheme.primary,
-              selectedForegroundColor: Colors.white,
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
-              side: BorderSide.none,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            segments: [
-              ButtonSegment<_RoadmapScope>(
-                value: _RoadmapScope.all,
-                label: Text(_roadmapText(context, 'All Roadmaps')),
-              ),
-              ButtonSegment<_RoadmapScope>(
-                value: _RoadmapScope.yours,
-                label: Text(_roadmapText(context, 'Your RoadMap')),
-              ),
-            ],
-            selected: {_scope},
-            onSelectionChanged: (selection) {
-              setState(() {
-                _scope = selection.first;
-              });
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (majors.isEmpty)
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Text(
-                authUser == null
-                    ? _roadmapText(context, 'Sign in to see your roadmap.')
-                    : _roadmapText(
-                        context, 'Set your major in profile to see your roadmap.'),
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          )
-        else
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: majors.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            mainAxisSpacing: 10,
-            crossAxisSpacing: 10,
-            childAspectRatio: 1.2,
-          ),
-          itemBuilder: (context, index) {
-            final major = majors[index];
-            return _MajorCard(major: major);
-          },
-        ),
+        ] else ...[
+          _RoadmapTabHero(majorTitle: majors.first.title),
+          for (final major in majors) _RoadmapMajorHomeBlock(major: major),
+        ],
       ],
     );
   }
 }
 
-class _MajorCard extends StatelessWidget {
-  const _MajorCard({required this.major});
+void _openMajorRoadmap(BuildContext context, _RoadmapMajor major) {
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => _MajorRoadmapScreen(major: major),
+    ),
+  );
+}
+
+int _totalRoadmapChecklistCount(_RoadmapMajor major, AppStrings strings) {
+  final phases = _buildPhasesForMajor(major.title, strings);
+  return phases.fold<int>(
+        0,
+        (sum, phase) => sum + phase.actions.length,
+      ) +
+      major.subjects.fold<int>(
+        0,
+        (sum, subject) => sum + subject.topics.length,
+      );
+}
+
+/// Same layout/size as the home tab welcome hero in `home_dashboard_view.dart`.
+class _RoadmapTabHero extends StatelessWidget {
+  const _RoadmapTabHero({required this.majorTitle});
+
+  final String majorTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer,
+              colorScheme.tertiaryContainer.withValues(alpha: 0.95),
+            ],
+          ),
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _roadmapText(context, 'Your study map'),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _roadmapText(context, majorTitle),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.78,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.tertiary,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.route_rounded,
+                color: colorScheme.onPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoadmapMajorHomeBlock extends ConsumerWidget {
+  const _RoadmapMajorHomeBlock({required this.major});
 
   final _RoadmapMajor major;
 
   @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
     final theme = Theme.of(context);
-
-    return Material(
-      color: colorScheme.surface,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => _MajorRoadmapScreen(major: major),
+    final colorScheme = theme.colorScheme;
+    final authUser = ref.watch(currentAuthUserProvider).valueOrNull;
+    final total = _totalRoadmapChecklistCount(major, strings);
+    final completedAsync = authUser == null
+        ? const AsyncValue<Set<String>>.data(<String>{})
+        : ref.watch(
+            roadmapCompletedItemsStreamProvider(
+              RoadmapProgressKey(uid: authUser.uid, majorId: major.id),
             ),
           );
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: colorScheme.outlineVariant),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: colorScheme.primaryContainer,
-                child: Icon(major.icon, color: colorScheme.primary),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                _roadmapText(context, major.title),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+    final completedCount = completedAsync.valueOrNull?.length ?? 0;
+    final progress = total > 0 ? (completedCount / total).clamp(0.0, 1.0) : 0.0;
+    final showIndeterminateProgress = authUser != null && completedAsync.isLoading;
+
+    const previewSubjectCount = 6;
+    final subjects = major.subjects;
+    final previewSubjects = subjects.take(previewSubjectCount).toList();
+    final remainingSubjects = subjects.length - previewSubjects.length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 18),
+        Material(
+          color: colorScheme.surface,
+          elevation: 1.5,
+          shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(26),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(26),
+            onTap: () => _openMajorRoadmap(context, major),
+            child: Ink(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.45),
                 ),
               ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: Text(
-                  _roadmapText(context, major.description),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundColor: colorScheme.primaryContainer,
+                          child: Icon(
+                            major.icon,
+                            color: colorScheme.primary,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _roadmapText(context, major.title),
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _roadmapText(context, major.description),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            strings.roadmapProgress,
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '$completedCount / $total',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: showIndeterminateProgress
+                          ? LinearProgressIndicator(
+                              minHeight: 8,
+                              backgroundColor:
+                                  colorScheme.surfaceContainerHighest,
+                            )
+                          : LinearProgressIndicator(
+                              value: progress,
+                              minHeight: 8,
+                              backgroundColor:
+                                  colorScheme.surfaceContainerHighest,
+                            ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _openMajorRoadmap(context, major),
+                        icon: const Icon(Icons.arrow_forward_rounded),
+                        label: Text(
+                          _roadmapText(context, 'Open full roadmap'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          _roadmapText(context, 'What you will cover'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final subject in previewSubjects)
+              _SubjectPreviewPill(
+                label: _roadmapText(context, subject.name),
+              ),
+          ],
+        ),
+        if (remainingSubjects > 0) ...[
+          const SizedBox(height: 10),
+          Text(
+            '+$remainingSubjects ${_roadmapText(context, 'more areas in full roadmap')}',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+        const SizedBox(height: 22),
+        const _RoadmapProfileTip(),
+      ],
+    );
+  }
+}
+
+class _SubjectPreviewPill extends StatelessWidget {
+  const _SubjectPreviewPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              height: 1.2,
+            ),
+      ),
+    );
+  }
+}
+
+class _RoadmapProfileTip extends StatelessWidget {
+  const _RoadmapProfileTip();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colorScheme.primaryContainer.withValues(alpha: 0.38),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.primary.withValues(alpha: 0.12),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.tips_and_updates_outlined,
+              color: colorScheme.primary,
+              size: 26,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _roadmapText(
+                  context,
+                  'Switch majors anytime in Profile → Edit profile. Your checklist progress stays with each major.',
+                ),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RoadmapEmptyState extends StatelessWidget {
+  const _RoadmapEmptyState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.surfaceContainerLow,
+              colorScheme.primaryContainer.withValues(alpha: 0.22),
+            ],
+          ),
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 36, 24, 36),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: colorScheme.surface,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.1),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.map_outlined,
+                  size: 40,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                _roadmapText(context, 'Your roadmap lives here'),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  height: 1.4,
                 ),
               ),
             ],
@@ -570,8 +872,13 @@ String _normalizeRoadmapKey(String value) {
 }
 
 const Map<String, String> _roadmapArabicMap = {
-  'All Roadmaps': 'كل المسارات',
-  'Your RoadMap': 'مسارك الدراسي',
+  'Your study map': 'خريطة دراستك',
+  'Open full roadmap': 'فتح المسار الكامل',
+  'What you will cover': 'ما ستغطيه',
+  'more areas in full roadmap': 'مجالات إضافية في المسار الكامل',
+  'Switch majors anytime in Profile → Edit profile. Your checklist progress stays with each major.':
+      'يمكنك تغيير التخصص في أي وقت من الملف الشخصي ← تعديل الملف. يبقى تقدّمك لكل تخصص منفصلًا.',
+  'Your roadmap lives here': 'مسارك الدراسي هنا',
   'Sign in to see your roadmap.': 'سجّل الدخول لعرض مسارك الدراسي.',
   'Set your major in profile to see your roadmap.':
       'حدّد تخصصك في الملف الشخصي لعرض مسارك الدراسي.',

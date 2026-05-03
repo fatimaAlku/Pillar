@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pillar_study_coach/app/app.dart';
 import 'package:pillar_study_coach/core/state/app_providers.dart';
 import 'package:pillar_study_coach/features/auth/domain/entities/auth_user.dart';
+import 'package:pillar_study_coach/features/profile/domain/entities/user_profile_data.dart';
 import 'package:pillar_study_coach/features/quizzes/data/services/quiz_ai_service.dart';
 import 'package:pillar_study_coach/features/quizzes/domain/entities/quiz_question.dart';
 
@@ -37,6 +38,14 @@ void main() {
           currentAuthUserProvider.overrideWith(
             (ref) => Stream.value(
               const AuthUser(uid: 'test-user-1', email: 'test@example.com'),
+            ),
+          ),
+          userProfileStreamProvider.overrideWith(
+            (ref, uid) => Stream.value(
+              const UserProfileData(
+                majorId: 'computer_science',
+                majorSource: 'test',
+              ),
             ),
           ),
           quizAiServiceProvider.overrideWithValue(_NoopQuizAiService()),
@@ -75,6 +84,14 @@ void main() {
           currentAuthUserProvider.overrideWith(
             (ref) => Stream.value(
               const AuthUser(uid: 'test-user-2', email: 'roadmap@example.com'),
+            ),
+          ),
+          userProfileStreamProvider.overrideWith(
+            (ref, uid) => Stream.value(
+              const UserProfileData(
+                majorId: 'computer_science',
+                majorSource: 'test',
+              ),
             ),
           ),
           quizAiServiceProvider.overrideWithValue(_NoopQuizAiService()),
