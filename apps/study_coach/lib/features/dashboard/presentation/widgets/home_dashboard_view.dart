@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
@@ -83,8 +84,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
       );
       return;
     }
-    final n = DateTime.now();
-    final scheduleDate = DateTime(n.year, n.month, n.day);
+    final scheduleDate = appTodayDateOnly();
     final dateIso = DateFormat('yyyy-MM-dd').format(scheduleDate);
     await showAddToScheduleBottomSheet(
       context,
@@ -109,7 +109,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final dateStr = _formatTodayHeader(
-      DateTime.now(),
+      appTodayDateOnly(),
       Localizations.localeOf(context).languageCode,
     );
     final authAsync = ref.watch(currentAuthUserProvider);

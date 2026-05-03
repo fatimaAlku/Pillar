@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/material.dart';
 
 class AppStrings {
@@ -7,6 +9,12 @@ class AppStrings {
 
   static AppStrings of(BuildContext context) {
     return AppStrings._(Localizations.localeOf(context).languageCode);
+  }
+
+  /// When [BuildContext] is unavailable (e.g. OAuth method channel callback).
+  factory AppStrings.fromPlatformLocale() {
+    final code = PlatformDispatcher.instance.locale.languageCode;
+    return AppStrings._(code == 'ar' ? 'ar' : 'en');
   }
 
   bool get _isArabic => _languageCode == 'ar';
@@ -387,6 +395,34 @@ class AppStrings {
   String get ok => _isArabic ? 'موافق' : 'OK';
   String get save => _isArabic ? 'حفظ' : 'Save';
   String get myCourses => _isArabic ? 'موادي ومقرراتي' : 'My courses';
+  String get googleCalendarSync =>
+      _isArabic ? 'تقويم Google' : 'Google Calendar';
+  String get googleConnected => _isArabic ? 'متصل' : 'Connected';
+  String get googleNotConnected => _isArabic ? 'غير متصل' : 'Not connected';
+  String get connectGoogleCalendar =>
+      _isArabic ? 'ربط Google Calendar' : 'Connect Google Calendar';
+  String get disconnectGoogleCalendar =>
+      _isArabic ? 'فصل' : 'Disconnect';
+  String get reconnectGoogleCalendar =>
+      _isArabic ? 'إعادة ربط Google Calendar' : 'Reconnect Google Calendar';
+  String get googleConnectedSuccess => _isArabic
+      ? 'تم ربط Google Calendar بنجاح.'
+      : 'Google Calendar connected successfully.';
+  String get googleDisconnectedSuccess => _isArabic
+      ? 'تم فصل Google Calendar.'
+      : 'Google Calendar disconnected.';
+  String get googleConnectFailed => _isArabic
+      ? 'تعذّر ربط Google Calendar. حاول مرة أخرى.'
+      : 'Could not connect Google Calendar. Please try again.';
+  String get googleDisconnectFailed => _isArabic
+      ? 'تعذّر فصل Google Calendar.'
+      : 'Could not disconnect Google Calendar.';
+  String get googleMissingConfig => _isArabic
+      ? 'إعدادات Google Calendar غير مكتملة في التطبيق.'
+      : 'Google Calendar setup is missing in app configuration.';
+  String get googleAuthorizationCancelled => _isArabic
+      ? 'تم إلغاء تفويض Google Calendar.'
+      : 'Google Calendar authorization was cancelled.';
   String get addCourse => _isArabic ? 'إضافة مقرر' : 'Add course';
   String get editCourse => _isArabic ? 'تعديل المقرر' : 'Edit course';
   String get deleteCourse => _isArabic ? 'حذف المقرر' : 'Delete course';

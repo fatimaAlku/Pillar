@@ -1,4 +1,4 @@
-# Pillar — project reflection (four weeks)
+# Pillar — project reflection (five weeks)
 
 Reflection structured by week. Each week follows the coursework template: **work**, **challenges**, **employability skills**, **LESPI** (Legal, Ethical, Social, Professional issues), and **plan the coming week**. Where used below, **prompt questions** and **success criteria** appear before our answers.
 
@@ -650,3 +650,160 @@ You may add screenshots of your **project plan** or **progress plan** if require
 | Riverpod    | https://riverpod.dev/ |
 | Architecture | `docs/architecture.md` |
 | Product overview | Root `README.md` |
+
+---
+
+## Week 5 — reliability, session lifecycle, and delivery readiness
+
+### 1. Reflection on work
+
+> **Main task:** Critically describe the work done related to the product.
+
+**What we did**
+
+- Strengthened the **study-session lifecycle path** so create, update, and delete flows are handled in a more consistent way from repository level, including carrying created identifiers through the flow for follow-up operations.
+- Expanded **profile and localization readiness** by improving profile-area interaction patterns and adding user-facing text coverage for newly exposed states, helping reduce hard-coded UI copy as the app grows.
+- Improved **cross-platform app plumbing** on Android and iOS for app-link/deep-link style entry points, which supports cleaner handoff between external flows and in-app state recovery.
+- Updated the app-level **README and local run guidance** to reflect the current development setup and reduce friction during repeated local runs and demos.
+- Continued aligning Flutter and Functions boundaries so backend-driven flows remain authenticated and explicit, rather than relying on implicit client state.
+
+**Why this way**
+
+- Session lifecycle work was prioritized because it affects trust in the product: if session edits are unreliable, progress analytics and planning quality degrade immediately.
+- Platform-level wiring was improved now (before final polish) so integration points are stable while feature work is still moving quickly.
+- Localization and profile updates were done in parallel to keep UX quality rising alongside backend complexity.
+
+**Resources**
+
+- Existing architecture and repository contracts in `docs/architecture.md`
+- [Flutter platform integration docs](https://docs.flutter.dev/platform-integration/platform-channels)
+- [Firebase Functions callable docs](https://firebase.google.com/docs/functions/callable)
+
+**Alternatives**
+
+- Delay platform/deep-link hardening until all feature screens are complete; this would be faster short term but risk late-stage integration regressions.
+
+**Success criteria (self-check)**
+
+1. **Work described** — Yes: session lifecycle reliability, profile/localization refinement, platform plumbing, README/run flow.
+2. **Reasoning** — Yes: reliability and integration risk reduction were the main drivers.
+3. **References** — Yes: Flutter/Firebase docs plus internal architecture references.
+
+---
+
+### 2. Reflection on challenges
+
+> **Main task:** Critically reflect on challenges faced.
+
+**Challenges**
+
+- **Keeping contracts aligned across layers:** repository changes, provider wiring, and backend callable expectations must remain synchronized or runtime failures appear in subtle ways.
+- **State recovery after external handoff:** mobile lifecycle timing (app resume, new intent, callback ordering) can create edge cases where state arrives before UI listeners are ready.
+- **Balancing feature progress with technical hardening:** it is tempting to add visible features only, but this can accumulate hidden instability in session and integration flows.
+
+**Plans**
+
+- Add lightweight **contract checks** (shape assertions and clearer error mapping) between callable responses and Dart domain models.
+- Add focused **scenario tests** around session create/update/delete + post-write effects to catch regressions early.
+- Document expected mobile lifecycle timing assumptions in a short developer note to reduce onboarding ambiguity.
+
+**Resources**
+
+- Flutter app lifecycle and intent/callback documentation
+- Existing repository/provider patterns in `apps/study_coach/lib/features/study_plan`
+
+**Alternatives**
+
+- Centralize all post-write side effects into a queue/worker pipeline; stronger isolation, but more infrastructure complexity for the current scope.
+
+**Success criteria (self-check)**
+
+1. **Difficult areas** — Yes: contract alignment, lifecycle timing, hardening trade-offs.
+2. **Alternatives** — Yes: queue/worker side-effect model.
+3. **Resources** — Yes: docs and code patterns identified.
+
+---
+
+### 3. Reflection on employability skills
+
+> **Main task:** Reflect on one soft skill.
+
+**Skill:** *Systems thinking under delivery pressure.*
+
+**Situation:** Week 5 required decisions that cut across app UI, repositories, backend callables, and mobile platform behavior. Rather than treating each file in isolation, we tracked the full user path end-to-end and prioritized reliability points that influence multiple screens.
+
+**Differently next time**
+
+- Write a short **cross-layer impact checklist** before implementing integration-heavy changes (UI state, provider updates, repository API, backend contract, platform callback behavior).
+
+**Future**
+
+- Keep a weekly **integration readiness checklist** as part of sprint close so hidden coupling is surfaced before demos.
+
+**Success criteria (self-check)**
+
+1. **Skill** — Systems thinking and cross-functional coordination.
+2. **Situation** — End-to-end reliability work spanning Flutter, platform code, and Functions.
+3. **Alternatives / future** — Impact checklist + recurring integration checklist.
+
+---
+
+### 4. Reflection on LESPI
+
+> **Main task:** Reflect on LESPI affecting the work.
+
+**Issue**
+
+- **Professional responsibility for reliability and data integrity:** in a study product, incorrect session updates or inconsistent sync behavior can misrepresent student effort and planning history.
+
+**Relation to project**
+
+- Pillar now depends on interconnected components (client state, repositories, backend callables, and persisted study records). Reliability is therefore not only a technical issue but also a professional and ethical obligation, because users may make learning decisions based on stored progress data.
+
+**Mitigation**
+
+- Kept authenticated callable boundaries explicit, reduced ambiguous state transitions, and continued strengthening session lifecycle handling so writes and follow-up actions remain predictable.
+- Planned additional validation and scenario testing around write flows to reduce risk of silent data mismatch.
+
+**Success criteria (self-check)**
+
+1. **LESPI issue** — Reliability and integrity of student-facing records.
+2. **Mitigation** — Stronger boundaries, clearer state handling, and targeted validation/testing.
+
+---
+
+### 5. Plan the coming week
+
+> **Main task:** Describe your planned actions for the coming week.
+
+**Prompt questions**
+
+- What do you plan to complete?
+- What resources (tutorials, references, technologies) do you plan to use to complete your work?
+- What would you need from your supervisor / supervision?
+
+**Required planning detail**
+
+Planning should show **well-thought-through** next steps: (1) **technical** and **managerial** tasks, separately; (2) a **realistic estimated duration** per task; (3) **links** to resources you will use.
+
+**Planned tasks (end of Week 5 → Week 6 focus)**
+
+| Type | Task | Est. duration | Resources |
+|------|------|---------------|-----------|
+| Technical | Add **integration tests** for session create/update/delete flows (including expected follow-up effects and failure handling) | 8–10 h | [Flutter testing](https://docs.flutter.dev/testing), existing study plan repositories/controllers |
+| Technical | Harden **callable contract validation** and error mapping into user-safe UI messages across study-plan/session paths | 5–7 h | Firebase callable docs, current providers and repositories |
+| Technical | Refine **Progress tab** to surface more meaningful recent activity from persisted session/attempt data | 6–8 h | Existing progress feature code, Firestore docs |
+| Technical | Add lightweight **observability hooks** (structured logs + key failure counters) for backend write/sync pathways | 3–4 h | Firebase Functions logging guidance |
+| Managerial | Update **demo script** to reflect reliable end-to-end path (auth → sessions → progress evidence) | 1–2 h | Internal README + architecture notes |
+| Managerial | Run a focused **risk review** (integration drift, data mismatch, deadline risk) with mitigation owners | 1 h | Project board / supervisor check-in |
+
+**What we need from supervision**
+
+- Agreement on the **minimum acceptable test evidence** for reliability-focused milestone grading.
+- Confirmation of **priority trade-off**: deeper test coverage vs. one additional visible UX enhancement for the next checkpoint.
+
+**Screenshots / plan artefacts**
+
+You may add screenshots of your **project plan** or **progress plan** if required or agreed with your supervisor.
+
+- *[Placeholder: insert plan / Gantt / board screenshot here if needed.]*

@@ -1,14 +1,23 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/localization/app_strings.dart';
+import '../../../../core/oauth/google_calendar_oauth_pending_store.dart';
+import '../../../../core/oauth/google_oauth_env.dart';
 import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../../core/state/google_calendar_connection_provider.dart';
 import '../../../../core/state/focus_mode_controller.dart';
 import '../../../../core/state/theme_mode_controller.dart';
+import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 import '../../data/local/local_profile_avatar_store.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../progress/presentation/screens/progress_details_screen.dart';
@@ -19,11 +28,159 @@ import 'profile_editor_screen.dart';
 import 'quiz_history_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
-class ProfileTabScreen extends ConsumerWidget {
+class ProfileTabScreen extends ConsumerStatefulWidget {
   const ProfileTabScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileTabScreen> createState() => _ProfileTabScreenState();
+}
+
+class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
+    with WidgetsBindingObserver {
+  bool _isGoogleBusy = false;
+  Map<String, dynamic>? _googleStatus;
+  var _googleBumpListenerAttached = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshGoogleStatus();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_googleBumpListenerAttached) return;
+    _googleBumpListenerAttached = true;
+    ref.listenManual<int>(googleCalendarConnectionBumpProvider, (previous, next) {
+      if (previous != null && next > previous) {
+        unawaited(_refreshGoogleStatus());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_refreshGoogleStatus());
+    }
+  }
+
+  Future<void> _refreshGoogleStatus() async {
+    final authUser = ref.read(currentAuthUserProvider).valueOrNull;
+    if (authUser == null) return;
+    try {
+      final status =
+          await ref.read(googleCalendarSyncRepositoryProvider).googleStatus();
+      if (!mounted) return;
+      setState(() => _googleStatus = status);
+    } catch (_) {
+      // Keep profile UI usable even if status lookup fails.
+    }
+  }
+
+  String _buildOauthState() {
+    final nonce = Random().nextInt(1 << 32);
+    return '${DateTime.now().millisecondsSinceEpoch}-$nonce';
+  }
+
+  String _buildCodeVerifier() {
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~';
+    final random = Random.secure();
+    const length = 64;
+    return String.fromCharCodes(
+      Iterable.generate(
+        length,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+  }
+
+  String _codeChallengeFor(String verifier) {
+    final digest = sha256.convert(utf8.encode(verifier));
+    return base64Url.encode(digest.bytes).replaceAll('=', '');
+  }
+
+  Future<void> _startGoogleConnect() async {
+    final strings = AppStrings.of(context);
+    if (GoogleOauthEnv.clientId.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.googleMissingConfig)),
+      );
+      return;
+    }
+    final state = _buildOauthState();
+    final codeVerifier = _buildCodeVerifier();
+    final codeChallenge = _codeChallengeFor(codeVerifier);
+    await GoogleCalendarOauthPendingStore.save(state, codeVerifier);
+    final redirect = GoogleOauthEnv.redirectUri;
+    final authUri = Uri.https(
+      'accounts.google.com',
+      '/o/oauth2/v2/auth',
+      {
+        'client_id': GoogleOauthEnv.clientId,
+        'redirect_uri': redirect.toString(),
+        'response_type': 'code',
+        'scope':
+            'openid email https://www.googleapis.com/auth/calendar.events',
+        'access_type': 'offline',
+        'prompt': 'consent',
+        'code_challenge': codeChallenge,
+        'code_challenge_method': 'S256',
+        'state': state,
+      },
+    );
+    final launched = await launchUrl(
+      authUri,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!launched) {
+      await GoogleCalendarOauthPendingStore.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.googleConnectFailed)),
+        );
+      }
+    }
+  }
+
+  Future<void> _disconnectGoogleCalendar() async {
+    final strings = AppStrings.of(context);
+    if (_isGoogleBusy) return;
+    setState(() => _isGoogleBusy = true);
+    try {
+      await ref
+          .read(googleCalendarSyncRepositoryProvider)
+          .disconnectGoogleCalendar();
+      await _refreshGoogleStatus();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.googleDisconnectedSuccess)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.googleDisconnectFailed)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isGoogleBusy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -63,6 +220,12 @@ class ProfileTabScreen extends ConsumerWidget {
     final isLightMode = themeMode != ThemeMode.dark;
     final isEnglish = appLocale.languageCode != 'ar';
     final focusModeState = ref.watch(focusModeProvider);
+    final googleConnected = _googleStatus?['connected'] == true;
+    final googleNeedsReconnect = _googleStatus?['needsReconnect'] == true;
+    final googleEmail = (_googleStatus?['email'] as String?)?.trim();
+    final statusLabel = googleConnected
+        ? strings.googleConnected
+        : strings.googleNotConnected;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -172,6 +335,41 @@ class ProfileTabScreen extends ConsumerWidget {
                       builder: (_) => const SubjectsManageScreen(),
                     ),
                   );
+                },
+              ),
+              const _TileDivider(),
+              _ProfileMenuTile(
+                icon: Icons.calendar_month_outlined,
+                title: strings.googleCalendarSync,
+                subtitle: googleConnected && (googleEmail?.isNotEmpty == true)
+                    ? googleEmail
+                    : statusLabel,
+                trailing: _isGoogleBusy
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(
+                        googleConnected
+                            ? (googleNeedsReconnect
+                                ? strings.reconnectGoogleCalendar
+                                : strings.disconnectGoogleCalendar)
+                            : strings.connectGoogleCalendar,
+                        textAlign: TextAlign.end,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
+                onTap: () {
+                  if (_isGoogleBusy) return;
+                  if (googleConnected && !googleNeedsReconnect) {
+                    unawaited(_disconnectGoogleCalendar());
+                    return;
+                  }
+                  unawaited(_startGoogleConnect());
                 },
               ),
               const _TileDivider(),
@@ -330,29 +528,40 @@ class _ProfileMenuTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.onTap,
+    this.subtitle,
     this.trailing,
   });
 
   final IconData icon;
   final String title;
   final VoidCallback onTap;
+  final String? subtitle;
   final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final fg = colorScheme.onSurface;
+    final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       onTap: onTap,
       leading: Icon(icon, color: colorScheme.primary),
       title: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        style: theme.textTheme.titleMedium?.copyWith(
               color: fg,
               fontWeight: FontWeight.w500,
             ),
       ),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+            ),
       trailing: trailing ??
           Icon(
             Icons.chevron_right_rounded,

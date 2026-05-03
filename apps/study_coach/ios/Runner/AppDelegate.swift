@@ -4,6 +4,9 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate {
   private var quizReportShareChannel: FlutterMethodChannel?
+  private var googleOauthChannel: FlutterMethodChannel?
+  /// OAuth can return before FlutterViewController exists; deliver after channel is ready.
+  private var pendingGoogleOAuthUrl: String?
 
   private func findFlutterViewController(start: UIViewController?) -> FlutterViewController? {
     guard let start else { return nil }
@@ -118,6 +121,57 @@ import UIKit
     }
   }
 
+  private func registerGoogleOauthChannel() {
+    guard googleOauthChannel == nil else { return }
+    let root = rootViewController()
+    let flutterViewController = findFlutterViewController(start: root)
+    guard let flutterViewController else {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+        self?.registerGoogleOauthChannel()
+      }
+      return
+    }
+    googleOauthChannel = FlutterMethodChannel(
+      name: "pillar.google_oauth",
+      binaryMessenger: flutterViewController.binaryMessenger
+    )
+    googleOauthChannel?.setMethodCallHandler { call, result in
+      let key = "pillar_pending_google_oauth_url"
+      if call.method == "consumePendingOAuthUrl" {
+        let url = UserDefaults.standard.string(forKey: key)
+        UserDefaults.standard.removeObject(forKey: key)
+        result(url)
+        return
+      }
+      if call.method == "clearPendingOAuthUrl" {
+        UserDefaults.standard.removeObject(forKey: key)
+        result(nil)
+        return
+      }
+      result(FlutterMethodNotImplemented)
+    }
+    flushPendingGoogleOAuthIfNeeded()
+  }
+
+  private func flushPendingGoogleOAuthIfNeeded() {
+    guard let url = pendingGoogleOAuthUrl, !url.isEmpty else { return }
+    guard googleOauthChannel != nil else { return }
+    pendingGoogleOAuthUrl = nil
+    googleOauthChannel?.invokeMethod(
+      "onGoogleAuthRedirect",
+      arguments: ["url": url]
+    )
+  }
+
+  private func deliverGoogleOAuthRedirect(_ urlString: String) {
+    UserDefaults.standard.set(urlString, forKey: "pillar_pending_google_oauth_url")
+    pendingGoogleOAuthUrl = urlString
+    if googleOauthChannel == nil {
+      registerGoogleOauthChannel()
+    }
+    flushPendingGoogleOAuthIfNeeded()
+  }
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -131,11 +185,34 @@ import UIKit
 
     // Register after Flutter root view controller exists.
     DispatchQueue.main.async { [weak self] in self?.registerQuizReportShareChannel() }
+    DispatchQueue.main.async { [weak self] in self?.registerGoogleOauthChannel() }
     // Fallback retry (sometimes root view controller isn't available immediately).
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
       self?.registerQuizReportShareChannel()
+      self?.registerGoogleOauthChannel()
     }
 
     return ok
   }
+
+  /// Google sends the redirect_uri string exactly as configured; iOS compares URL
+  /// schemes case-insensitively in practice, but we must not require exact casing here.
+  private func isGoogleCalendarOAuthScheme(_ scheme: String) -> Bool {
+    let s = scheme.lowercased()
+    return s == "pillarstudycoach" || s == "com.example.pillarstudycoach"
+  }
+
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey : Any] = [:]
+  ) -> Bool {
+    let scheme = url.scheme ?? ""
+    if isGoogleCalendarOAuthScheme(scheme) {
+      deliverGoogleOAuthRedirect(url.absoluteString)
+      return true
+    }
+    return super.application(app, open: url, options: options)
+  }
+
 }

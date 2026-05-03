@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/state/app_providers.dart';
+import '../../data/repositories/google_calendar_sync_repository.dart';
 import '../../data/repositories/study_sessions_repository_impl.dart';
 import '../../data/repositories/topic_performance_repository_impl.dart';
 import '../../domain/entities/study_personalization_models.dart';
@@ -15,7 +16,15 @@ final topicPerformanceRepositoryProvider =
 
 final studySessionsRepositoryProvider =
     Provider<StudySessionsRepository>((ref) {
-  return StudySessionsRepositoryImpl(ref.watch(firestoreProvider));
+  return StudySessionsRepositoryImpl(
+    ref.watch(firestoreProvider),
+    ref.watch(googleCalendarSyncRepositoryProvider),
+  );
+});
+
+final googleCalendarSyncRepositoryProvider =
+    Provider<GoogleCalendarSyncRepository>((ref) {
+  return GoogleCalendarSyncRepository(ref.watch(functionsProvider));
 });
 
 final topicPerformanceInputsStreamProvider = StreamProvider.family<

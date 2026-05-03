@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'root_scaffold_messenger.dart';
+import '../core/oauth/google_calendar_oauth_resume_bridge.dart';
 import '../core/state/app_providers.dart';
 import '../core/state/app_locale_controller.dart';
 import '../core/state/theme_mode_controller.dart';
@@ -25,6 +27,7 @@ class StudyCoachApp extends ConsumerWidget {
     final appLocale = ref.watch(appLocaleProvider);
 
     return MaterialApp(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'Pillar',
       debugShowCheckedModeBanner: false,
       theme: buildPillarTheme(lightScheme),
@@ -37,6 +40,8 @@ class StudyCoachApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      builder: (context, child) =>
+          GoogleCalendarOauthResumeBridge(child: child),
       home: const _AuthGate(),
     );
   }

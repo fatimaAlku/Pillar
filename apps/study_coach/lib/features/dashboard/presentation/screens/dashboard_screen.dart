@@ -47,7 +47,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             stops: const [0, 0.32, 1],
           ),
         ),
-        child: pages[_currentIndex],
+        child: IndexedStack(
+          index: _currentIndex,
+          sizing: StackFit.expand,
+          children: pages,
+        ),
       ),
       bottomNavigationBar: DecoratedBox(
         decoration: BoxDecoration(

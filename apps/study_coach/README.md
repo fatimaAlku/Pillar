@@ -1,16 +1,16 @@
-# pillar
+# Pillar Study Coach
 
-A new Flutter project.
+Flutter app for the Pillar study coach experience.
 
-## Getting Started
+## Local run with Google Calendar config
 
-This project is a starting point for a Flutter application.
+1. Open `env.dev.json` and set:
+   - `GOOGLE_CLIENT_ID` — **iOS** OAuth client ID when running on iOS (from Google Cloud → Credentials → your iOS client).
+   - `GOOGLE_REDIRECT_URI` — must match Google’s native-app format: `YOUR_IOS_BUNDLE_ID:/oauth2redirect` (default matches this app’s Xcode bundle id `com.example.pillarStudyCoach`). Your **iOS OAuth client** in Google Cloud must use that **same** bundle id.
+2. Run the app with Dart defines from file:
 
-A few resources to get you started if this is your first Flutter project:
+```bash
+flutter run --dart-define-from-file=env.dev.json
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+For **Android**, use your Android OAuth client id and set `GOOGLE_REDIRECT_URI` to `com.example.pillar_study_coach:/oauth2redirect` (same pattern, using `applicationId` from `android/app/build.gradle.kts`).

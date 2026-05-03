@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/pillar_theme.dart';
 import '../../../../core/state/app_providers.dart';
@@ -25,7 +26,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedDate = _dateOnly(DateTime.now());
+    _selectedDate = appTodayDateOnly();
   }
 
   @override
@@ -310,7 +311,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final input = StudyPlanPersonalizationInput(
       topics: topicsForPlanning,
       availableStudyMinutes: 180,
-      now: DateTime.now(),
+      now: appNowInstant(),
     );
     final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
     final tasks = dynamicResult.updatedPlan;
@@ -428,10 +429,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   }
 
   Future<void> _pickDate() async {
+    final today = appTodayDateOnly();
     final picked = await showDatePicker(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+      firstDate: today.subtract(const Duration(days: 365)),
+      lastDate: today.add(const Duration(days: 365 * 2)),
       initialDate: _selectedDate,
     );
     if (picked == null) return;
@@ -969,7 +971,7 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
       return a.topicId.compareTo(b.topicId);
     });
 
-  final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
+  final startHour = _isSameDay(date, appTodayDateOnly()) ? 17 : 15;
   var current = DateTime(date.year, date.month, date.day, startHour);
   final items = <_ScheduleItem>[];
 
@@ -1004,7 +1006,7 @@ List<_ScheduleItem> _buildSuggestedScheduleFromTasks({
   required String localeCode,
 }) {
   if (tasks.isEmpty) return const [];
-  final startHour = _isSameDay(date, _dateOnly(DateTime.now())) ? 17 : 15;
+  final startHour = _isSameDay(date, appTodayDateOnly()) ? 17 : 15;
   var current = DateTime(date.year, date.month, date.day, startHour);
   final items = <_ScheduleItem>[];
   for (final task in tasks) {
@@ -1044,7 +1046,7 @@ bool _isSameDay(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month && a.day == b.day;
 
 bool _isTomorrow(DateTime date) {
-  final tomorrow = _dateOnly(DateTime.now().add(const Duration(days: 1)));
+  final tomorrow = appTodayDateOnly().add(const Duration(days: 1));
   return _isSameDay(_dateOnly(date), tomorrow);
 }
 

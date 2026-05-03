@@ -1,7 +1,10 @@
 import * as admin from "firebase-admin";
-import {onCall} from "firebase-functions/v2/https";
+import {HttpsError, onCall} from "firebase-functions/v2/https";
 
 admin.initializeApp();
+
+/** Study sessions use calendar dates in this zone (Manama / Bahrain). */
+const APP_CALENDAR_TIME_ZONE = "Asia/Bahrain";
 
 type GeneratePlanRequest = {
   subjectIds: string[];
@@ -362,4 +365,514 @@ export const generateRecommendations = onCall(async (request) => {
 
   return {insightId: insightRef.id, generatedAt: now};
 });
+
+type GoogleCalendarSyncAction = "create" | "update" | "delete";
+
+type SyncStudySessionToGoogleCalendarRequest = {
+  uid: string;
+  planId: string;
+  sessionId: string;
+  action: GoogleCalendarSyncAction;
+};
+
+type ConnectGoogleCalendarWithAuthCodeRequest = {
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+  clientId: string;
+};
+
+export const connectGoogleCalendarWithAuthCode = onCall<ConnectGoogleCalendarWithAuthCodeRequest>(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+    const code = request.data.code?.trim();
+    const redirectUri = request.data.redirectUri?.trim();
+    const codeVerifier = request.data.codeVerifier?.trim();
+    const clientId = request.data.clientId?.trim();
+    if (!code || !redirectUri || !codeVerifier || !clientId) {
+      throw new HttpsError("invalid-argument", "code, redirectUri, codeVerifier and clientId are required.");
+    }
+    const tokenResult = await exchangeGoogleAuthCode({
+      code,
+      redirectUri,
+      codeVerifier,
+      clientId,
+    });
+    const email = await fetchGoogleEmail(tokenResult.accessToken);
+    await admin
+      .firestore()
+      .collection("users")
+      .doc(request.auth.uid)
+      .collection("integrations")
+      .doc("google_calendar")
+      .set({
+        provider: "google_calendar",
+        connected: true,
+        needsReconnect: false,
+        email,
+        accessToken: tokenResult.accessToken,
+        refreshToken: tokenResult.refreshToken ?? null,
+        oauthClientId: clientId,
+        accessTokenExpiresAt: new Date(Date.now() + tokenResult.expiresIn * 1000).toISOString(),
+        updatedAt: new Date().toISOString(),
+      }, {merge: true});
+    return {connected: true, email};
+  }
+);
+
+export const getGoogleCalendarConnectionStatus = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
+  }
+  const integrationRef = admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .collection("integrations")
+    .doc("google_calendar");
+  const snap = await integrationRef.get();
+  if (!snap.exists) {
+    return {connected: false};
+  }
+  const data = snap.data() ?? {};
+  return {
+    connected: data["connected"] === true,
+    email: data["email"] ?? null,
+    needsReconnect: data["needsReconnect"] === true,
+    lastSyncedAt: data["lastSyncedAt"] ?? null,
+  };
+});
+
+export const disconnectGoogleCalendar = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
+  }
+  const integrationRef = admin
+    .firestore()
+    .collection("users")
+    .doc(request.auth.uid)
+    .collection("integrations")
+    .doc("google_calendar");
+  await integrationRef.set({
+    connected: false,
+    needsReconnect: false,
+    accessToken: admin.firestore.FieldValue.delete(),
+    refreshToken: admin.firestore.FieldValue.delete(),
+    accessTokenExpiresAt: admin.firestore.FieldValue.delete(),
+    disconnectedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, {merge: true});
+  return {disconnected: true};
+});
+
+export const syncStudySessionToGoogleCalendar = onCall<SyncStudySessionToGoogleCalendarRequest>(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+    const {uid, planId, sessionId, action} = request.data;
+    if (uid !== request.auth.uid) {
+      throw new HttpsError("permission-denied", "Cannot sync another user.");
+    }
+    if (!planId || !sessionId || !action) {
+      throw new HttpsError("invalid-argument", "uid, planId, sessionId and action are required.");
+    }
+
+    const db = admin.firestore();
+    const integrationRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("integrations")
+      .doc("google_calendar");
+    const integrationSnap = await integrationRef.get();
+    if (!integrationSnap.exists || integrationSnap.data()?.["connected"] !== true) {
+      return {skipped: true, reason: "google_calendar_not_connected"};
+    }
+    const integrationData = integrationSnap.data() ?? {};
+    const resolvedAccessToken = await ensureGoogleAccessToken({
+      integrationRef,
+      integrationData,
+    });
+    if (!resolvedAccessToken) {
+      await integrationRef.set(
+        {needsReconnect: true, connected: false, updatedAt: new Date().toISOString()},
+        {merge: true}
+      );
+      return {skipped: true, reason: "reconnect_required"};
+    }
+
+    const linkRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("calendarLinks")
+      .doc(`google_${planId}_${sessionId}`);
+
+    if (action === "delete") {
+      const existingLink = await linkRef.get();
+      if (existingLink.exists) {
+        const eventId = existingLink.data()?.["eventId"] as string | undefined;
+        if (eventId && eventId.length > 0) {
+          await deleteGoogleCalendarEvent(resolvedAccessToken, eventId);
+        }
+      }
+      await linkRef.set({
+        provider: "google_calendar",
+        planId,
+        sessionId,
+        status: "deleted",
+        updatedAt: new Date().toISOString(),
+      }, {merge: true});
+      return {synced: true, action};
+    }
+
+    const sessionRef = db
+      .collection("users")
+      .doc(uid)
+      .collection("studyPlans")
+      .doc(planId)
+      .collection("sessions")
+      .doc(sessionId);
+    const sessionSnap = await sessionRef.get();
+    if (!sessionSnap.exists) {
+      return {skipped: true, reason: "session_not_found"};
+    }
+    const eventPayload = buildGoogleCalendarEventPayload(sessionSnap.data() ?? {});
+    const existingLink = await linkRef.get();
+    const existingEventId = existingLink.data()?.["eventId"] as string | undefined;
+
+    if (action === "update" && existingEventId) {
+      await patchGoogleCalendarEvent(resolvedAccessToken, existingEventId, eventPayload);
+      await linkRef.set({
+        provider: "google_calendar",
+        eventId: existingEventId,
+        planId,
+        sessionId,
+        status: "synced",
+        updatedAt: new Date().toISOString(),
+      }, {merge: true});
+      return {synced: true, action, eventId: existingEventId};
+    }
+
+    if (existingEventId) {
+      await patchGoogleCalendarEvent(resolvedAccessToken, existingEventId, eventPayload);
+      await linkRef.set({
+        provider: "google_calendar",
+        eventId: existingEventId,
+        planId,
+        sessionId,
+        status: "synced",
+        updatedAt: new Date().toISOString(),
+      }, {merge: true});
+      return {synced: true, action: "update", eventId: existingEventId};
+    }
+
+    const createdEvent = await createGoogleCalendarEvent(resolvedAccessToken, eventPayload);
+    await linkRef.set({
+      provider: "google_calendar",
+      eventId: createdEvent.id,
+      planId,
+      sessionId,
+      status: "synced",
+      updatedAt: new Date().toISOString(),
+    }, {merge: true});
+    await integrationRef.set({
+      lastSyncedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, {merge: true});
+    return {synced: true, action: "create", eventId: createdEvent.id};
+  }
+);
+
+function manamaTodayIso(): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: APP_CALENDAR_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const y = parts.find((p) => p.type === "year")?.value ?? "1970";
+  const mo = parts.find((p) => p.type === "month")?.value ?? "01";
+  const d = parts.find((p) => p.type === "day")?.value ?? "01";
+  return `${y}-${mo}-${d}`;
+}
+
+function addCalendarDaysIso(isoDate: string, days: number): string {
+  const [y, mo, day] = isoDate.split("-").map(Number);
+  const shifted = new Date(Date.UTC(y, mo - 1, day + days));
+  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
+}
+
+function buildGoogleCalendarEventPayload(sessionData: Record<string, unknown>) {
+  const date = asString(sessionData["date"]);
+  const startMinute = asNumber(sessionData["startMinute"]);
+  const durationMin = Math.max(5, Math.min(240, asNumber(sessionData["durationMin"], 30)));
+  const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : manamaTodayIso();
+  const m = Math.max(0, Math.min(1439, startMinute));
+  const hour = Math.floor(m / 60);
+  const minute = m % 60;
+  const startWall = `${normalizedDate}T${pad(hour)}:${pad(minute)}:00`;
+
+  const endMinuteTotal = m + durationMin;
+  const extraDays = Math.floor(endMinuteTotal / 1440);
+  const endM = endMinuteTotal % 1440;
+  const endDateStr = extraDays > 0 ? addCalendarDaysIso(normalizedDate, extraDays) : normalizedDate;
+  const endHour = Math.floor(endM / 60);
+  const endMin = endM % 60;
+  const endWall = `${endDateStr}T${pad(endHour)}:${pad(endMin)}:00`;
+
+  return {
+    summary: "Pillar Study Session",
+    description: `Planned study session (${durationMin} minutes).`,
+    start: {
+      dateTime: startWall,
+      timeZone: APP_CALENDAR_TIME_ZONE,
+    },
+    end: {
+      dateTime: endWall,
+      timeZone: APP_CALENDAR_TIME_ZONE,
+    },
+  };
+}
+
+async function ensureGoogleAccessToken(input: {
+  integrationRef: FirebaseFirestore.DocumentReference<FirebaseFirestore.DocumentData>;
+  integrationData: FirebaseFirestore.DocumentData;
+}): Promise<string | null> {
+  const accessToken = asString(input.integrationData["accessToken"]);
+  const refreshToken = asString(input.integrationData["refreshToken"]);
+  const oauthClientId = asString(input.integrationData["oauthClientId"]);
+  const expiresAtIso = asString(input.integrationData["accessTokenExpiresAt"]);
+  if (accessToken && !isExpired(expiresAtIso, 60)) {
+    return accessToken;
+  }
+  if (!refreshToken) {
+    return null;
+  }
+  if (!oauthClientId) {
+    return null;
+  }
+  const refreshed = await refreshGoogleToken(refreshToken, oauthClientId);
+  if (!refreshed) {
+    return null;
+  }
+  await input.integrationRef.set({
+    accessToken: refreshed.accessToken,
+    refreshToken: refreshed.refreshToken ?? refreshToken,
+    accessTokenExpiresAt: new Date(Date.now() + refreshed.expiresIn * 1000).toISOString(),
+    connected: true,
+    needsReconnect: false,
+    updatedAt: new Date().toISOString(),
+  }, {merge: true});
+  return refreshed.accessToken;
+}
+
+async function refreshGoogleToken(refreshToken: string, clientId: string): Promise<{
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn: number;
+} | null> {
+  if (!clientId) {
+    return null;
+  }
+  const body = new URLSearchParams({
+    client_id: clientId,
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+  const response = await safeFetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: body.toString(),
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const payload = (await response.json()) as Record<string, unknown>;
+  const accessToken = asString(payload["access_token"]);
+  const expiresIn = asNumber(payload["expires_in"], 3600);
+  if (!accessToken) {
+    return null;
+  }
+  return {
+    accessToken,
+    refreshToken: asString(payload["refresh_token"]) || undefined,
+    expiresIn,
+  };
+}
+
+async function exchangeGoogleAuthCode(input: {
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+  clientId: string;
+}): Promise<{
+  accessToken: string;
+  refreshToken?: string;
+  expiresIn: number;
+}> {
+  if (!input.clientId) {
+    throw new HttpsError("invalid-argument", "clientId is required.");
+  }
+  const body = new URLSearchParams({
+    client_id: input.clientId,
+    grant_type: "authorization_code",
+    code: input.code,
+    redirect_uri: input.redirectUri,
+    code_verifier: input.codeVerifier,
+  });
+  const response = await safeFetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: body.toString(),
+  });
+  const raw = await response.text();
+  if (!response.ok) {
+    let googleDetail = `HTTP ${response.status}`;
+    try {
+      const errJson = JSON.parse(raw) as Record<string, unknown>;
+      const gErr = asString(errJson["error"]);
+      const gDesc = asString(errJson["error_description"]).replace(/\+/g, " ");
+      if (gErr) {
+        googleDetail = gDesc ? `${gErr}: ${gDesc}` : gErr;
+      }
+    } catch {
+      if (raw.trim()) {
+        googleDetail = raw.trim().slice(0, 280);
+      }
+    }
+    console.error("Google token exchange failed:", googleDetail);
+    throw new HttpsError(
+      "invalid-argument",
+      `Google token exchange failed: ${googleDetail}`,
+    );
+  }
+  let payload: Record<string, unknown>;
+  try {
+    payload = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    throw new HttpsError("internal", "Google token response was not valid JSON.");
+  }
+  const accessToken = asString(payload["access_token"]);
+  const expiresIn = asNumber(payload["expires_in"], 3600);
+  if (!accessToken) {
+    throw new HttpsError("internal", "Google token response missing access_token.");
+  }
+  return {
+    accessToken,
+    refreshToken: asString(payload["refresh_token"]) || undefined,
+    expiresIn,
+  };
+}
+
+async function fetchGoogleEmail(accessToken: string): Promise<string | null> {
+  const response = await safeFetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+    method: "GET",
+    headers: {Authorization: `Bearer ${accessToken}`},
+  });
+  if (!response.ok) {
+    return null;
+  }
+  const payload = (await response.json()) as Record<string, unknown>;
+  const email = asString(payload["email"]);
+  return email || null;
+}
+
+async function createGoogleCalendarEvent(
+  accessToken: string,
+  payload: Record<string, unknown>
+): Promise<{id: string}> {
+  const response = await safeFetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new HttpsError("internal", `Google Calendar create failed: ${body}`);
+  }
+  const data = (await response.json()) as Record<string, unknown>;
+  const id = asString(data["id"]);
+  if (!id) {
+    throw new HttpsError("internal", "Google Calendar create returned no event id.");
+  }
+  return {id};
+}
+
+async function patchGoogleCalendarEvent(
+  accessToken: string,
+  eventId: string,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const response = await safeFetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (response.status === 404) {
+    throw new HttpsError("not-found", "Linked Google Calendar event not found.");
+  }
+  if (!response.ok) {
+    const body = await response.text();
+    throw new HttpsError("internal", `Google Calendar update failed: ${body}`);
+  }
+}
+
+async function deleteGoogleCalendarEvent(accessToken: string, eventId: string): Promise<void> {
+  const response = await safeFetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+    {
+      method: "DELETE",
+      headers: {Authorization: `Bearer ${accessToken}`},
+    }
+  );
+  if (response.status === 404) {
+    return;
+  }
+  if (!response.ok) {
+    const body = await response.text();
+    throw new HttpsError("internal", `Google Calendar delete failed: ${body}`);
+  }
+}
+
+function isExpired(expiresAtIso: string, bufferSeconds: number): boolean {
+  if (!expiresAtIso) return true;
+  const expiresAt = Date.parse(expiresAtIso);
+  if (!Number.isFinite(expiresAt)) return true;
+  return Date.now() + bufferSeconds * 1000 >= expiresAt;
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value);
+  }
+  return fallback;
+}
+
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function pad(value: number): string {
+  return value.toString().padStart(2, "0");
+}
+
+function safeFetch(input: string, init?: RequestInit): Promise<Response> {
+  const fetchFn = (globalThis as {fetch?: typeof fetch}).fetch;
+  if (!fetchFn) {
+    throw new HttpsError("failed-precondition", "Fetch API is unavailable in runtime.");
+  }
+  return fetchFn(input, init);
+}
+
 

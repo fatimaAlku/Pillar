@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../domain/entities/study_personalization_models.dart';
 
@@ -41,9 +42,8 @@ Future<void> showAddToScheduleBottomSheet(
         topics: topics,
         initialTopic: selected,
         initialDurationMin: (initialDurationMin ?? 30).clamp(15, 120),
-        initialStartMinute:
-            (initialStartMinute ?? (DateTime.now().hour * 60) + DateTime.now().minute)
-                .clamp(0, 1439),
+        initialStartMinute: (initialStartMinute ?? appWallClockMinuteOfDay())
+            .clamp(0, 1439),
         onSave: onSave,
       );
     },

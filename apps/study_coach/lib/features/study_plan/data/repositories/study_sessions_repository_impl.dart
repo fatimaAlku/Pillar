@@ -1,20 +1,20 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/constants/firestore_paths.dart';
+import 'google_calendar_sync_repository.dart';
 import '../../domain/entities/study_session.dart';
 import '../../domain/repositories/study_sessions_repository.dart';
 
 class StudySessionsRepositoryImpl implements StudySessionsRepository {
-  StudySessionsRepositoryImpl(this._db);
+  StudySessionsRepositoryImpl(this._db, this._googleCalendarSyncRepository);
 
   final FirebaseFirestore _db;
+  final GoogleCalendarSyncRepository _googleCalendarSyncRepository;
 
-  String _todayKey() {
-    return DateFormat('yyyy-MM-dd').format(DateTime.now());
-  }
+  String _todayKey() => appTodayDateIso();
 
   Future<DocumentReference<Map<String, dynamic>>?> _activePlanRef(
     String uid,
@@ -44,7 +44,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
   /// Commits a new session. If no active plan exists, creates the plan and the
   /// session in one [WriteBatch] so the client does not depend on two serial
   /// commits (which can misbehave under load or flaky networks).
-  Future<void> _commitSessionWrite({
+  Future<_CreatedSessionRef> _commitSessionWrite({
     required String uid,
     required String topicId,
     required String dateIso,
@@ -63,21 +63,17 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
 
     var planRef = await _activePlanRef(uid);
     if (planRef != null) {
-      await planRef
-          .collection(FirestorePaths.sessions)
-          .doc()
-          .set(sessionPayload);
-      return;
+      final sessionRef = planRef.collection(FirestorePaths.sessions).doc();
+      await sessionRef.set(sessionPayload);
+      return _CreatedSessionRef(planRef.id, sessionRef.id);
     }
 
     final subjectIds = await _subjectDocIds(uid);
     planRef = await _activePlanRef(uid);
     if (planRef != null) {
-      await planRef
-          .collection(FirestorePaths.sessions)
-          .doc()
-          .set(sessionPayload);
-      return;
+      final sessionRef = planRef.collection(FirestorePaths.sessions).doc();
+      await sessionRef.set(sessionPayload);
+      return _CreatedSessionRef(planRef.id, sessionRef.id);
     }
 
     final now = DateTime.now().toIso8601String();
@@ -100,6 +96,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
       })
       ..set(sessionRef, sessionPayload);
     await batch.commit();
+    return _CreatedSessionRef(newPlanRef.id, sessionRef.id);
   }
 
   @override
@@ -110,7 +107,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     required int durationMin,
     required int startMinute,
   }) async {
-    await _commitSessionWrite(
+    final created = await _commitSessionWrite(
       uid: uid,
       topicId: topicId,
       dateIso: dateIso,
@@ -120,6 +117,14 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
       _writeTimeout,
       onTimeout: () => throw TimeoutException(
         'Firestore write timed out after ${_writeTimeout.inSeconds}s',
+      ),
+    );
+    unawaited(
+      _googleCalendarSyncRepository.syncSession(
+        action: 'create',
+        uid: uid,
+        planId: created.planId,
+        sessionId: created.sessionId,
       ),
     );
   }
@@ -225,6 +230,14 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
         .collection(FirestorePaths.sessions)
         .doc(sessionId)
         .update(updates);
+    unawaited(
+      _googleCalendarSyncRepository.syncSession(
+        action: 'update',
+        uid: uid,
+        planId: planId,
+        sessionId: sessionId,
+      ),
+    );
   }
 
   @override
@@ -241,5 +254,20 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
         .collection(FirestorePaths.sessions)
         .doc(sessionId)
         .delete();
+    unawaited(
+      _googleCalendarSyncRepository.syncSession(
+        action: 'delete',
+        uid: uid,
+        planId: planId,
+        sessionId: sessionId,
+      ),
+    );
   }
+}
+
+class _CreatedSessionRef {
+  const _CreatedSessionRef(this.planId, this.sessionId);
+
+  final String planId;
+  final String sessionId;
 }

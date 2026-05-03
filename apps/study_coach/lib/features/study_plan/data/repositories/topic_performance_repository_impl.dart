@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/constants/firestore_paths.dart';
 import '../../../subjects/data/models/subject_model.dart';
 import '../../domain/entities/study_personalization_models.dart';
@@ -24,7 +25,7 @@ class TopicPerformanceRepositoryImpl implements TopicPerformanceRepository {
     String uid,
     QuerySnapshot<Map<String, dynamic>> subjectSnap,
   ) async {
-    final now = DateTime.now();
+    final now = appTodayDateOnly();
     final quizSignals = await _loadQuizSignals(uid);
     final inputs = <TopicPerformanceInput>[];
     for (final doc in subjectSnap.docs) {

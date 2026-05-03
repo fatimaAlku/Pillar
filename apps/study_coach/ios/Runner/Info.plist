@@ -45,5 +45,29 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- OAuth uses custom URL schemes handled in AppDelegate (method channel).
+	     Flutter's built-in deep link → route pipeline cannot parse these URIs. -->
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.pillar.studycoach.googleoauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>pillarstudycoach</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.example.pillarStudyCoach.oauth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.example.pillarStudyCoach</string>
+				<string>com.example.pillarstudycoach</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
