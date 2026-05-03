@@ -15,7 +15,6 @@ import '../../../../core/oauth/google_oauth_env.dart';
 import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/google_calendar_connection_provider.dart';
-import '../../../../core/state/focus_mode_controller.dart';
 import '../../../../core/state/theme_mode_controller.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 import '../../data/local/local_profile_avatar_store.dart';
@@ -219,7 +218,6 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
     final displayEmail = hasUserEmail ? userEmail : strings.email;
     final isLightMode = themeMode != ThemeMode.dark;
     final isEnglish = appLocale.languageCode != 'ar';
-    final focusModeState = ref.watch(focusModeProvider);
     final googleConnected = _googleStatus?['connected'] == true;
     final googleNeedsReconnect = _googleStatus?['needsReconnect'] == true;
     final googleEmail = (_googleStatus?['email'] as String?)?.trim();
@@ -408,23 +406,6 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                 onTap: () {
                   ref.read(themeModeProvider.notifier).toggleThemeMode();
                 },
-              ),
-              const _TileDivider(),
-              _ProfileMenuTile(
-                icon: Icons.center_focus_strong_rounded,
-                title: strings.focusMode,
-                trailing: _PillToggle(
-                  leftLabel: strings.off,
-                  rightLabel: strings.on,
-                  isLeftActive: !focusModeState.enabled,
-                  onChanged: (isLeftActive) {
-                    ref
-                        .read(focusModeProvider.notifier)
-                        .setEnabled(!isLeftActive);
-                  },
-                ),
-                onTap: () =>
-                    ref.read(focusModeProvider.notifier).toggle(),
               ),
               const _TileDivider(),
               _ProfileMenuTile(

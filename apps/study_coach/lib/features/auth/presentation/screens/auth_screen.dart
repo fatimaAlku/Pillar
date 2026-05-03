@@ -5,6 +5,13 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../roadmap/domain/major_catalog.dart';
 import '../controllers/auth_controller.dart';
 
+const _studentEmailSuffix = '@student.polytechnic.bh';
+
+/// True if [password] contains at least one non-alphanumeric character (symbol).
+bool _passwordHasSpecialCharacter(String password) {
+  return RegExp(r'[^a-zA-Z0-9]').hasMatch(password);
+}
+
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
@@ -90,7 +97,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                 Text(
                                   _isSignUp
                                       ? 'Create your account to personalize your learning.'
-                                      : 'Welcome back. Continue your learning streak.',
+                                      : 'Welcome back. Continue your learning.',
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
@@ -234,8 +241,10 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                     if (email.isEmpty) {
                                       return strings.emailRequired;
                                     }
-                                    if (!email.contains('@')) {
-                                      return strings.enterValidEmail;
+                                    if (!email
+                                        .toLowerCase()
+                                        .endsWith(_studentEmailSuffix)) {
+                                      return strings.studentPolytechnicEmailRequired;
                                     }
                                     return null;
                                   },
@@ -257,7 +266,16 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                     if (password.isEmpty) {
                                       return strings.passwordRequired;
                                     }
-                                    if (password.length < 6) {
+                                    if (_isSignUp) {
+                                      if (password.length < 8) {
+                                        return strings.signUpPasswordMinEight;
+                                      }
+                                      if (!_passwordHasSpecialCharacter(
+                                          password)) {
+                                        return strings
+                                            .signUpPasswordNeedsSpecialChar;
+                                      }
+                                    } else if (password.length < 6) {
                                       return strings.minimumSixChars;
                                     }
                                     return null;
@@ -339,6 +357,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       if (!hasError) {
         setState(() {
           _isSignUp = false;
+          _passwordController.clear();
         });
       }
       return;

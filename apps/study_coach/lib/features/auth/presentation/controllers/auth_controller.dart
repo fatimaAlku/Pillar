@@ -5,6 +5,10 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/feature_state.dart';
 
+/// While true, the app root stays on [AuthScreen] even if Firebase briefly
+/// signs the user in during email sign-up (before [signOut] runs).
+final retainAuthGateForSignUpProvider = StateProvider<bool>((ref) => false);
+
 final authControllerProvider = Provider<FeatureState>((ref) {
   final userAsync = ref.watch(currentAuthUserProvider);
   final user = userAsync.valueOrNull;
@@ -62,23 +66,28 @@ class AuthFormController extends StateNotifier<AuthFormState> {
     String? majorId,
   }) async {
     await _runAuthAction(() async {
-      await _ref.read(authRepositoryProvider).createUserWithEmailAndPassword(
-            email: email.trim(),
-            password: password,
-            displayName: displayName?.trim(),
-          );
-      final selectedMajor = majorId?.trim();
-      final uid = _ref.read(firebaseAuthProvider).currentUser?.uid;
-      if (uid != null && selectedMajor != null && selectedMajor.isNotEmpty) {
-        await _ref.read(userProfileRepositoryProvider).setMajor(
-              uid: uid,
-              majorId: selectedMajor,
-              source: 'signup',
+      _ref.read(retainAuthGateForSignUpProvider.notifier).state = true;
+      try {
+        await _ref.read(authRepositoryProvider).createUserWithEmailAndPassword(
+              email: email.trim(),
+              password: password,
+              displayName: displayName?.trim(),
             );
+        final selectedMajor = majorId?.trim();
+        final uid = _ref.read(firebaseAuthProvider).currentUser?.uid;
+        if (uid != null && selectedMajor != null && selectedMajor.isNotEmpty) {
+          await _ref.read(userProfileRepositoryProvider).setMajor(
+                uid: uid,
+                majorId: selectedMajor,
+                source: 'signup',
+              );
+        }
+        // Firebase signs users in immediately after account creation.
+        // Keep sign-up flow explicit by returning them to the login step.
+        await _ref.read(authRepositoryProvider).signOut();
+      } finally {
+        _ref.read(retainAuthGateForSignUpProvider.notifier).state = false;
       }
-      // Firebase signs users in immediately after account creation.
-      // Keep sign-up flow explicit by returning them to the login step.
-      await _ref.read(authRepositoryProvider).signOut();
     });
   }
 
@@ -119,7 +128,7 @@ class AuthFormController extends StateNotifier<AuthFormState> {
       case 'email-already-in-use':
         return 'This email is already registered.';
       case 'weak-password':
-        return 'Password is too weak (minimum 6 characters).';
+        return 'Password is too weak. Use at least 8 characters and a special character.';
       case 'operation-not-allowed':
         return 'Email/password sign-in is not enabled in Firebase Auth.';
       case 'network-request-failed':

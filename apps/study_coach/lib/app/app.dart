@@ -8,6 +8,7 @@ import '../core/state/app_providers.dart';
 import '../core/state/app_locale_controller.dart';
 import '../core/state/theme_mode_controller.dart';
 import '../core/theme/pillar_theme.dart';
+import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'splash_screen.dart';
@@ -58,8 +59,11 @@ class _AuthGate extends ConsumerWidget {
     }
 
     final authUser = ref.watch(currentAuthUserProvider);
+    final retainAuthDuringSignUp = ref.watch(retainAuthGateForSignUpProvider);
     return authUser.when(
-      data: (user) => user == null ? const AuthScreen() : const DashboardScreen(),
+      data: (user) => user == null || retainAuthDuringSignUp
+          ? const AuthScreen()
+          : const DashboardScreen(),
       loading: () => const SplashScreen(),
       error: (_, __) => const AuthScreen(),
     );
