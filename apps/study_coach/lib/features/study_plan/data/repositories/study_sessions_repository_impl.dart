@@ -41,6 +41,15 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
 
   static const _writeTimeout = Duration(seconds: 45);
 
+  /// Scheduled sessions are never hard-deleted; removal sets [deletedAt].
+  static bool sessionDocIsDeleted(Map<String, dynamic> data) {
+    final v = data['deletedAt'];
+    if (v == null) return false;
+    if (v is Timestamp) return true;
+    if (v is String && v.isNotEmpty) return true;
+    return false;
+  }
+
   /// Commits a new session. If no active plan exists, creates the plan and the
   /// session in one [WriteBatch] so the client does not depend on two serial
   /// commits (which can misbehave under load or flaky networks).
@@ -154,6 +163,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
           .snapshots()
           .map(
             (sessionsSnap) => sessionsSnap.docs
+                .where((d) => !sessionDocIsDeleted(d.data()))
                 .map((d) => _fromDoc(planId: planId, id: d.id, data: d.data()))
                 .toList(),
           );
@@ -246,6 +256,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     required String planId,
     required String sessionId,
   }) async {
+    final deletedAt = DateTime.now().toUtc().toIso8601String();
     await _db
         .collection(FirestorePaths.users)
         .doc(uid)
@@ -253,7 +264,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
         .doc(planId)
         .collection(FirestorePaths.sessions)
         .doc(sessionId)
-        .delete();
+        .update({'deletedAt': deletedAt});
     unawaited(
       _googleCalendarSyncRepository.syncSession(
         action: 'delete',

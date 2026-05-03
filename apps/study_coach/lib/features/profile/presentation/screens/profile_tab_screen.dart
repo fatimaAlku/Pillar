@@ -54,7 +54,8 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
     super.didChangeDependencies();
     if (_googleBumpListenerAttached) return;
     _googleBumpListenerAttached = true;
-    ref.listenManual<int>(googleCalendarConnectionBumpProvider, (previous, next) {
+    ref.listenManual<int>(googleCalendarConnectionBumpProvider,
+        (previous, next) {
       if (previous != null && next > previous) {
         unawaited(_refreshGoogleStatus());
       }
@@ -130,8 +131,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
         'client_id': GoogleOauthEnv.clientId,
         'redirect_uri': redirect.toString(),
         'response_type': 'code',
-        'scope':
-            'openid email https://www.googleapis.com/auth/calendar.events',
+        'scope': 'openid email https://www.googleapis.com/auth/calendar.events',
         'access_type': 'offline',
         'prompt': 'consent',
         'code_challenge': codeChallenge,
@@ -221,9 +221,8 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
     final googleConnected = _googleStatus?['connected'] == true;
     final googleNeedsReconnect = _googleStatus?['needsReconnect'] == true;
     final googleEmail = (_googleStatus?['email'] as String?)?.trim();
-    final statusLabel = googleConnected
-        ? strings.googleConnected
-        : strings.googleNotConnected;
+    final statusLabel =
+        googleConnected ? strings.googleConnected : strings.googleNotConnected;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -296,7 +295,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
         Center(
           child: Text(
             displayName,
-            style: theme.textTheme.headlineSmall?.copyWith(
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -305,7 +304,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
         Center(
           child: Text(
             displayEmail,
-            style: theme.textTheme.bodyLarge?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
               color: colorScheme.onSurfaceVariant,
             ),
           ),
@@ -348,17 +347,28 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(
-                        googleConnected
-                            ? (googleNeedsReconnect
-                                ? strings.reconnectGoogleCalendar
-                                : strings.disconnectGoogleCalendar)
-                            : strings.connectGoogleCalendar,
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          height: 1.2,
+                    : Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          googleConnected
+                              ? (googleNeedsReconnect
+                                  ? strings.reconnectGoogleCalendar
+                                  : strings.disconnectGoogleCalendar)
+                              : strings.connectGoogleCalendar,
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w600,
+                            height: 1.2,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                 onTap: () {
@@ -531,17 +541,17 @@ class _ProfileMenuTile extends StatelessWidget {
       title: Text(
         title,
         style: theme.textTheme.titleMedium?.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w500,
-            ),
+          color: fg,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       subtitle: subtitle == null
           ? null
           : Text(
               subtitle!,
               style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
       trailing: trailing ??
           Icon(

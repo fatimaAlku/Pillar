@@ -16,9 +16,11 @@ class QuizzesTabScreen extends ConsumerStatefulWidget {
 class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   final _topicsController = TextEditingController();
   final _notesController = TextEditingController();
+  final _notesScrollController = ScrollController();
   final _notesFocusNode = FocusNode();
   int _questionCount = 10;
   String _difficulty = 'medium';
+  String _quizEmphasis = 'balanced';
   bool _isImportingNotes = false;
 
   static const int _minQuestions = 5;
@@ -28,8 +30,12 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
     setState(() {
       _topicsController.clear();
       _notesController.clear();
+      if (_notesScrollController.hasClients) {
+        _notesScrollController.jumpTo(0);
+      }
       _difficulty = 'medium';
       _questionCount = 10;
+      _quizEmphasis = 'balanced';
     });
     ref.read(quizRunnerControllerProvider.notifier).resetSession();
   }
@@ -50,6 +56,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   void dispose() {
     _topicsController.dispose();
     _notesController.dispose();
+    _notesScrollController.dispose();
     _notesFocusNode.dispose();
     super.dispose();
   }
@@ -198,21 +205,62 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                TextField(
-                  controller: _notesController,
-                  focusNode: _notesFocusNode,
-                  keyboardType: TextInputType.multiline,
-                  textInputAction: TextInputAction.newline,
-                  maxLines: 5,
-                  minLines: 4,
-                  decoration: InputDecoration(
-                    alignLabelWithHint: true,
-                    labelText: strings.notesRequired,
-                    hintText: strings.notesHint,
-                    border: const OutlineInputBorder(),
+                Scrollbar(
+                  controller: _notesScrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  thickness: 6,
+                  radius: const Radius.circular(8),
+                  child: TextField(
+                    controller: _notesController,
+                    scrollController: _notesScrollController,
+                    focusNode: _notesFocusNode,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    maxLines: 3,
+                    minLines: 2,
+                    decoration: InputDecoration(
+                      alignLabelWithHint: true,
+                      labelText: strings.notesRequired,
+                      hintText: strings.notesHint,
+                      border: const OutlineInputBorder(),
+                    ),
                   ),
                 ),
                 _buildNoteActions(strings),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  key: ValueKey<String>('emphasis_$_quizEmphasis'),
+                  initialValue: _quizEmphasis,
+                  decoration: InputDecoration(
+                    labelText: strings.quizQuestionStyle,
+                    border: const OutlineInputBorder(),
+                  ),
+                  items: [
+                    DropdownMenuItem(
+                      value: 'balanced',
+                      child: Text(strings.quizStyleBalanced),
+                    ),
+                    DropdownMenuItem(
+                      value: 'definitions',
+                      child: Text(strings.quizStyleDefinitions),
+                    ),
+                    DropdownMenuItem(
+                      value: 'application',
+                      child: Text(strings.quizStyleApplication),
+                    ),
+                    DropdownMenuItem(
+                      value: 'exam',
+                      child: Text(strings.quizStyleExam),
+                    ),
+                  ],
+                  onChanged: isGenerating
+                      ? null
+                      : (v) {
+                          if (v == null) return;
+                          setState(() => _quizEmphasis = v);
+                        },
+                ),
                 const SizedBox(height: 18),
                 Text(
                   strings.difficulty,
@@ -344,6 +392,7 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                                 notesText: notes,
                                 difficulty: _difficulty,
                                 numberOfQuestions: _questionCount,
+                                quizEmphasis: _quizEmphasis,
                               );
 
                           if (!context.mounted) return;

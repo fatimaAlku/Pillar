@@ -11,6 +11,14 @@ class ProgressRepositoryImpl implements ProgressRepository {
 
   final FirebaseFirestore _db;
 
+  static bool _sessionDocIsDeleted(Map<String, dynamic> data) {
+    final v = data['deletedAt'];
+    if (v == null) return false;
+    if (v is Timestamp) return true;
+    if (v is String && v.isNotEmpty) return true;
+    return false;
+  }
+
   @override
   Stream<ProgressSnapshot> watchProgress(String uid) async* {
     ProgressSnapshot? lastSnapshot;
@@ -87,13 +95,16 @@ class ProgressRepositoryImpl implements ProgressRepository {
         .collection(FirestorePaths.sessions)
         .where('date', isGreaterThanOrEqualTo: sinceIso)
         .get();
-    if (sessionsQuery.docs.isEmpty) return 0.0;
+    final activeDocs = sessionsQuery.docs
+        .where((doc) => !_sessionDocIsDeleted(doc.data()))
+        .toList();
+    if (activeDocs.isEmpty) return 0.0;
 
-    final completedCount = sessionsQuery.docs.where((doc) {
+    final completedCount = activeDocs.where((doc) {
       final value = doc.data()['completed'];
       return value == true;
     }).length;
-    return completedCount / sessionsQuery.docs.length;
+    return completedCount / activeDocs.length;
   }
 
   Future<(double, List<String>)> _computeQuizSignal(String uid) async {

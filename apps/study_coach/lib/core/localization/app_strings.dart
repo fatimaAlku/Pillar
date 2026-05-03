@@ -90,6 +90,27 @@ class AppStrings {
   String get uploadNotes => _isArabic ? 'رفع الملاحظات' : 'Upload Notes';
   String get smartStudyAssistant =>
       _isArabic ? 'مساعدك الذكي للدراسة' : 'Your smart study assistant';
+  String get studyChatTitle =>
+      _isArabic ? 'مساعد الدراسة للتخصص' : 'Major study assistant';
+  String get studyChatInputHint =>
+      _isArabic ? 'اكتب سؤالك الدراسي…' : 'Ask a study question…';
+  String get studyChatSend => _isArabic ? 'إرسال' : 'Send';
+  String get studyChatClear => _isArabic ? 'مسح المحادثة' : 'Clear chat';
+  String get studyChatEmptyState => _isArabic
+      ? 'ابدأ بطرح سؤال عن مادة أو مفهوم في تخصصك.'
+      : 'Ask about a topic or concept from your major to get started.';
+  String get studyChatNoMajorTitle =>
+      _isArabic ? 'حدّد تخصصك أولًا' : 'Choose your major first';
+  String get studyChatNoMajorBody => _isArabic
+      ? 'يقتصر هذا المساعد على الإجابة ضمن تخصصك. اختر التخصص من الملف الشخصي ثم عد هنا.'
+      : 'This assistant only answers within your declared major. Set your major in your profile, then come back.';
+  String get studyChatOpenProfile =>
+      _isArabic ? 'فتح الملف الشخصي' : 'Open profile';
+  String get studyChatMajorLabel =>
+      _isArabic ? 'التخصص' : 'Major';
+  String get studyChatDisclaimer => _isArabic
+      ? 'قد يخطئ الذكاء الاصطناعي؛ تحقق من مصادرك الأكاديمية.'
+      : 'AI can make mistakes; verify with your course materials.';
   String get todaysProgress => _isArabic ? 'تقدم اليوم' : 'Today’s progress';
   String get todaysStudyPlan =>
       _isArabic ? 'خطة دراسة اليوم' : 'Today’s study plan';
@@ -207,6 +228,16 @@ class AppStrings {
   String get hard => _isArabic ? 'صعب' : 'Hard';
   String get numberOfQuestions =>
       _isArabic ? 'عدد الأسئلة' : 'Number of questions';
+  String get quizQuestionStyle =>
+      _isArabic ? 'أسلوب الأسئلة' : 'Question style';
+  String get quizStyleBalanced =>
+      _isArabic ? 'متوازن' : 'Balanced';
+  String get quizStyleDefinitions =>
+      _isArabic ? 'تعريفات ومصطلحات' : 'Definitions & terms';
+  String get quizStyleApplication =>
+      _isArabic ? 'تطبيق وسيناريوهات' : 'Application & scenarios';
+  String get quizStyleExam =>
+      _isArabic ? 'أسلوب امتحان' : 'Exam-style';
   String get generating => _isArabic ? 'جارٍ الإنشاء...' : 'Generating...';
   String get startQuiz => _isArabic ? 'بدء الاختبار' : 'Start quiz';
 
@@ -391,7 +422,7 @@ class AppStrings {
   String get googleConnected => _isArabic ? 'متصل' : 'Connected';
   String get googleNotConnected => _isArabic ? 'غير متصل' : 'Not connected';
   String get connectGoogleCalendar =>
-      _isArabic ? 'ربط Google Calendar' : 'Connect Google Calendar';
+      _isArabic ? 'مزامنة' : 'Sync';
   String get disconnectGoogleCalendar =>
       _isArabic ? 'فصل' : 'Disconnect';
   String get reconnectGoogleCalendar =>

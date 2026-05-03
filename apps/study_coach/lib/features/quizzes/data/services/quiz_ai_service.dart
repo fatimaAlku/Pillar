@@ -16,6 +16,7 @@ abstract class QuizAiService {
     required int numberOfQuestions,
     String? notesText,
     String languageCode = 'en',
+    String quizEmphasis = 'balanced',
   });
 }
 
@@ -35,6 +36,7 @@ class OpenAiQuizAiService implements QuizAiService {
     required int numberOfQuestions,
     String? notesText,
     String languageCode = 'en',
+    String quizEmphasis = 'balanced',
   }) async {
     final trimmedTopics =
         topics.map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
@@ -71,6 +73,7 @@ class OpenAiQuizAiService implements QuizAiService {
         difficulty: difficulty,
         numberOfQuestions: numberOfQuestions,
         languageCode: languageCode,
+        quizEmphasis: quizEmphasis.trim().isEmpty ? 'balanced' : quizEmphasis.trim(),
       );
 
       final parsed = QuizAiResponseParser.parseToQuestions(
@@ -164,6 +167,21 @@ class OpenAiQuizAiService implements QuizAiService {
     return _ensureQuestionDiversity(questions);
   }
 
+  static String _emphasisInstruction(String emphasis) {
+    switch (emphasis) {
+      case 'definitions':
+        return 'Prioritize terminology, definitions, and fine-grained conceptual distinctions grounded in the notes.';
+      case 'application':
+        return 'Prioritize short scenarios, examples, and applying ideas to new situations that the notes support.';
+      case 'exam':
+      case 'exam_style':
+        return 'Use formal exam-style stems, no hints in wording, and distractors that feel like real university MCQs.';
+      case 'balanced':
+      default:
+        return 'Balance recall, understanding, and light application according to what the notes support.';
+    }
+  }
+
   Future<Map<String, dynamic>> _requestOpenAiQuestions({
     required String apiKey,
     required List<String> topics,
@@ -171,8 +189,10 @@ class OpenAiQuizAiService implements QuizAiService {
     required int numberOfQuestions,
     required String? notesText,
     required String languageCode,
+    required String quizEmphasis,
   }) async {
     final isArabic = languageCode == 'ar';
+    final emphasisLine = _emphasisInstruction(quizEmphasis);
     final systemPrompt = [
       'You generate high-quality MCQ quizzes for university students.',
       'Return JSON only with shape: {"questions":[{"prompt":"string","options":["a","b","c","d"],"correctIndex":0,"explanation":"string","topicTitle":"string"}]}',
@@ -184,6 +204,7 @@ class OpenAiQuizAiService implements QuizAiService {
       '- correctIndex must be 0,1,2,3.',
       '- Return exactly $numberOfQuestions questions.',
       '- Difficulty level is $difficulty.',
+      '- Question style: $emphasisLine',
       if (isArabic)
         '- Write all questions, options, explanations, and topic titles in Arabic.'
       else

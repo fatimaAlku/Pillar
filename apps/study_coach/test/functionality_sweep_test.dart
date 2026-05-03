@@ -120,6 +120,7 @@ class _NoopQuizAiService implements QuizAiService {
     required int numberOfQuestions,
     String? notesText,
     String languageCode = 'en',
+    String quizEmphasis = 'balanced',
   }) async {
     return const [];
   }

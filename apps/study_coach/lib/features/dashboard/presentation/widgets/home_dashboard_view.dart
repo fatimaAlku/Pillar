@@ -8,6 +8,7 @@ import '../../../../core/state/app_providers.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 import '../../../study_plan/domain/entities/study_personalization_models.dart';
 import '../../../study_plan/domain/entities/study_session.dart';
+import '../../../study_chat/presentation/screens/study_chat_screen.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 import '../../../study_plan/presentation/widgets/add_to_schedule_bottom_sheet.dart';
 
@@ -73,6 +74,14 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
     );
   }
 
+  void _openStudyChat() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const StudyChatScreen(),
+      ),
+    );
+  }
+
   Future<void> _openAddToSchedule({
     required String uid,
     required List<TopicPerformanceInput> topics,
@@ -129,8 +138,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
             ],
           );
         }
-        final sessionsAsync =
-            ref.watch(todaysSessionsStreamProvider(user.uid));
+        final sessionsAsync = ref.watch(todaysSessionsStreamProvider(user.uid));
         final topicsAsync =
             ref.watch(topicPerformanceInputsStreamProvider(user.uid));
 
@@ -159,7 +167,10 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
                   children: [
-                    _WelcomeHero(dateLabel: dateStr),
+                    _WelcomeHero(
+                      dateLabel: dateStr,
+                      onOpenStudyChat: _openStudyChat,
+                    ),
                     const SizedBox(height: 18),
                     Text(
                       strings.focusToday,
@@ -206,9 +217,9 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                     const SizedBox(height: 12),
                     _QuickActionsRow(
                       onAddTask: () => _openAddToSchedule(
-                            uid: user.uid,
-                            topics: topics,
-                          ),
+                        uid: user.uid,
+                        topics: topics,
+                      ),
                       onGenerateQuiz: widget.onGenerateQuizTap ??
                           () => _onQuickAction(context, strings.generateQuiz),
                       onAddTopic: widget.onAddTopicTap ??
@@ -239,9 +250,13 @@ class _SessionRow {
 }
 
 class _WelcomeHero extends StatelessWidget {
-  const _WelcomeHero({required this.dateLabel});
+  const _WelcomeHero({
+    required this.dateLabel,
+    required this.onOpenStudyChat,
+  });
 
   final String dateLabel;
+  final VoidCallback onOpenStudyChat;
 
   @override
   Widget build(BuildContext context) {
@@ -249,73 +264,79 @@ class _WelcomeHero extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primaryContainer,
-              colorScheme.tertiaryContainer.withValues(alpha: 0.95),
-            ],
-          ),
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    strings.smartStudyAssistant,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    dateLabel,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onPrimaryContainer.withValues(
-                        alpha: 0.78,
+    return Tooltip(
+      message: strings.studyChatTitle,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpenStudyChat,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primaryContainer,
+                  colorScheme.tertiaryContainer.withValues(alpha: 0.95),
+                ],
+              ),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.smartStudyAssistant,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colorScheme.onPrimaryContainer,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        dateLabel,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer.withValues(
+                            alpha: 0.78,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 14),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    colorScheme.tertiary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 7),
+                const SizedBox(width: 14),
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.tertiary,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 7),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Icon(
-                Icons.auto_awesome_rounded,
-                color: colorScheme.onPrimary,
-              ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    color: colorScheme.onPrimary,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

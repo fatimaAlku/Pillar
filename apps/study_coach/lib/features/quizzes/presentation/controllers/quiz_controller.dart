@@ -86,12 +86,14 @@ class QuizGenerationRequest {
     required this.difficulty,
     required this.numberOfQuestions,
     this.notesText,
+    this.quizEmphasis = 'balanced',
   });
 
   final List<String> topics;
   final String difficulty;
   final int numberOfQuestions;
   final String? notesText;
+  final String quizEmphasis;
 }
 
 class QuizRunnerController extends StateNotifier<QuizRunnerState> {
@@ -134,16 +136,19 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     required String difficulty,
     required int numberOfQuestions,
     String? notesText,
+    String quizEmphasis = 'balanced',
   }) async {
     final trimmedTopics =
         topics.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final normalizedNotes = notesText?.trim();
-
+    final emphasis =
+        quizEmphasis.trim().isEmpty ? 'balanced' : quizEmphasis.trim();
     _lastRequest = QuizGenerationRequest(
       topics: trimmedTopics,
       difficulty: difficulty.trim(),
       numberOfQuestions: numberOfQuestions,
       notesText: normalizedNotes?.isEmpty == true ? null : normalizedNotes,
+      quizEmphasis: emphasis,
     );
 
     state = const QuizRunnerLoading();
@@ -156,6 +161,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
         numberOfQuestions: numberOfQuestions,
         notesText: normalizedNotes,
         languageCode: _currentLanguageCode(),
+        quizEmphasis: emphasis,
       )
           .timeout(_generationTimeout, onTimeout: () {
         throw const QuizAiServiceException(
@@ -192,6 +198,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
       difficulty: request.difficulty,
       numberOfQuestions: request.numberOfQuestions,
       notesText: request.notesText,
+      quizEmphasis: request.quizEmphasis,
     );
   }
 
