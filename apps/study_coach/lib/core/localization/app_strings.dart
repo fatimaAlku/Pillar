@@ -17,6 +17,11 @@ class AppStrings {
     return AppStrings._(code == 'ar' ? 'ar' : 'en');
   }
 
+  /// Matches [AppLocaleController] / MaterialApp locale (not device locale).
+  factory AppStrings.forLanguageCode(String languageCode) {
+    return AppStrings._(languageCode == 'ar' ? 'ar' : 'en');
+  }
+
   bool get _isArabic => _languageCode == 'ar';
 
   String get navHome => _isArabic ? 'الرئيسية' : 'Home';
@@ -29,6 +34,12 @@ class AppStrings {
 
   String get createAccount => _isArabic ? 'إنشاء حساب' : 'Create account';
   String get login => _isArabic ? 'تسجيل الدخول' : 'Login';
+  String get loginEmailNotRegistered => _isArabic
+      ? 'لا يوجد حساب بهذا البريد. أنشئ حسابًا أولًا.'
+      : "This email didn't sign up. Create an account first.";
+  String get loginEmailOrPasswordIncorrect => _isArabic
+      ? 'البريد أو كلمة المرور غير صحيحة.'
+      : 'Email or password is incorrect.';
   String get email => _isArabic ? 'البريد الإلكتروني' : 'Email';
   String get username => _isArabic ? 'اسم المستخدم' : 'Username';
   String get usernameRequired =>
@@ -67,6 +78,28 @@ class AppStrings {
       ? 'يجب أن تتضمن كلمة المرور رمزًا خاصًا (مثل ! أو @ أو #)'
       : 'Password must include a special character (e.g. ! @ #)';
   String get signUp => _isArabic ? 'إنشاء حساب' : 'Sign up';
+  String get signUpVerificationEmailSent => _isArabic
+      ? 'تحقق من بريدك وافتح رابط التحقق، ثم سجّل الدخول.'
+      : 'Check your email for a verification link, then sign in.';
+  String get verifyEmailTitle =>
+      _isArabic ? 'تحقّق من بريدك' : 'Verify your email';
+  String verifyEmailBody(String address) => _isArabic
+      ? 'أرسلنا رابط تحقق إلى $address. افتح الرسالة واضغط الرابط، ثم اضغط «تحقّقت» أدناه.'
+      : 'We sent a verification link to $address. Open the message, tap the link, then tap "I\'ve verified" below.';
+  String get verifyEmailNoAddressPlaceholder =>
+      _isArabic ? 'عنوان بريدك' : 'your email address';
+  String get verifyEmailCheckedInbox =>
+      _isArabic ? 'تحقّقت من بريدي' : "I've verified";
+  String get verifyEmailResend =>
+      _isArabic ? 'إعادة إرسال البريد' : 'Resend email';
+  String get verifyEmailSignOut =>
+      _isArabic ? 'تسجيل الخروج' : 'Sign out';
+  String get verifyEmailResent => _isArabic
+      ? 'تم إرسال رسالة التحقق مرة أخرى.'
+      : 'Verification email sent again.';
+  String get verifyEmailLinkTroubleshoot => _isArabic
+      ? 'إذا ظهر أن الرابط منتهٍ أو مُستخدَم، قد يكون بريدك فتحه تلقائيًا (شائع في Outlook والبريد غير الهام). أعد الإرسال، ثم افتح أحدث رسالة واضغط الرابط مرة واحدة فقط.'
+      : 'If the link says expired or already used, your inbox may have opened it once automatically (common in Outlook and junk mail). Tap Resend, open only the newest email, then tap the link once.';
   String get chooseMajor => _isArabic ? 'اختر التخصص' : 'Choose major';
   String get majorOptional => _isArabic
       ? 'اختياري - يمكنك الاختيار لاحقًا'
@@ -79,6 +112,18 @@ class AppStrings {
       : 'Already have an account? Login';
   String get needAccountSignUp =>
       _isArabic ? 'تحتاج حسابًا؟ أنشئ حسابًا' : 'Need an account? Sign up';
+
+  String get welcomeHello => _isArabic ? 'مرحبًا!' : 'Hello!';
+  String get welcomeTitleLine1 => _isArabic ? 'أهلاً بك في' : 'Your';
+  String get welcomeTitleHighlight =>
+      _isArabic ? 'مساعدك الذكي للدراسة' : 'Smart study assistant';
+  String get welcomeTitleLine3 => _isArabic
+      ? 'لخططك واختباراتك ومقرراتك'
+      : 'for plans, quizzes, and coursework';
+  String get welcomeSubtitle => _isArabic
+      ? 'احصل على دعم فوري لجدولك الدراسي، الاختبارات، والمساعدة الموجّهة حسب تخصصك.'
+      : 'Get instant help with your schedule, quizzes, and major-aware coaching—all in one place.';
+  String get welcomeGetStarted => _isArabic ? 'ابدأ الآن' : 'Get started';
 
   String get focusToday => _isArabic ? 'تركيز اليوم' : 'Focus today';
   String get smallStepsConsistentProgress => _isArabic
@@ -93,7 +138,7 @@ class AppStrings {
   String get studyChatTitle =>
       _isArabic ? 'مساعد الدراسة للتخصص' : 'Major study assistant';
   String get studyChatInputHint =>
-      _isArabic ? 'اكتب سؤالك الدراسي…' : 'Ask a study question…';
+      _isArabic ? 'اكتب سؤالك الدراسي…' : 'Ask a study question';
   String get studyChatSend => _isArabic ? 'إرسال' : 'Send';
   String get studyChatClear => _isArabic ? 'مسح المحادثة' : 'Clear chat';
   String get studyChatEmptyState => _isArabic

@@ -10,7 +10,9 @@ import '../core/state/theme_mode_controller.dart';
 import '../core/theme/pillar_theme.dart';
 import '../features/auth/presentation/controllers/auth_controller.dart';
 import '../features/auth/presentation/screens/auth_screen.dart';
+import '../features/auth/presentation/screens/verify_email_screen.dart';
 import '../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../features/welcome/presentation/screens/post_signin_welcome_screen.dart';
 import 'splash_screen.dart';
 
 final startupDelayProvider = FutureProvider<void>((ref) async {
@@ -60,10 +62,30 @@ class _AuthGate extends ConsumerWidget {
 
     final authUser = ref.watch(currentAuthUserProvider);
     final retainAuthDuringSignUp = ref.watch(retainAuthGateForSignUpProvider);
+    final loggedInUser = authUser.asData?.value;
+    final needsWelcomeCheck = loggedInUser != null &&
+        !retainAuthDuringSignUp &&
+        loggedInUser.emailVerified;
+    final welcomeCompletedAsync = needsWelcomeCheck
+        ? ref.watch(postSigninWelcomeCompletedProvider(loggedInUser.uid))
+        : null;
+
     return authUser.when(
-      data: (user) => user == null || retainAuthDuringSignUp
-          ? const AuthScreen()
-          : const DashboardScreen(),
+      data: (user) {
+        if (user == null || retainAuthDuringSignUp) {
+          return const AuthScreen();
+        }
+        if (!user.emailVerified) {
+          return VerifyEmailScreen(email: user.email);
+        }
+        return welcomeCompletedAsync!.when(
+          data: (completed) => completed
+              ? const DashboardScreen()
+              : PostSigninWelcomeScreen(uid: user.uid),
+          loading: () => const SplashScreen(),
+          error: (_, __) => const DashboardScreen(),
+        );
+      },
       loading: () => const SplashScreen(),
       error: (_, __) => const AuthScreen(),
     );

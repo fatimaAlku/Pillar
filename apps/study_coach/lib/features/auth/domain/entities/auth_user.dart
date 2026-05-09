@@ -4,6 +4,7 @@ class AuthUser {
     required this.email,
     this.displayName,
     this.photoUrl,
+    this.emailVerified = true,
   });
 
   final String uid;
@@ -14,4 +15,7 @@ class AuthUser {
 
   /// Optional photo URL from Firebase Auth profile.
   final String? photoUrl;
+
+  /// Whether the email address has been verified (Firebase Auth).
+  final bool emailVerified;
 }

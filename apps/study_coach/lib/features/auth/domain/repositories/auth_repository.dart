@@ -12,6 +12,13 @@ abstract class AuthRepository {
     required String password,
     String? displayName,
   });
+
+  /// Sends Firebase’s verification email to the signed-in user’s address.
+  Future<void> sendEmailVerification();
+
+  /// Reloads the current user from Firebase (e.g. after they tap the email link).
+  Future<void> reloadCurrentUser();
+
   Future<String> uploadProfilePhoto({
     required String uid,
     String? filePath,

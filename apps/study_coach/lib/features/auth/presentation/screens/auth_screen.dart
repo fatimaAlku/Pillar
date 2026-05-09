@@ -233,6 +233,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                   autofillHints: const [AutofillHints.email],
                                   decoration: InputDecoration(
                                     labelText: strings.email,
+                                    errorMaxLines: 2,
+                                    errorStyle:
+                                        theme.textTheme.bodySmall?.copyWith(
+                                      fontSize: 11,
+                                    ),
                                     prefixIcon:
                                         const Icon(Icons.mail_outline_rounded),
                                   ),
@@ -355,6 +360,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       }
       final hasError = ref.read(authFormControllerProvider).errorMessage != null;
       if (!hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppStrings.of(context).signUpVerificationEmailSent),
+          ),
+        );
         setState(() {
           _isSignUp = false;
           _passwordController.clear();

@@ -98,195 +98,211 @@ class _StudyChatScreenState extends ConsumerState<StudyChatScreen> {
             ),
         ],
       ),
-      body: uid == null
-          ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  strings.signInToSeeStudyPlan,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyLarge,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.primaryContainer.withValues(alpha: 0.32),
+              colorScheme.tertiaryContainer.withValues(alpha: 0.14),
+              theme.scaffoldBackgroundColor,
+            ],
+            stops: const [0, 0.32, 1],
+          ),
+        ),
+        child: uid == null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    strings.signInToSeeStudyPlan,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge,
+                  ),
                 ),
-              ),
-            )
-          : ref.watch(userProfileStreamProvider(uid)).when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('$e')),
-                data: (profile) {
-                  final majorId = profile?.majorId;
-                  final majorTitle = majorTitleFromId(majorId);
-                  final hasMajor = majorTitle.isNotEmpty;
+              )
+            : ref.watch(userProfileStreamProvider(uid)).when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('$e')),
+                  data: (profile) {
+                    final majorId = profile?.majorId;
+                    final majorTitle = majorTitleFromId(majorId);
+                    final hasMajor = majorTitle.isNotEmpty;
 
-                  if (!hasMajor) {
-                    return Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.school_outlined,
-                            size: 56,
-                            color: colorScheme.primary,
-                          ),
-                          const SizedBox(height: 20),
-                          Text(
-                            strings.studyChatNoMajorTitle,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
+                    if (!hasMajor) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.school_outlined,
+                              size: 56,
+                              color: colorScheme.primary,
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            strings.studyChatNoMajorBody,
-                            textAlign: TextAlign.center,
-                            style: theme.textTheme.bodyLarge?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              height: 1.35,
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                          FilledButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).push<void>(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const ProfileEditorScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.person_outline_rounded),
-                            label: Text(strings.studyChatOpenProfile),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Material(
-                        color: colorScheme.surfaceContainerHighest.withValues(
-                          alpha: 0.55,
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.book_outlined,
-                                size: 20,
-                                color: colorScheme.primary,
+                            const SizedBox(height: 20),
+                            Text(
+                              strings.studyChatNoMajorTitle,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
                               ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  '${strings.studyChatMajorLabel}: $majorTitle',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              strings.studyChatNoMajorBody,
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 28),
+                            FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => const ProfileEditorScreen(),
                                   ),
+                                );
+                              },
+                              icon: const Icon(Icons.person_outline_rounded),
+                              label: Text(strings.studyChatOpenProfile),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Material(
+                          color: colorScheme.surfaceContainerHighest.withValues(
+                            alpha: 0.55,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.book_outlined,
+                                  size: 20,
+                                  color: colorScheme.primary,
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 6),
-                        child: Text(
-                          strings.studyChatDisclaimer,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: chatState.messages.isEmpty
-                            ? Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(24),
+                                const SizedBox(width: 10),
+                                Expanded(
                                   child: Text(
-                                    strings.studyChatEmptyState,
-                                    textAlign: TextAlign.center,
-                                    style: theme.textTheme.bodyLarge?.copyWith(
-                                      color: colorScheme.onSurfaceVariant,
+                                    '${strings.studyChatMajorLabel}: $majorTitle',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
-                              )
-                            : ListView.builder(
-                                controller: _scrollController,
-                                padding:
-                                    const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                                itemCount: chatState.messages.length,
-                                itemBuilder: (context, index) {
-                                  final m = chatState.messages[index];
-                                  return _ChatBubble(
-                                    isUser: m.isUser,
-                                    text: m.text,
-                                  );
-                                },
-                              ),
-                      ),
-                      SafeArea(
-                        top: false,
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _textController,
-                                  minLines: 1,
-                                  maxLines: 5,
-                                  textInputAction: TextInputAction.newline,
-                                  decoration: InputDecoration(
-                                    hintText: strings.studyChatInputHint,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 6),
+                          child: Text(
+                            strings.studyChatDisclaimer,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: chatState.messages.isEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Text(
+                                      strings.studyChatEmptyState,
+                                      textAlign: TextAlign.center,
+                                      style:
+                                          theme.textTheme.bodyLarge?.copyWith(
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
                                     ),
-                                    filled: true,
                                   ),
-                                  onSubmitted: (_) {
-                                    if (chatState.isSending) return;
-                                    unawaited(_onSend(
-                                      languageCode: locale,
-                                      majorId: majorId,
-                                    ));
+                                )
+                              : ListView.builder(
+                                  controller: _scrollController,
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                                  itemCount: chatState.messages.length,
+                                  itemBuilder: (context, index) {
+                                    final m = chatState.messages[index];
+                                    return _ChatBubble(
+                                      isUser: m.isUser,
+                                      text: m.text,
+                                    );
                                   },
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              IconButton.filled(
-                                onPressed: chatState.isSending
-                                    ? null
-                                    : () => unawaited(_onSend(
-                                          languageCode: locale,
-                                          majorId: majorId,
-                                        )),
-                                icon: chatState.isSending
-                                    ? SizedBox(
-                                        width: 22,
-                                        height: 22,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: colorScheme.onPrimary,
-                                        ),
-                                      )
-                                    : const Icon(Icons.send_rounded),
-                                tooltip: strings.studyChatSend,
-                              ),
-                            ],
+                        ),
+                        SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _textController,
+                                    minLines: 1,
+                                    maxLines: 5,
+                                    textInputAction: TextInputAction.newline,
+                                    decoration: InputDecoration(
+                                      hintText: strings.studyChatInputHint,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      filled: true,
+                                    ),
+                                    onSubmitted: (_) {
+                                      if (chatState.isSending) return;
+                                      unawaited(_onSend(
+                                        languageCode: locale,
+                                        majorId: majorId,
+                                      ));
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton.filled(
+                                  onPressed: chatState.isSending
+                                      ? null
+                                      : () => unawaited(_onSend(
+                                            languageCode: locale,
+                                            majorId: majorId,
+                                          )),
+                                  icon: chatState.isSending
+                                      ? SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: colorScheme.onPrimary,
+                                          ),
+                                        )
+                                      : const Icon(Icons.send_rounded),
+                                  tooltip: strings.studyChatSend,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                },
-              ),
+                      ],
+                    );
+                  },
+                ),
+      ),
     );
   }
 }

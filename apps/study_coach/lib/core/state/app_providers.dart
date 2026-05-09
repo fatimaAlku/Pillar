@@ -26,6 +26,7 @@ import '../ai/ai_service.dart';
 import '../firebase/auth_service.dart';
 import '../firebase/firestore_service.dart';
 import '../firebase/storage_service.dart';
+import '../onboarding/post_signin_welcome_store.dart';
 
 final firebaseAuthProvider = Provider<FirebaseAuth>((ref) {
   return FirebaseAuth.instance;
@@ -68,6 +69,12 @@ final authRepositoryProvider = Provider<AuthRepositoryImpl>((ref) {
 
 final currentAuthUserProvider = StreamProvider<AuthUser?>((ref) {
   return ref.watch(authRepositoryProvider).watchAuthUser();
+});
+
+/// Per-user: first authenticated session shows [PostSigninWelcomeScreen] until completed.
+final postSigninWelcomeCompletedProvider =
+    FutureProvider.family<bool, String>((ref, uid) {
+  return PostSigninWelcomeStore.isCompleted(uid);
 });
 
 final subjectsRepositoryProvider = Provider<SubjectsRepository>((ref) {

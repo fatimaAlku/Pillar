@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../../core/localization/app_strings.dart';
+import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/feature_state.dart';
 
@@ -95,6 +97,18 @@ class AuthFormController extends StateNotifier<AuthFormState> {
     await _ref.read(authRepositoryProvider).signOut();
   }
 
+  Future<void> resendVerificationEmail() async {
+    await _runAuthAction(() async {
+      await _ref.read(authRepositoryProvider).sendEmailVerification();
+    });
+  }
+
+  Future<void> reloadAuthUserAfterVerification() async {
+    await _runAuthAction(() async {
+      await _ref.read(authRepositoryProvider).reloadCurrentUser();
+    });
+  }
+
   void clearError() {
     state = state.copyWith(clearError: true);
   }
@@ -118,13 +132,17 @@ class AuthFormController extends StateNotifier<AuthFormState> {
   }
 
   String _mapFirebaseAuthError(String code) {
+    final strings = AppStrings.forLanguageCode(
+      _ref.read(appLocaleProvider).languageCode,
+    );
     switch (code) {
       case 'invalid-email':
         return 'Please enter a valid email address.';
+      case 'user-not-found':
+        return strings.loginEmailNotRegistered;
       case 'invalid-credential':
       case 'wrong-password':
-      case 'user-not-found':
-        return 'Email or password is incorrect.';
+        return strings.loginEmailOrPasswordIncorrect;
       case 'email-already-in-use':
         return 'This email is already registered.';
       case 'weak-password':

@@ -23,6 +23,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: user.email,
         displayName: user.displayName,
         photoUrl: user.photoURL,
+        emailVerified: user.emailVerified,
       );
     });
   }
@@ -48,11 +49,43 @@ class AuthRepositoryImpl implements AuthRepository {
       email: email,
       password: password,
     );
+    var user = credential.user;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'invalid-user-token',
+        message: 'Sign-up did not return a user.',
+      );
+    }
     final name = displayName?.trim();
     if (name != null && name.isNotEmpty) {
-      await credential.user?.updateDisplayName(name);
-      await credential.user?.reload();
+      await user.updateDisplayName(name);
+      await user.reload();
+      user = _firebaseAuth.currentUser ?? user;
     }
+    // New accounts are always unverified until the user opens the email link.
+    if (!user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No signed-in user to verify.',
+      );
+    }
+    if (user.emailVerified) {
+      return;
+    }
+    await user.sendEmailVerification();
+  }
+
+  @override
+  Future<void> reloadCurrentUser() async {
+    await _firebaseAuth.currentUser?.reload();
   }
 
   @override

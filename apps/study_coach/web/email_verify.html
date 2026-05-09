@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify email — Pillar</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #ede9fe 0%, #f8fafc 45%, #f8fafc 100%);
+      color: #1e293b;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 28px 24px;
+      max-width: 420px;
+      width: calc(100% - 32px);
+      box-shadow: 0 12px 40px rgba(99, 102, 241, 0.12);
+      text-align: center;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 12px; font-weight: 700; }
+    p { margin: 0 0 20px; line-height: 1.5; color: #64748b; font-size: 0.95rem; }
+    button {
+      width: 100%;
+      padding: 14px 18px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: #6366f1;
+      color: #fff;
+    }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .err { color: #b91c1c; font-size: 0.9rem; margin-top: 12px; }
+    .ok { color: #15803d; font-size: 0.95rem; margin-top: 16px; line-height: 1.45; }
+  </style>
+  <!--
+    Firebase Console (required once):
+    Authentication → Templates → Email address verification → Edit
+    → "Customize action URL" → set to the deployed URL of this file, e.g.:
+    https://my-pillar.firebaseapp.com/email_verify.html
+    (Use the same domain you use for hosting: .web.app or .firebaseapp.com)
+
+    This page does NOT verify until the user taps the button, so Outlook/Junk
+    link scanners are less likely to burn the one-time code.
+  -->
+</head>
+<body>
+  <div class="card" id="root">
+    <h1 id="title">Verify your email</h1>
+    <p id="msg">Tap the button below to finish verifying your student email for Pillar.</p>
+    <button type="button" id="go">Verify my email</button>
+    <div id="err" class="err" hidden></div>
+    <div id="ok" class="ok" hidden></div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var mode = params.get('mode');
+      var oobCode = params.get('oobCode');
+      var apiKey = params.get('apiKey') || 'AIzaSyAUGbMqkxUObMKg-jis18Dl_MVVljboZvw';
+      var lang = (params.get('lang') || 'en').toLowerCase();
+      var authDomain = 'my-pillar.firebaseapp.com';
+
+      var titleEl = document.getElementById('title');
+      var msgEl = document.getElementById('msg');
+      var btn = document.getElementById('go');
+      var errEl = document.getElementById('err');
+      var okEl = document.getElementById('ok');
+
+      if (lang === 'ar') {
+        titleEl.textContent = 'تأكيد بريدك';
+        msgEl.textContent = 'اضغط الزر أدناه لإكمال التحقق من بريدك في بيلار.';
+        btn.textContent = 'تأكيد بريدي';
+      }
+
+      function showErr(t) {
+        errEl.hidden = false;
+        errEl.textContent = t;
+        btn.disabled = false;
+      }
+
+      if (!oobCode || !mode) {
+        btn.disabled = true;
+        showErr(lang === 'ar'
+          ? 'رابط غير صالح. اطلب رسالة تحقق جديدة من التطبيق.'
+          : 'Invalid link. Request a new verification email from the Pillar app.');
+        return;
+      }
+
+      if (mode !== 'verifyEmail') {
+        btn.disabled = true;
+        showErr(lang === 'ar'
+          ? 'افتح تطبيق بيلار لمتابعة هذا الرابط.'
+          : 'Open the Pillar app to continue with this link.');
+        return;
+      }
+
+      btn.addEventListener('click', function () {
+        btn.disabled = true;
+        errEl.hidden = true;
+        try {
+          if (!firebase.apps.length) {
+            firebase.initializeApp({ apiKey: apiKey, authDomain: authDomain });
+          }
+        } catch (e) {
+          showErr(e.message || 'Could not start verification.');
+          return;
+        }
+
+        firebase.auth().applyActionCode(oobCode)
+          .then(function () {
+            btn.hidden = true;
+            msgEl.hidden = true;
+            okEl.hidden = false;
+            titleEl.textContent = lang === 'ar' ? 'تم التحقق' : 'You’re verified';
+            okEl.textContent = lang === 'ar'
+              ? 'يمكنك إغلاق هذه النافذة والعودة إلى التطبيق، ثم الضغط على «تحقّقت من بريدي» أو تسجيل الدخول.'
+              : 'You can close this tab, return to Pillar, then tap “I’ve verified” or sign in.';
+          })
+          .catch(function (e) {
+            var code = e && e.code ? e.code : '';
+            var fallback = lang === 'ar'
+              ? 'تعذّر التحقق. اطلب رسالة جديدة من التطبيق وافتح الرابط مرة واحدة فقط.'
+              : 'Could not verify. Request a new email from the app and open the link only once.';
+            if (code === 'auth/expired-action-code' || code === 'auth/invalid-action-code') {
+              fallback = lang === 'ar'
+                ? 'انتهت صلاحية الرابط أو استُخدم مسبقًا. اطلب بريدًا جديدًا من التطبيق.'
+                : 'This link expired or was already used. Request a new verification email in the app.';
+            }
+            showErr(fallback);
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
