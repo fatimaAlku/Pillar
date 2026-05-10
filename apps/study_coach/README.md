@@ -1,4 +1,4 @@
-# Pillar Study Coach
+# Pillar
 
 Flutter app for the Pillar study coach experience.
 

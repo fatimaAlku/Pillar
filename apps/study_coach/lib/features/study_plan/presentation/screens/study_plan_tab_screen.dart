@@ -6,6 +6,7 @@ import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/pillar_theme.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../profile/domain/entities/user_profile_data.dart';
 import '../../../quizzes/domain/entities/quiz_history_entry.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../../domain/entities/study_session.dart';
@@ -22,6 +23,9 @@ class StudyPlanTabScreen extends ConsumerStatefulWidget {
 
 class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   late DateTime _selectedDate;
+  /// Local override of the day's study budget. `null` follows the user's
+  /// profile preference; otherwise the planner uses [_dayBudgetOverride].
+  int? _dayBudgetOverride;
 
   @override
   void initState() {
@@ -307,10 +311,20 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final days = _buildWeekDays(anchor: _selectedDate);
     final quizHistory =
         ref.watch(quizHistoryStreamProvider(uid)).valueOrNull ?? const [];
-    final topicsForPlanning = _applyPerformanceSignals(topics, quizHistory);
+    final enrichedTopics =
+        ref.watch(enrichedTopicPerformanceInputsProvider(uid));
+    final topicsForPlanning = enrichedTopics.isEmpty
+        ? _applyPerformanceSignals(topics, quizHistory)
+        : enrichedTopics;
+    final preferredMinutes = ref
+            .watch(userProfileStreamProvider(uid))
+            .valueOrNull
+            ?.dailyStudyMinutes ??
+        UserProfileData.defaultDailyStudyMinutes;
+    final dayBudget = _dayBudgetOverride ?? preferredMinutes;
     final input = StudyPlanPersonalizationInput(
       topics: topicsForPlanning,
-      availableStudyMinutes: 180,
+      availableStudyMinutes: dayBudget,
       now: appNowInstant(),
     );
     final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
@@ -318,6 +332,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final dateIso = DateFormat('yyyy-MM-dd').format(_selectedDate);
     final sessionsAsync =
         ref.watch(sessionsForDateStreamProvider(SessionsForDateKey(uid, dateIso)));
+
+    final allocatedMinutes = tasks.fold<int>(
+      0,
+      (acc, task) => acc + task.recommendedMinutes,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
@@ -341,9 +360,19 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           label: Text(strings.addSchedule),
         ),
         const SizedBox(height: 12),
+        if (topics.isNotEmpty)
+          _DayBudgetPill(
+            selectedDate: _selectedDate,
+            currentMinutes: dayBudget,
+            preferredMinutes: preferredMinutes,
+            allocatedMinutes: allocatedMinutes,
+            onChanged: (minutes) =>
+                setState(() => _dayBudgetOverride = minutes),
+          ),
+        if (topics.isNotEmpty) const SizedBox(height: 12),
         _ScheduleRecommendationsCard(
           uid: uid,
-          topics: topics,
+          topics: topicsForPlanning,
           selectedDate: _selectedDate,
           history: quizHistory,
           dynamicResult: dynamicResult,
@@ -736,16 +765,78 @@ class _ScheduleCard extends StatelessWidget {
                         item.adjustmentReason!.trim().isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
-                        'Adapted for ${item.adjustmentReason}',
+                        'Adapted for ${_localizedReason(strings, item.adjustmentReason)}',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
+                    if (item.missedSessions > 0 ||
+                        item.daysSinceLastStudied != null) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (item.missedSessions > 0)
+                            _SignalChip(
+                              icon: Icons.history_toggle_off_outlined,
+                              label:
+                                  strings.missedSessionsBadge(item.missedSessions),
+                              color: PillarColors.priorityHigh,
+                            ),
+                          if (item.daysSinceLastStudied != null)
+                            _SignalChip(
+                              icon: Icons.schedule_rounded,
+                              label: strings
+                                  .lastStudiedAgo(item.daysSinceLastStudied!),
+                              color: colorScheme.primary,
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SignalChip extends StatelessWidget {
+  const _SignalChip({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -809,14 +900,24 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
             ? 'Complete a quiz to unlock personalized recommendations.'
             : strings.noWeakTopics)
         : 'Focus on ${weakTopicTitles.take(2).join(' and ')} in your next sessions.';
-    final showPlanChangeExplanation =
-        _isTomorrow(selectedDate) && dynamicResult.updatedPlan.isNotEmpty;
+    final showPlanChangeExplanation = _isTodayOrFuture(selectedDate) &&
+        dynamicResult.updatedPlan.any(
+          (item) =>
+              item.recommendedMinutes > 0 &&
+              (item.adjustmentReason ?? 'baseline personalization')
+                      .trim()
+                      .toLowerCase() !=
+                  'baseline personalization',
+        );
     final topAdjustedTopics = dynamicResult.updatedPlan
-        .take(2)
-        .map((item) {
-          final reason = (item.adjustmentReason ?? 'personalized signals').trim();
-          return '${item.topicTitle}: $reason';
-        })
+        .where((item) => item.recommendedMinutes > 0)
+        .take(3)
+        .map(
+          (item) => strings.adjustedTopicLine(
+            item.topicTitle,
+            _localizedReason(strings, item.adjustmentReason),
+          ),
+        )
         .toList(growable: false);
 
     return ExcludeSemantics(
@@ -867,7 +968,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
               if (showPlanChangeExplanation) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Why this plan changed',
+                  strings.whyThisPlanChanged,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: colorScheme.primary,
                     fontWeight: FontWeight.w700,
@@ -884,6 +985,15 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                 ),
                 if (topAdjustedTopics.isNotEmpty) ...[
                   const SizedBox(height: 6),
+                  Text(
+                    strings.planAdjustedReasonsHeader,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Text(
                     topAdjustedTopics.join('\n'),
                     style: theme.textTheme.bodySmall?.copyWith(
@@ -937,11 +1047,12 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
   required DateTime date,
   required String localeCode,
 }) {
-  if (sessions.isEmpty && _isTomorrow(date)) {
+  if (sessions.isEmpty && _isTodayOrFuture(date)) {
     return _buildSuggestedScheduleFromTasks(
       tasks: tasks,
       date: date,
       localeCode: localeCode,
+      topics: topics,
     );
   }
   final taskByTopic = <String, StudyTaskPriority>{};
@@ -1004,15 +1115,27 @@ List<_ScheduleItem> _buildSuggestedScheduleFromTasks({
   required List<StudyTaskPriority> tasks,
   required DateTime date,
   required String localeCode,
+  required List<TopicPerformanceInput> topics,
 }) {
   if (tasks.isEmpty) return const [];
-  final startHour = _isSameDay(date, appTodayDateOnly()) ? 17 : 15;
+  final today = appTodayDateOnly();
+  final startHour = _isSameDay(date, today) ? 17 : 15;
   var current = DateTime(date.year, date.month, date.day, startHour);
+  final topicById = <String, TopicPerformanceInput>{
+    for (final t in topics) t.topicId: t,
+  };
   final items = <_ScheduleItem>[];
   for (final task in tasks) {
     if (task.recommendedMinutes <= 0) continue;
     final timeLabel = _formatTime(current, localeCode);
-    items.add(_ScheduleItem.fromTask(task, timeLabel: timeLabel));
+    items.add(
+      _ScheduleItem.fromTask(
+        task,
+        timeLabel: timeLabel,
+        topic: topicById[task.topicId],
+        today: today,
+      ),
+    );
     current = current.add(Duration(minutes: task.recommendedMinutes + 10));
   }
   return items;
@@ -1050,6 +1173,12 @@ bool _isTomorrow(DateTime date) {
   return _isSameDay(_dateOnly(date), tomorrow);
 }
 
+bool _isTodayOrFuture(DateTime date) {
+  final today = appTodayDateOnly();
+  final candidate = _dateOnly(date);
+  return !candidate.isBefore(today);
+}
+
 class _ScheduleItem {
   const _ScheduleItem({
     required this.planId,
@@ -1068,6 +1197,9 @@ class _ScheduleItem {
     required this.performancePercentLabel,
     required this.performanceStatusLabel,
     required this.adjustmentReason,
+    required this.adjustmentReasonLocalizationKey,
+    required this.missedSessions,
+    required this.daysSinceLastStudied,
     required this.isAiSuggested,
     required this.priorityBand,
   });
@@ -1085,6 +1217,8 @@ class _ScheduleItem {
         timeLabel: timeLabel,
         planId: session.planId,
         sessionId: session.id,
+        topic: topic,
+        today: appTodayDateOnly(),
       );
       return _ScheduleItem(
         planId: fromTask.planId,
@@ -1103,6 +1237,10 @@ class _ScheduleItem {
         performancePercentLabel: fromTask.performancePercentLabel,
         performanceStatusLabel: fromTask.performanceStatusLabel,
         adjustmentReason: fromTask.adjustmentReason,
+        adjustmentReasonLocalizationKey:
+            fromTask.adjustmentReasonLocalizationKey,
+        missedSessions: fromTask.missedSessions,
+        daysSinceLastStudied: fromTask.daysSinceLastStudied,
         isAiSuggested: fromTask.isAiSuggested,
         priorityBand: fromTask.priorityBand,
       );
@@ -1135,6 +1273,9 @@ class _ScheduleItem {
       performancePercentLabel: null,
       performanceStatusLabel: null,
       adjustmentReason: null,
+      adjustmentReasonLocalizationKey: null,
+      missedSessions: topic?.missedSessions ?? 0,
+      daysSinceLastStudied: _daysSince(topic?.lastStudiedAt),
       isAiSuggested: false,
       priorityBand: _PriorityBand.low,
     );
@@ -1145,12 +1286,15 @@ class _ScheduleItem {
     required String timeLabel,
     String planId = '',
     String sessionId = '',
+    TopicPerformanceInput? topic,
+    DateTime? today,
   }) {
     final band = task.priorityScore >= 3
         ? _PriorityBand.high
         : task.priorityScore >= 2
             ? _PriorityBand.medium
             : _PriorityBand.low;
+    final reasonKey = (task.adjustmentReason ?? '').trim().toLowerCase();
     return _ScheduleItem(
       planId: planId,
       sessionId: sessionId,
@@ -1169,6 +1313,9 @@ class _ScheduleItem {
           '${((1 - task.weakness).clamp(0.0, 1.0) * 100).round()}%',
       performanceStatusLabel: _performanceStatusLabel(task.weakness),
       adjustmentReason: task.adjustmentReason,
+      adjustmentReasonLocalizationKey: reasonKey.isEmpty ? null : reasonKey,
+      missedSessions: topic?.missedSessions ?? 0,
+      daysSinceLastStudied: _daysSince(topic?.lastStudiedAt, today: today),
       isAiSuggested: planId.isEmpty && sessionId.isEmpty,
       priorityBand: band,
     );
@@ -1190,14 +1337,157 @@ class _ScheduleItem {
   final String? performancePercentLabel;
   final String? performanceStatusLabel;
   final String? adjustmentReason;
+  final String? adjustmentReasonLocalizationKey;
+  final int missedSessions;
+  final int? daysSinceLastStudied;
   final bool isAiSuggested;
   final _PriorityBand priorityBand;
+}
+
+int? _daysSince(DateTime? date, {DateTime? today}) {
+  if (date == null) return null;
+  final today0 = today ?? appTodayDateOnly();
+  final candidate = DateTime(date.year, date.month, date.day);
+  return today0.difference(candidate).inDays;
 }
 
 String _performanceStatusLabel(double weakness) {
   if (weakness >= 0.7) return 'Needs focus';
   if (weakness >= 0.45) return 'Improving';
   return 'Strong';
+}
+
+String _localizedReason(AppStrings strings, String? rawReason) {
+  final normalized = (rawReason ?? '').trim().toLowerCase();
+  switch (normalized) {
+    case 'low quiz performance':
+      return strings.reasonLowQuiz;
+    case 'upcoming exam':
+      return strings.reasonExamSoon;
+    case 'missed sessions':
+      return strings.reasonMissed;
+    case 'long time since last study':
+      return strings.reasonStale;
+    case 'baseline personalization':
+    case '':
+      return strings.reasonBaseline;
+    default:
+      return rawReason ?? strings.reasonBaseline;
+  }
+}
+
+class _DayBudgetPill extends StatelessWidget {
+  const _DayBudgetPill({
+    required this.selectedDate,
+    required this.currentMinutes,
+    required this.preferredMinutes,
+    required this.allocatedMinutes,
+    required this.onChanged,
+  });
+
+  /// Lightweight options so changing the day's budget feels instant. Picked
+  /// to bracket common study sessions without overwhelming the UI.
+  static const List<int> _options = [30, 60, 90, 120, 180, 240];
+
+  final DateTime selectedDate;
+  final int currentMinutes;
+  final int preferredMinutes;
+  final int allocatedMinutes;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final today = appTodayDateOnly();
+    String label;
+    if (_isSameDay(selectedDate, today)) {
+      label = strings.planTodayMinutesLabel;
+    } else if (_isTomorrow(selectedDate)) {
+      label = strings.planTomorrowMinutesLabel;
+    } else {
+      label = strings.planUpcomingMinutesLabel;
+    }
+    final canReset = currentMinutes != preferredMinutes;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: colorScheme.surfaceContainerLowest,
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 18, color: colorScheme.primary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                strings.dailyStudyBudgetValue(currentMinutes),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (canReset)
+                IconButton(
+                  tooltip: strings.clearExamDate,
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  onPressed: () => onChanged(null),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          SizedBox(
+            height: 36,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _options.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final minutes = _options[index];
+                final isSelected = currentMinutes == minutes;
+                return ChoiceChip(
+                  label: Text(strings.dailyStudyBudgetValue(minutes)),
+                  selected: isSelected,
+                  onSelected: (picked) => onChanged(picked ? minutes : null),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            strings.planMinutesAllocatedSummary(
+              allocatedMinutes,
+              currentMinutes,
+            ),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 enum _PriorityBand { high, medium, low }

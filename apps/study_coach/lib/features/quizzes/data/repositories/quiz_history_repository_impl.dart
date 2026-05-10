@@ -28,6 +28,14 @@ class QuizHistoryRepositoryImpl implements QuizHistoryRepository {
       'weakTopicTitles': weakTopicTitles,
     };
 
+    final link = result.linkContext;
+    if (link != null && link.hasSubject) {
+      data['linkedSubjectId'] = link.subjectId.trim();
+      data['linkedSubjectTitle'] = link.subjectTitle.trim();
+      data['linkedTopicIds'] = List<String>.from(link.linkedTopicIds);
+      data['linkedTopicTitles'] = List<String>.from(link.linkedTopicTitles);
+    }
+
     await _db
         .collection(FirestorePaths.users)
         .doc(uid)
@@ -63,6 +71,18 @@ class QuizHistoryRepositoryImpl implements QuizHistoryRepository {
         final totalCount = (data['totalCount'] as num?)?.toInt() ?? 0;
         final scoreFraction = (data['scoreFraction'] as num?)?.toDouble() ??
             (totalCount == 0 ? 0 : (correctCount / totalCount));
+
+        final sid = (data['linkedSubjectId'] as String?)?.trim();
+        final stitle = (data['linkedSubjectTitle'] as String?)?.trim();
+        final idsRaw = data['linkedTopicIds'];
+        final titlesRaw = data['linkedTopicTitles'];
+        final linkedIds = idsRaw is List
+            ? idsRaw.whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty).toList(growable: false)
+            : const <String>[];
+        final linkedTitles = titlesRaw is List
+            ? titlesRaw.whereType<String>().map((e) => e.trim()).where((e) => e.isNotEmpty).toList(growable: false)
+            : const <String>[];
+
         return QuizHistoryEntry(
           id: doc.id,
           completedAt: completedAt,
@@ -70,6 +90,10 @@ class QuizHistoryRepositoryImpl implements QuizHistoryRepository {
           totalCount: totalCount,
           scoreFraction: scoreFraction.clamp(0.0, 1.0),
           weakTopicTitles: weakTopics,
+          linkedSubjectId: (sid == null || sid.isEmpty) ? null : sid,
+          linkedSubjectTitle: (stitle == null || stitle.isEmpty) ? null : stitle,
+          linkedTopicIds: linkedIds,
+          linkedTopicTitles: linkedTitles,
         );
       }).toList(growable: false);
     });

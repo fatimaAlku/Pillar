@@ -22,6 +22,9 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
   String? _selectedAvatarId;
   /// Local major selection; when null, [UserProfileData.majorId] is used.
   String? _majorOverride;
+  /// Local daily-study-minutes selection; null means "follow profile value".
+  int? _dailyStudyMinutesOverride;
+  bool _hasUserChangedDailyMinutes = false;
 
   @override
   void initState() {
@@ -81,6 +84,12 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
               uid: authUser.uid,
               majorId: majorToSave,
               source: 'profile_edit',
+            );
+      }
+      if (_hasUserChangedDailyMinutes) {
+        await ref.read(userProfileRepositoryProvider).setDailyStudyMinutes(
+              uid: authUser.uid,
+              minutes: _dailyStudyMinutesOverride,
             );
       }
       ref.invalidate(localProfileAvatarIdProvider(authUser.uid));
@@ -249,6 +258,19 @@ class _ProfileEditorScreenState extends ConsumerState<ProfileEditorScreen> {
                           setState(() => _majorOverride = value);
                         },
                 ),
+                const SizedBox(height: 16),
+                _DailyStudyBudgetPicker(
+                  enabled: !_isSaving,
+                  selected: _hasUserChangedDailyMinutes
+                      ? _dailyStudyMinutesOverride
+                      : profile?.dailyStudyMinutes,
+                  onChanged: (value) {
+                    setState(() {
+                      _dailyStudyMinutesOverride = value;
+                      _hasUserChangedDailyMinutes = true;
+                    });
+                  },
+                ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
@@ -278,6 +300,88 @@ String? _catalogMajorId(String? majorId) {
     if (m.id == majorId) return majorId;
   }
   return null;
+}
+
+class _DailyStudyBudgetPicker extends StatelessWidget {
+  const _DailyStudyBudgetPicker({
+    required this.enabled,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  /// Stop showing arbitrary spinners; pre-set chips that map to common study sessions.
+  static const List<int> _options = [30, 60, 90, 120, 180, 240];
+
+  final bool enabled;
+  final int? selected;
+  final ValueChanged<int?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final activeValue = selected;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timer_outlined,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  strings.dailyStudyBudgetTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              if (activeValue != null)
+                TextButton(
+                  onPressed: enabled ? () => onChanged(null) : null,
+                  child: Text(strings.clearExamDate),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            strings.dailyStudyBudgetHint,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _options.map((minutes) {
+              final isSelected = activeValue == minutes;
+              return ChoiceChip(
+                label: Text(strings.dailyStudyBudgetValue(minutes)),
+                selected: isSelected,
+                onSelected: enabled
+                    ? (picked) => onChanged(picked ? minutes : null)
+                    : null,
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AvatarOption extends StatelessWidget {

@@ -8,4 +8,11 @@ abstract class UserProfileRepository {
     required String majorId,
     required String source,
   });
+
+  /// Persists the user's preferred daily study budget (in minutes). Pass
+  /// `null` to clear the override and fall back to the planner default.
+  Future<void> setDailyStudyMinutes({
+    required String uid,
+    required int? minutes,
+  });
 }

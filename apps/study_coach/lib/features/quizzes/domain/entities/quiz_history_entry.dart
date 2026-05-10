@@ -6,6 +6,10 @@ class QuizHistoryEntry {
     required this.totalCount,
     required this.scoreFraction,
     required this.weakTopicTitles,
+    this.linkedSubjectId,
+    this.linkedSubjectTitle,
+    this.linkedTopicIds = const [],
+    this.linkedTopicTitles = const [],
   });
 
   final String id;
@@ -14,4 +18,16 @@ class QuizHistoryEntry {
   final int totalCount;
   final double scoreFraction;
   final List<String> weakTopicTitles;
+
+  /// Firestore subject (course) doc id when the quiz was linked at generation time.
+  final String? linkedSubjectId;
+
+  /// Course display name.
+  final String? linkedSubjectTitle;
+
+  /// Topic doc ids under that subject.
+  final List<String> linkedTopicIds;
+
+  /// Parallel titles for [linkedTopicIds].
+  final List<String> linkedTopicTitles;
 }

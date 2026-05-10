@@ -41,6 +41,7 @@ class _StudyChatScreenState extends ConsumerState<StudyChatScreen> {
   Future<void> _onSend({
     required String languageCode,
     required String? majorId,
+    required String? uid,
   }) async {
     final strings = AppStrings.of(context);
     final text = _textController.text;
@@ -49,11 +50,26 @@ class _StudyChatScreenState extends ConsumerState<StudyChatScreen> {
               text: text,
               languageCode: languageCode,
               majorId: majorId,
+              uid: uid,
+              refusalOffTopic: strings.studyChatRefusalOffTopic,
+              refusalBlockedInjection: strings.studyChatRefusalBlocked,
             );
     if (!mounted) return;
     if (err == 'no_major') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(strings.studyChatNoMajorTitle)),
+      );
+      return;
+    }
+    if (err == 'no_courses') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.studyChatNoCourses)),
+      );
+      return;
+    }
+    if (err == 'no_uid') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.signInToSeeStudyPlan)),
       );
       return;
     }
@@ -270,6 +286,7 @@ class _StudyChatScreenState extends ConsumerState<StudyChatScreen> {
                                       unawaited(_onSend(
                                         languageCode: locale,
                                         majorId: majorId,
+                                        uid: uid,
                                       ));
                                     },
                                   ),
@@ -281,6 +298,7 @@ class _StudyChatScreenState extends ConsumerState<StudyChatScreen> {
                                       : () => unawaited(_onSend(
                                             languageCode: locale,
                                             majorId: majorId,
+                                            uid: uid,
                                           )),
                                   icon: chatState.isSending
                                       ? SizedBox(

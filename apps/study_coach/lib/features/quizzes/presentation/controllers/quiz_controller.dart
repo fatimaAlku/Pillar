@@ -87,6 +87,7 @@ class QuizGenerationRequest {
     required this.numberOfQuestions,
     this.notesText,
     this.quizEmphasis = 'balanced',
+    this.linkContext,
   });
 
   final List<String> topics;
@@ -94,6 +95,9 @@ class QuizGenerationRequest {
   final int numberOfQuestions;
   final String? notesText;
   final String quizEmphasis;
+
+  /// Optional course/topic ids from My courses; persisted with quiz history.
+  final QuizLinkContext? linkContext;
 }
 
 class QuizRunnerController extends StateNotifier<QuizRunnerState> {
@@ -137,6 +141,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     required int numberOfQuestions,
     String? notesText,
     String quizEmphasis = 'balanced',
+    QuizLinkContext? linkContext,
   }) async {
     final trimmedTopics =
         topics.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
@@ -149,6 +154,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
       numberOfQuestions: numberOfQuestions,
       notesText: normalizedNotes?.isEmpty == true ? null : normalizedNotes,
       quizEmphasis: emphasis,
+      linkContext: linkContext,
     );
 
     state = const QuizRunnerLoading();
@@ -199,6 +205,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
       numberOfQuestions: request.numberOfQuestions,
       notesText: request.notesText,
       quizEmphasis: request.quizEmphasis,
+      linkContext: request.linkContext,
     );
   }
 
@@ -271,6 +278,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
       correctCount: correctCount,
       totalCount: questions.length,
       weakTopics: weakTopics,
+      linkContext: _lastRequest?.linkContext,
     );
     state = QuizRunnerSubmitted(result);
     unawaited(_persistHistory(result));

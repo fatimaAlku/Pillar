@@ -83,6 +83,7 @@ class StudyPlanPersonalizationService {
     final redistributedMinutes = _redistributeForMissedSessions(
       sortedByPriority: withScores,
       allocated: minutesByTopic,
+      totalMinutes: input.availableStudyMinutes,
     );
 
     final updatedPlan = withScores
@@ -158,51 +159,87 @@ class StudyPlanPersonalizationService {
     return _clamp01(days / 14);
   }
 
+  /// Distributes [totalMinutes] across [sortedByPriority] proportionally to
+  /// their scores. Topics that would otherwise receive less than the minimum
+  /// session length are dropped so the user sees fewer, focused suggestions
+  /// instead of unusable 1-minute slivers.
   Map<String, int> _allocateMinutes({
     required List<_ScoredTopic> sortedByPriority,
     required int totalMinutes,
   }) {
     if (sortedByPriority.isEmpty || totalMinutes <= 0) return const {};
 
-    final sum = sortedByPriority.fold<double>(0, (acc, t) => acc + t.score);
+    final minSession = _minSessionMinutes(totalMinutes);
+    final maxTopics = (totalMinutes ~/ minSession).clamp(1, sortedByPriority.length);
+    final selected = sortedByPriority.take(maxTopics).toList(growable: false);
+
+    final result = <String, int>{
+      for (final t in sortedByPriority) t.source.topicId: 0,
+    };
+
+    final sum = selected.fold<double>(0, (acc, t) => acc + t.score);
     if (sum <= 0) {
-      final even = totalMinutes ~/ sortedByPriority.length;
-      final map = <String, int>{
-        for (final t in sortedByPriority) t.source.topicId: even,
-      };
-      var leftover = totalMinutes - (even * sortedByPriority.length);
-      for (final t in sortedByPriority) {
+      final even = totalMinutes ~/ selected.length;
+      for (final t in selected) {
+        result[t.source.topicId] = even;
+      }
+      var leftover = totalMinutes - (even * selected.length);
+      for (final t in selected) {
         if (leftover <= 0) break;
-        map[t.source.topicId] = (map[t.source.topicId] ?? 0) + 1;
+        result[t.source.topicId] = (result[t.source.topicId] ?? 0) + 1;
         leftover -= 1;
       }
-      return map;
+      return result;
     }
 
-    final allocation = <String, int>{};
-    var used = 0;
-    for (final t in sortedByPriority) {
-      final share = (t.score / sum) * totalMinutes;
-      final minutes = share.floor();
-      allocation[t.source.topicId] = minutes;
-      used += minutes;
+    var remaining = totalMinutes;
+    // First pass: give each selected topic at least the minimum session.
+    for (final t in selected) {
+      result[t.source.topicId] = minSession;
+      remaining -= minSession;
+    }
+    if (remaining < 0) {
+      // Budget can't support all selected at the minimum; trim from the lowest priority.
+      var deficit = -remaining;
+      for (final t in selected.reversed) {
+        if (deficit <= 0) break;
+        final current = result[t.source.topicId] ?? 0;
+        if (current <= 0) continue;
+        final take = current >= deficit ? deficit : current;
+        result[t.source.topicId] = current - take;
+        deficit -= take;
+      }
+      return result;
     }
 
-    var remaining = totalMinutes - used;
+    if (remaining == 0) return result;
+
+    // Second pass: distribute leftover proportionally to score weight.
+    for (final t in selected) {
+      final share = (t.score / sum) * remaining;
+      final extra = share.floor();
+      result[t.source.topicId] = (result[t.source.topicId] ?? 0) + extra;
+    }
+    var used =
+        result.values.fold<int>(0, (acc, value) => acc + value);
+    var leftover = totalMinutes - used;
     var i = 0;
-    while (remaining > 0) {
-      final topic = sortedByPriority[i % sortedByPriority.length];
-      allocation[topic.source.topicId] = (allocation[topic.source.topicId] ?? 0) + 1;
-      remaining -= 1;
+    while (leftover > 0 && selected.isNotEmpty) {
+      final topic = selected[i % selected.length];
+      result[topic.source.topicId] = (result[topic.source.topicId] ?? 0) + 1;
+      leftover -= 1;
       i += 1;
     }
 
-    return allocation;
+    return result;
   }
 
+  /// Shifts a budget-aware bonus from low-priority donors toward topics with
+  /// missed sessions so the user sees real catch-up time on tomorrow's plan.
   Map<String, int> _redistributeForMissedSessions({
     required List<_ScoredTopic> sortedByPriority,
     required Map<String, int> allocated,
+    required int totalMinutes,
   }) {
     if (sortedByPriority.isEmpty) return allocated;
     final result = Map<String, int>.from(allocated);
@@ -211,16 +248,23 @@ class StudyPlanPersonalizationService {
         .toList(growable: false);
     if (missedTopics.isEmpty) return result;
 
+    final minSession = _minSessionMinutes(totalMinutes);
+    final donorFloor = (minSession * 1.5).round();
+    final perMissedBonus = (totalMinutes / 12).clamp(5, 25).round();
+
     for (final missed in missedTopics) {
-      var bonus = missed.source.missedSessions * 5;
+      var bonus = (missed.source.missedSessions * perMissedBonus)
+          .clamp(0, totalMinutes ~/ 2);
       while (bonus > 0) {
-        final donor = sortedByPriority.lastWhere(
-          (topic) =>
-              topic.source.topicId != missed.source.topicId &&
-              (result[topic.source.topicId] ?? 0) > 10,
-          orElse: () => missed,
-        );
-        if (donor.source.topicId == missed.source.topicId) break;
+        _ScoredTopic? donor;
+        for (final candidate in sortedByPriority.reversed) {
+          if (candidate.source.topicId == missed.source.topicId) continue;
+          if ((result[candidate.source.topicId] ?? 0) > donorFloor) {
+            donor = candidate;
+            break;
+          }
+        }
+        if (donor == null) break;
         result[donor.source.topicId] = (result[donor.source.topicId] ?? 0) - 1;
         result[missed.source.topicId] = (result[missed.source.topicId] ?? 0) + 1;
         bonus -= 1;
@@ -228,6 +272,14 @@ class StudyPlanPersonalizationService {
     }
 
     return result;
+  }
+
+  /// Picks a minimum useful session length that scales with the day's budget
+  /// so very small budgets still produce at least one substantive block.
+  int _minSessionMinutes(int totalMinutes) {
+    if (totalMinutes <= 30) return totalMinutes;
+    if (totalMinutes <= 60) return 20;
+    return 25;
   }
 
   String _reasonForTopic({
@@ -247,6 +299,12 @@ class StudyPlanPersonalizationService {
 
     if (topic.missedSessions > 0) {
       return 'missed sessions';
+    }
+
+    final lastStudied = topic.lastStudiedAt;
+    if (lastStudied == null ||
+        now.difference(lastStudied).inDays >= 7) {
+      return 'long time since last study';
     }
 
     return 'baseline personalization';

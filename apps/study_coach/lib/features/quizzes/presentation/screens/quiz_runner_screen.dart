@@ -412,6 +412,29 @@ class _QuizSubmittedView extends ConsumerWidget {
                     '${result.correctCount}/${result.totalCount} ($percent%)',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                  if (result.linkContext != null &&
+                      result.linkContext!.hasSubject) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.link_rounded,
+                          size: 20,
+                          color: colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${strings.quizLinkedScopeLabel}: ${result.linkContext!.displayLine}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,

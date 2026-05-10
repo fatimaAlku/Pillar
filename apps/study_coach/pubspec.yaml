@@ -41,3 +41,5 @@ flutter:
   assets:
     - assets/avatars/
     - assets/icons/
+    - assets/fonts/NotoSansArabic-Regular.ttf
+    - assets/fonts/NotoSansArabic-Bold.ttf

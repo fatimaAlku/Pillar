@@ -74,6 +74,9 @@ class _HistoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final percent = (entry.scoreFraction * 100).round();
+    final courseLine = _courseLabelForHistory(entry);
+    final showCourseLink =
+        courseLine.isNotEmpty || entry.linkedTopicTitles.isNotEmpty;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -89,6 +92,45 @@ class _HistoryCard extends StatelessWidget {
               '${strings.score}: ${entry.correctCount}/${entry.totalCount} ($percent%)',
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (showCourseLink) ...[
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.menu_book_outlined,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (courseLine.isNotEmpty)
+                          Text(
+                            '${strings.quizHistoryCourseLink}: $courseLine',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        if (entry.linkedTopicTitles.isNotEmpty) ...[
+                          if (courseLine.isNotEmpty) const SizedBox(height: 4),
+                          Text(
+                            '${strings.quizHistoryTopicsLink}: ${entry.linkedTopicTitles.join(', ')}',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
             if (entry.weakTopicTitles.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
@@ -110,4 +152,11 @@ class _HistoryCard extends StatelessWidget {
     final min = value.minute.toString().padLeft(2, '0');
     return '$yyyy-$mm-$dd $hh:$min';
   }
+}
+
+String _courseLabelForHistory(QuizHistoryEntry entry) {
+  final title = entry.linkedSubjectTitle?.trim() ?? '';
+  if (title.isNotEmpty) return title;
+  final id = entry.linkedSubjectId?.trim() ?? '';
+  return id.isNotEmpty ? id : '';
 }

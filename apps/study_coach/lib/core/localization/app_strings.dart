@@ -22,6 +22,9 @@ class AppStrings {
     return AppStrings._(languageCode == 'ar' ? 'ar' : 'en');
   }
 
+  /// Matches [MaterialApp] / [appLocaleProvider] language (`ar` vs `en`).
+  bool get isArabicLocale => _languageCode == 'ar';
+
   bool get _isArabic => _languageCode == 'ar';
 
   String get navHome => _isArabic ? 'الرئيسية' : 'Home';
@@ -156,6 +159,15 @@ class AppStrings {
   String get studyChatDisclaimer => _isArabic
       ? 'قد يخطئ الذكاء الاصطناعي؛ تحقق من مصادرك الأكاديمية.'
       : 'AI can make mistakes; verify with your course materials.';
+  String get studyChatNoCourses => _isArabic
+      ? 'أضف مقررًا واحدًا على الأقل من الملف الشخصي ← «موادي ومقرراتي» لاستخدام المساعد ضمن موادك.'
+      : 'Add at least one course under Profile → My courses so the assistant stays scoped to your actual classes.';
+  String get studyChatRefusalOffTopic => _isArabic
+      ? 'يمكنني المساعدة فقط في أسئلة دراسية جامعية تتعلق بمقرراتك ومواضيعك أو بمهارات الدراسة في هذا الإطار. جرّب ذكر مقررًا أو موضوعًا من قائمتك.'
+      : 'I can only help with university study questions tied to your courses and topics, or study skills in that context. Try naming a course or topic from your list.';
+  String get studyChatRefusalBlocked => _isArabic
+      ? 'لا يمكنني المتابعة مع هذا الطلب. ركّز على سؤال دراسي يتعلق بمقرراتك.'
+      : 'I can’t continue with that request. Ask a study question related to your courses instead.';
   String get todaysProgress => _isArabic ? 'تقدم اليوم' : 'Today’s progress';
   String get todaysStudyPlan =>
       _isArabic ? 'خطة دراسة اليوم' : 'Today’s study plan';
@@ -244,6 +256,39 @@ class AppStrings {
   String get topicsHint => _isArabic
       ? 'مثال: أشجار، رسوم بيانية، تجزئة'
       : 'e.g. Trees, Graphs, Hashing';
+
+  String get quizLinkCourseRequiredTitle => _isArabic
+      ? 'المقرر والمواضيع (مطلوب)'
+      : 'Course & topics (required)';
+  String get quizLinkCourseRequiredHint => _isArabic
+      ? 'اختر المقرر والمواضيع حتى يُربط الاختبار بالسجل وتظهر نقاط الضعف بوضوح.'
+      : 'Pick your course and topics so each quiz is tied to your courses and weak areas are clear.';
+  String get quizSelectCoursePlaceholder =>
+      _isArabic ? 'اختر مقررًا' : 'Select a course';
+  String get quizCourseRequired =>
+      _isArabic ? 'يرجى اختيار مقرر.' : 'Please select a course.';
+  String get quizTopicsPickAtLeastOne => _isArabic
+      ? 'اختر موضوعًا واحدًا على الأقل لهذا المقرر.'
+      : 'Select at least one topic for this course.';
+  String get quizNoCoursesAddFirst => _isArabic
+      ? 'أضف مقررًا من الملف الشخصي ← «موادي ومقرراتي» قبل إنشاء الاختبار.'
+      : 'Add a course under Profile → My courses before generating a quiz.';
+  String get quizEnterTopicsWhenCourseHasNone => _isArabic
+      ? 'لا توجد مواضيع في هذا المقرر بعد. أضف مواضيع من «موادي ومقرراتي» أو اكتب المواضيع في الحقل أدناه.'
+      : 'This course has no topics yet. Add topics in My courses, or enter topics in the field below.';
+  String get quizTopicsFieldRequiredForCourse => _isArabic
+      ? 'أدخل المواضيع في الحقل أدناه (المقرر لا يحتوي مواضيع بعد).'
+      : 'Enter topics in the field below (this course has no topic list yet).';
+  String get quizFillTopicsFromSelection => _isArabic
+      ? 'نسخ المواضيع المحددة إلى الحقل'
+      : 'Copy selected topics into field';
+  String get quizLinkedScopeLabel =>
+      _isArabic ? 'نطاق الاختبار' : 'Quiz scope';
+  String get quizHistoryCourseLink =>
+      _isArabic ? 'المقرر' : 'Course';
+  String get quizHistoryTopicsLink =>
+      _isArabic ? 'المواضيع المرتبطة' : 'Linked topics';
+
   String get notesRequired =>
       _isArabic ? 'الملاحظات (مطلوبة)' : 'Notes (required)';
   String get notesHint => _isArabic
@@ -582,4 +627,72 @@ class AppStrings {
   String get noSubjectsForPersonalizedPlan => _isArabic
       ? 'لا توجد مواد أو مواضيع بعد. أضفها من الملف الشخصي ← «موادي ومقرراتي».'
       : 'No subjects or topics yet. Add them from Profile → My courses.';
+
+  String get dailyStudyBudgetTitle => _isArabic
+      ? 'الوقت اليومي للدراسة'
+      : 'Daily study time';
+  String get dailyStudyBudgetHint => _isArabic
+      ? 'يستخدمه المخطط لتوزيع الجلسات المقترحة بحسب أولوية كل موضوع.'
+      : 'Used by the planner to divide suggested sessions by topic priority.';
+  String dailyStudyBudgetValue(int minutes) {
+    if (minutes < 60) {
+      return _isArabic ? '$minutes دقيقة' : '$minutes min';
+    }
+    final hours = minutes ~/ 60;
+    final remainder = minutes % 60;
+    if (remainder == 0) {
+      return _isArabic
+          ? (hours == 1 ? 'ساعة واحدة' : '$hours ساعات')
+          : (hours == 1 ? '1 hr' : '$hours hrs');
+    }
+    return _isArabic
+        ? '$hours س $remainder د'
+        : '${hours}h ${remainder}m';
+  }
+
+  String get planTodayMinutesLabel =>
+      _isArabic ? 'وقت اليوم' : 'Today’s budget';
+  String get planTomorrowMinutesLabel =>
+      _isArabic ? 'وقت الغد' : 'Tomorrow’s budget';
+  String get planUpcomingMinutesLabel =>
+      _isArabic ? 'وقت اليوم المختار' : 'Day budget';
+  String planMinutesAllocatedSummary(int allocated, int budget) =>
+      _isArabic
+          ? 'تم توزيع $allocated من $budget دقيقة على أولوياتك.'
+          : 'Allocated $allocated of $budget minutes across your priorities.';
+
+  String get whyThisPlanChanged =>
+      _isArabic ? 'لماذا تغيّرت الخطة' : 'Why this plan changed';
+  String get planAdjustedReasonsHeader => _isArabic
+      ? 'تكيّف المخطط بناءً على هذه الإشارات'
+      : 'The planner adjusted from these signals';
+  String adjustedTopicLine(String topic, String reason) =>
+      _isArabic ? '• $topic: $reason' : '• $topic: $reason';
+  String get reasonLowQuiz =>
+      _isArabic ? 'أداء ضعيف في الاختبارات' : 'low quiz performance';
+  String get reasonExamSoon =>
+      _isArabic ? 'امتحان قريب' : 'upcoming exam';
+  String get reasonMissed =>
+      _isArabic ? 'جلسات فائتة' : 'missed sessions';
+  String get reasonStale =>
+      _isArabic ? 'لم تُدرَس منذ فترة' : 'long time since last study';
+  String get reasonBaseline =>
+      _isArabic ? 'تخصيص أساسي' : 'baseline personalization';
+
+  String missedSessionsBadge(int count) => _isArabic
+      ? (count == 1 ? 'جلسة فائتة' : '$count جلسات فائتة')
+      : (count == 1 ? '1 missed session' : '$count missed sessions');
+  String lastStudiedAgo(int daysAgo) {
+    if (daysAgo <= 0) {
+      return _isArabic ? 'دُرِس اليوم' : 'Studied today';
+    }
+    if (daysAgo == 1) {
+      return _isArabic ? 'دُرِس أمس' : 'Studied yesterday';
+    }
+    return _isArabic ? 'آخر دراسة قبل $daysAgo أيام' : 'Last studied $daysAgo days ago';
+  }
+
+  String get planEmptyStudyBudget => _isArabic
+      ? 'اضبط وقت الدراسة اليومي من الملف الشخصي لرؤية اقتراحات الخطة.'
+      : 'Set a daily study time in your profile to see plan suggestions.';
 }

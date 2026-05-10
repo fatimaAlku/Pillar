@@ -22,10 +22,15 @@ class _ExportResult {
 }
 
 class _ExportHost extends StatefulWidget {
-  const _ExportHost({required this.result, required this.done});
+  const _ExportHost({
+    required this.result,
+    required this.done,
+    this.languageCode = 'en',
+  });
 
   final QuizSubmissionResult result;
   final ValueSetter<_ExportResult> done;
+  final String languageCode;
 
   @override
   State<_ExportHost> createState() => _ExportHostState();
@@ -38,7 +43,7 @@ class _ExportHostState extends State<_ExportHost> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final exporter = const QuizReportExporter();
       try {
-        final strings = AppStrings.of(context);
+        final strings = AppStrings.forLanguageCode(widget.languageCode);
         final bytes = await exporter.buildQuizReviewReportPdfBytes(
           result: widget.result,
           strings: strings,
@@ -104,9 +109,63 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        locale: const Locale('en'),
-        supportedLocales: const [Locale('en')],
         home: _ExportHost(
+          result: result,
+          done: (_ExportResult r) {
+            exportResult = r;
+            completer.complete();
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    await completer.future;
+
+    expect(exportResult, isNotNull);
+    expect(exportResult!.error, isNull, reason: exportResult!.stackTrace?.toString());
+    expect(exportResult!.bytes, isNotNull);
+    expect(exportResult!.bytes!.length, greaterThan(100));
+  });
+
+  testWidgets('QuizReportExporter creates a PDF in Arabic (RTL)', (tester) async {
+    final result = QuizSubmissionResult(
+      questions: [
+        QuizQuestion(
+          id: 'q1',
+          prompt: 'ما الفرق بين خطأ نحوي وخطأ منطقي؟',
+          options: [
+            'النحوي يمنع التشغيل، والمنطقي يعطي نتائج خاطئة.',
+            'المنطقي يمنع التشغيل.',
+            'لا فرق.',
+            'لا أثر.',
+          ],
+          correctIndex: 0,
+          topicId: 't1',
+          topicTitle: 'أساسيات البرمجة',
+          explanation:
+              'النحوي يمنع التشغيل بسبب الصيغة، والمنطقي يسمح بالتشغيل لكن النتائج خاطئة.',
+        ),
+      ],
+      selectedByQuestionId: const {'q1': 1},
+      correctCount: 0,
+      totalCount: 1,
+      weakTopics: const [
+        WeakTopic(
+          topicId: 't1',
+          topicTitle: 'أساسيات البرمجة',
+          incorrectCount: 1,
+        ),
+      ],
+    );
+
+    _ExportResult? exportResult;
+    final completer = Completer<void>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: _ExportHost(
+          languageCode: 'ar',
           result: result,
           done: (_ExportResult r) {
             exportResult = r;

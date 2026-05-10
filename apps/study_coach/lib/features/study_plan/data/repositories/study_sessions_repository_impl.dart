@@ -6,6 +6,7 @@ import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/constants/firestore_paths.dart';
 import 'google_calendar_sync_repository.dart';
 import '../../domain/entities/study_session.dart';
+import '../../domain/entities/topic_activity_signals.dart';
 import '../../domain/repositories/study_sessions_repository.dart';
 
 class StudySessionsRepositoryImpl implements StudySessionsRepository {
@@ -141,6 +142,95 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
   @override
   Stream<List<StudySession>> watchTodaysSessions(String uid) {
     return watchSessionsForDate(uid, _todayKey());
+  }
+
+  @override
+  Stream<Map<String, TopicActivitySignals>> watchRecentTopicActivity(
+    String uid, {
+    int windowDays = 14,
+  }) {
+    final userRef = _db.collection(FirestorePaths.users).doc(uid);
+    return userRef
+        .collection(FirestorePaths.studyPlans)
+        .where('status', isEqualTo: 'active')
+        .limit(1)
+        .snapshots()
+        .asyncExpand((planSnap) {
+      if (planSnap.docs.isEmpty) {
+        return Stream.value(<String, TopicActivitySignals>{});
+      }
+      final today = appTodayDateOnly();
+      final clampedWindow = windowDays.clamp(1, 90);
+      final since = today.subtract(Duration(days: clampedWindow));
+      final sinceIso = _dateOnlyIso(since);
+      return planSnap.docs.first.reference
+          .collection(FirestorePaths.sessions)
+          .where('date', isGreaterThanOrEqualTo: sinceIso)
+          .snapshots()
+          .map(
+            (sessionsSnap) => _aggregateActivity(
+              today: today,
+              docs: sessionsSnap.docs
+                  .where((d) => !sessionDocIsDeleted(d.data()))
+                  .map((d) => d.data())
+                  .toList(growable: false),
+            ),
+          );
+    });
+  }
+
+  static Map<String, TopicActivitySignals> _aggregateActivity({
+    required DateTime today,
+    required List<Map<String, dynamic>> docs,
+  }) {
+    if (docs.isEmpty) return const <String, TopicActivitySignals>{};
+    final lastByTopic = <String, DateTime>{};
+    final missedByTopic = <String, int>{};
+    final completedByTopic = <String, int>{};
+
+    for (final data in docs) {
+      final topicId = (data['topicId'] as String?)?.trim() ?? '';
+      if (topicId.isEmpty) continue;
+      final dateIso = (data['date'] as String?)?.trim() ?? '';
+      final sessionDate = DateTime.tryParse(dateIso);
+      if (sessionDate == null) continue;
+      final dateOnly =
+          DateTime(sessionDate.year, sessionDate.month, sessionDate.day);
+      final isPast = dateOnly.isBefore(today);
+      final completed = data['completed'] == true;
+
+      if (completed) {
+        completedByTopic[topicId] = (completedByTopic[topicId] ?? 0) + 1;
+        final existing = lastByTopic[topicId];
+        if (existing == null || dateOnly.isAfter(existing)) {
+          lastByTopic[topicId] = dateOnly;
+        }
+      } else if (isPast) {
+        missedByTopic[topicId] = (missedByTopic[topicId] ?? 0) + 1;
+      }
+    }
+
+    final keys = <String>{
+      ...lastByTopic.keys,
+      ...missedByTopic.keys,
+      ...completedByTopic.keys,
+    };
+    final out = <String, TopicActivitySignals>{};
+    for (final key in keys) {
+      out[key] = TopicActivitySignals(
+        lastStudiedAt: lastByTopic[key],
+        missedSessions: missedByTopic[key] ?? 0,
+        completedSessions: completedByTopic[key] ?? 0,
+      );
+    }
+    return out;
+  }
+
+  static String _dateOnlyIso(DateTime date) {
+    final yyyy = date.year.toString().padLeft(4, '0');
+    final mm = date.month.toString().padLeft(2, '0');
+    final dd = date.day.toString().padLeft(2, '0');
+    return '$yyyy-$mm-$dd';
   }
 
   @override

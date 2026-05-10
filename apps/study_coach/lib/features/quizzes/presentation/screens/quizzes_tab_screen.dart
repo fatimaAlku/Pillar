@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/notes/notes_file_text_extractor.dart';
+import '../../../../core/state/app_providers.dart';
+import '../../../subjects/domain/entities/topic_item.dart';
+import '../../../subjects/presentation/controllers/subject_topics_providers.dart';
+import '../../domain/entities/quiz_submission_result.dart';
 import '../controllers/quiz_controller.dart';
 import 'quiz_runner_screen.dart';
 
@@ -23,6 +27,12 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
   String _quizEmphasis = 'balanced';
   bool _isImportingNotes = false;
 
+  /// Required link to My courses — persisted on quiz history for weak-topic context.
+  String? _linkSubjectId;
+  String? _linkSubjectTitle;
+  final List<String> _linkTopicIds = [];
+  final Map<String, String> _linkTopicTitles = {};
+
   static const int _minQuestions = 5;
   static const int _maxQuestions = 15;
 
@@ -36,8 +46,110 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
       _difficulty = 'medium';
       _questionCount = 10;
       _quizEmphasis = 'balanced';
+      _linkSubjectId = null;
+      _linkSubjectTitle = null;
+      _linkTopicIds.clear();
+      _linkTopicTitles.clear();
     });
     ref.read(quizRunnerControllerProvider.notifier).resetSession();
+  }
+
+  Future<void> _startQuiz(AppStrings strings) async {
+    final notes = _notesController.text.trim();
+    if (notes.isEmpty) {
+      _showMessage(strings.notesRequiredForQuiz);
+      return;
+    }
+
+    final authUser = ref.read(currentAuthUserProvider).valueOrNull;
+    final quizUid = authUser?.uid.trim();
+    if (quizUid == null || quizUid.isEmpty) return;
+
+    final subjects = ref.read(subjectsStreamProvider(quizUid)).valueOrNull ?? [];
+    if (subjects.isEmpty) {
+      _showMessage(strings.quizNoCoursesAddFirst);
+      return;
+    }
+
+    final sid = _linkSubjectId?.trim();
+    if (sid == null || sid.isEmpty) {
+      _showMessage(strings.quizCourseRequired);
+      return;
+    }
+
+    List<TopicItem> courseTopics;
+    try {
+      courseTopics = await ref.read(
+        subjectTopicsStreamProvider(SubjectTopicsKey(quizUid, sid)).future,
+      );
+    } catch (_) {
+      courseTopics = const [];
+    }
+
+    final typed = _topicsController.text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+
+    late final List<String> topicsForAi;
+    if (courseTopics.isEmpty) {
+      if (typed.isEmpty) {
+        _showMessage(strings.quizTopicsFieldRequiredForCourse);
+        return;
+      }
+      topicsForAi = typed;
+    } else {
+      if (_linkTopicIds.isEmpty) {
+        _showMessage(strings.quizTopicsPickAtLeastOne);
+        return;
+      }
+      topicsForAi = _linkTopicIds
+          .map((id) => _linkTopicTitles[id]?.trim() ?? '')
+          .where((e) => e.isNotEmpty)
+          .toList();
+      if (topicsForAi.isEmpty) {
+        _showMessage(strings.quizTopicsPickAtLeastOne);
+        return;
+      }
+    }
+
+    final linkContext = QuizLinkContext(
+      subjectId: sid,
+      subjectTitle: _linkSubjectTitle?.trim() ?? '',
+      linkedTopicIds: List<String>.from(_linkTopicIds),
+      linkedTopicTitles: _linkTopicIds
+          .map((id) => _linkTopicTitles[id]?.trim() ?? '')
+          .toList(growable: false),
+    );
+
+    await ref.read(quizRunnerControllerProvider.notifier).generateQuiz(
+          topics: topicsForAi,
+          notesText: notes,
+          difficulty: _difficulty,
+          numberOfQuestions: _questionCount,
+          quizEmphasis: _quizEmphasis,
+          linkContext: linkContext,
+        );
+
+    if (!mounted) return;
+    final nextState = ref.read(quizRunnerControllerProvider);
+    if (nextState is QuizRunnerInProgress || nextState is QuizRunnerSubmitted) {
+      final shouldReset = await Navigator.of(context).push<bool>(
+        MaterialPageRoute<bool>(
+          builder: (_) => const QuizRunnerScreen(),
+        ),
+      );
+      if (!mounted) return;
+      if (shouldReset == true) {
+        _resetQuizForm();
+      }
+      return;
+    }
+
+    if (nextState is QuizRunnerError) {
+      _showMessage(nextState.message);
+    }
   }
 
   void _showMessage(String message) {
@@ -144,6 +256,12 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
     final colorScheme = theme.colorScheme;
     final quizState = ref.watch(quizRunnerControllerProvider);
     final isGenerating = quizState is QuizRunnerLoading;
+    final authUser = ref.watch(currentAuthUserProvider).valueOrNull;
+    final quizUid = authUser?.uid.trim();
+    final hasAnyCourse = quizUid != null &&
+        quizUid.isNotEmpty &&
+        (ref.watch(subjectsStreamProvider(quizUid)).valueOrNull?.isNotEmpty ??
+            false);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 28),
@@ -194,6 +312,13 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                   ],
                 ),
                 const SizedBox(height: 22),
+                _buildQuizCourseLinkSection(
+                  strings,
+                  theme,
+                  colorScheme,
+                  isGenerating,
+                ),
+                const SizedBox(height: 14),
                 TextField(
                   controller: _topicsController,
                   keyboardType: TextInputType.text,
@@ -371,52 +496,9 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
                     minimumSize: const Size.fromHeight(52),
                     padding: const EdgeInsets.symmetric(horizontal: 18),
                   ),
-                  onPressed: isGenerating
+                  onPressed: isGenerating || !hasAnyCourse
                       ? null
-                      : () async {
-                          final topics = _topicsController.text
-                              .split(',')
-                              .map((e) => e.trim())
-                              .where((e) => e.isNotEmpty)
-                              .toList();
-                          final notes = _notesController.text.trim();
-                          if (notes.isEmpty) {
-                            _showMessage(strings.notesRequiredForQuiz);
-                            return;
-                          }
-
-                          await ref
-                              .read(quizRunnerControllerProvider.notifier)
-                              .generateQuiz(
-                                topics: topics,
-                                notesText: notes,
-                                difficulty: _difficulty,
-                                numberOfQuestions: _questionCount,
-                                quizEmphasis: _quizEmphasis,
-                              );
-
-                          if (!context.mounted) return;
-                          final nextState =
-                              ref.read(quizRunnerControllerProvider);
-                          if (nextState is QuizRunnerInProgress ||
-                              nextState is QuizRunnerSubmitted) {
-                            final shouldReset =
-                                await Navigator.of(context).push<bool>(
-                              MaterialPageRoute<bool>(
-                                builder: (_) => const QuizRunnerScreen(),
-                              ),
-                            );
-                            if (!context.mounted) return;
-                            if (shouldReset == true) {
-                              _resetQuizForm();
-                            }
-                            return;
-                          }
-
-                          if (nextState is QuizRunnerError) {
-                            _showMessage(nextState.message);
-                          }
-                        },
+                      : () => _startQuiz(strings),
                   icon: isGenerating
                       ? SizedBox(
                           width: 22,
@@ -444,6 +526,215 @@ class _QuizzesTabScreenState extends ConsumerState<QuizzesTabScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuizCourseLinkSection(
+    AppStrings strings,
+    ThemeData theme,
+    ColorScheme colorScheme,
+    bool isGenerating,
+  ) {
+    final auth = ref.watch(currentAuthUserProvider).valueOrNull;
+    final uid = auth?.uid.trim();
+    if (uid == null || uid.isEmpty) return const SizedBox.shrink();
+
+    final subjectsAsync = ref.watch(subjectsStreamProvider(uid));
+
+    return subjectsAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.only(top: 14),
+        child: LinearProgressIndicator(minHeight: 2),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (subjects) {
+        if (subjects.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(top: 14),
+            child: Text(
+              strings.quizNoCoursesAddFirst,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                strings.quizLinkCourseRequiredTitle,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                strings.quizLinkCourseRequiredHint,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 10),
+              DropdownButtonFormField<String?>(
+                key: ValueKey<String?>('quiz_link_subject_${_linkSubjectId ?? 'none'}'),
+                initialValue: _linkSubjectId,
+                decoration: InputDecoration(
+                  labelText: strings.courseName,
+                  border: const OutlineInputBorder(),
+                ),
+                items: [
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(strings.quizSelectCoursePlaceholder),
+                  ),
+                  ...subjects.map(
+                    (s) => DropdownMenuItem<String?>(
+                      value: s.id,
+                      child: Text(
+                        s.name.trim().isEmpty ? strings.unnamedCourse : s.name,
+                      ),
+                    ),
+                  ),
+                ],
+                onChanged: isGenerating
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _linkSubjectId = value;
+                          _linkSubjectTitle = null;
+                          _linkTopicIds.clear();
+                          _linkTopicTitles.clear();
+                          if (value != null && value.isNotEmpty) {
+                            for (final s in subjects) {
+                              if (s.id == value) {
+                                final n = s.name.trim();
+                                _linkSubjectTitle =
+                                    n.isEmpty ? strings.unnamedCourse : n;
+                                break;
+                              }
+                            }
+                          }
+                        });
+                      },
+              ),
+              if (_linkSubjectId != null && _linkSubjectId!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ref
+                    .watch(
+                      subjectTopicsStreamProvider(
+                        SubjectTopicsKey(uid, _linkSubjectId!),
+                      ),
+                    )
+                    .when(
+                      loading: () => const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(
+                          child: SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        ),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (topics) {
+                        if (topics.isEmpty) {
+                          return Text(
+                            strings.quizEnterTopicsWhenCourseHasNone,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                          );
+                        }
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              strings.topicTitleLabel,
+                              style: theme.textTheme.labelLarge,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              strings.quizTopicsPickAtLeastOne,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: topics.map((t) {
+                                final selected = _linkTopicIds.contains(t.id);
+                                return FilterChip(
+                                  label: Text(t.title),
+                                  selected: selected,
+                                  onSelected: isGenerating
+                                      ? null
+                                      : (sel) {
+                                          setState(() {
+                                            if (sel) {
+                                              if (!_linkTopicIds.contains(t.id)) {
+                                                _linkTopicIds.add(t.id);
+                                              }
+                                              _linkTopicTitles[t.id] = t.title;
+                                            } else {
+                                              _linkTopicIds.remove(t.id);
+                                              _linkTopicTitles.remove(t.id);
+                                            }
+                                          });
+                                        },
+                                );
+                              }).toList(),
+                            ),
+                            if (_linkTopicIds.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 10),
+                                child: Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: TextButton.icon(
+                                    onPressed: isGenerating
+                                        ? null
+                                        : () {
+                                            final parts = _linkTopicIds
+                                                .map(
+                                                  (id) =>
+                                                      _linkTopicTitles[id]
+                                                          ?.trim() ??
+                                                      '',
+                                                )
+                                                .where((e) => e.isNotEmpty)
+                                                .toList();
+                                            if (parts.isEmpty) return;
+                                            _topicsController.text =
+                                                parts.join(', ');
+                                            setState(() {});
+                                          },
+                                    icon: const Icon(
+                                      Icons.topic_outlined,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      strings.quizFillTopicsFromSelection,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

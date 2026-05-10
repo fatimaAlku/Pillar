@@ -79,6 +79,7 @@ class OpenAiQuizAiService implements QuizAiService {
       final parsed = QuizAiResponseParser.parseToQuestions(
         data: aiPayload,
         fallbackTopic: fallbackTopic,
+        allowedTopics: trimmedTopics,
       );
       if (parsed.length > numberOfQuestions) {
         return _ensureQuestionDiversity(
@@ -193,6 +194,8 @@ class OpenAiQuizAiService implements QuizAiService {
   }) async {
     final isArabic = languageCode == 'ar';
     final emphasisLine = _emphasisInstruction(quizEmphasis);
+    final allowedTopicsList = topics.isEmpty ? <String>['General'] : topics;
+    final allowedTopicsJson = jsonEncode(allowedTopicsList);
     final systemPrompt = [
       'You generate high-quality MCQ quizzes for university students.',
       'Return JSON only with shape: {"questions":[{"prompt":"string","options":["a","b","c","d"],"correctIndex":0,"explanation":"string","topicTitle":"string"}]}',
@@ -205,13 +208,16 @@ class OpenAiQuizAiService implements QuizAiService {
       '- Return exactly $numberOfQuestions questions.',
       '- Difficulty level is $difficulty.',
       '- Question style: $emphasisLine',
+      '- topicTitle MUST be copied VERBATIM from this allowed list: $allowedTopicsJson.',
+      '- NEVER invent generic labels (e.g. "general", "miscellaneous", "common mistakes", "fundamentals", "review"). Always pick the most specific allowed topic that the question targets.',
+      '- Distribute questions across the allowed topics so each chosen topic is represented when there are enough questions.',
       if (isArabic)
-        '- Write all questions, options, explanations, and topic titles in Arabic.'
+        '- Write all questions, options, and explanations in Arabic. Keep topicTitle EXACTLY as in the allowed list (do not translate).'
       else
-        '- Write all questions, options, explanations, and topic titles in English.',
+        '- Write all questions, options, and explanations in English. Keep topicTitle EXACTLY as in the allowed list.',
     ].join('\n');
     final userPrompt = [
-      'Topics: ${topics.isEmpty ? 'General' : topics.join(', ')}',
+      'Allowed topics (use as topicTitle exactly): $allowedTopicsJson',
       notesText == null || notesText.isEmpty
           ? 'Notes: not provided'
           : 'Notes:\n$notesText',
@@ -362,12 +368,18 @@ class QuizAiResponseParser {
   static List<QuizQuestion> parseToQuestions({
     required Object? data,
     required String fallbackTopic,
+    List<String> allowedTopics = const <String>[],
   }) {
     final root = _coerceToMap(data);
     final rawQuestions = root['questions'];
     if (rawQuestions is! List) {
       throw const QuizAiParseException('Missing "questions" array.');
     }
+
+    final canonicalAllowed = <String>[
+      for (final t in allowedTopics)
+        if (t.trim().isNotEmpty) t.trim(),
+    ];
 
     final questions = <QuizQuestion>[];
     for (var i = 0; i < rawQuestions.length; i++) {
@@ -403,19 +415,27 @@ class QuizAiResponseParser {
         );
       }
 
-      final topicId = (q['topicId'] as Object?)?.toString().trim();
-      final topicTitle = (q['topicTitle'] as Object?)?.toString().trim() ??
-          fallbackTopic.trim();
+      final rawTopicTitle =
+          (q['topicTitle'] as Object?)?.toString().trim() ?? '';
+      final canonicalTitle = _resolveCanonicalTopic(
+        candidate: rawTopicTitle,
+        prompt: prompt,
+        allowed: canonicalAllowed,
+        fallback: fallbackTopic,
+      );
+
+      final rawTopicId = (q['topicId'] as Object?)?.toString().trim();
+      final topicId = (rawTopicId != null && rawTopicId.isNotEmpty)
+          ? rawTopicId
+          : 'topic_${_slug(canonicalTitle)}';
 
       questions.add(
         QuizQuestion(
           id: (q['id'] as Object?)?.toString().trim().isNotEmpty == true
               ? (q['id'] as Object).toString()
               : 'ai_q_${i + 1}',
-          topicId: (topicId != null && topicId.isNotEmpty)
-              ? topicId
-              : 'topic_${_slug(fallbackTopic)}',
-          topicTitle: topicTitle.isEmpty ? fallbackTopic : topicTitle,
+          topicId: topicId,
+          topicTitle: canonicalTitle,
           prompt: prompt,
           options: options,
           correctIndex: correctIndex,
@@ -428,6 +448,75 @@ class QuizAiResponseParser {
       throw const QuizAiParseException('No questions returned.');
     }
     return questions;
+  }
+
+  /// Snap any AI-emitted topic to the closest user-allowed topic so weak
+  /// topics surface specific course topics (e.g. "Trees") instead of generic
+  /// labels like "Common beginner mistakes".
+  static String _resolveCanonicalTopic({
+    required String candidate,
+    required String prompt,
+    required List<String> allowed,
+    required String fallback,
+  }) {
+    if (allowed.isEmpty) {
+      return candidate.isEmpty ? fallback : candidate;
+    }
+
+    final candidateLower = candidate.toLowerCase();
+    if (candidate.isNotEmpty) {
+      for (final t in allowed) {
+        if (t.toLowerCase() == candidateLower) return t;
+      }
+      for (final t in allowed) {
+        final tl = t.toLowerCase();
+        if (tl.isEmpty) continue;
+        if (candidateLower.contains(tl) || tl.contains(candidateLower)) {
+          return t;
+        }
+      }
+    }
+
+    final promptLower = prompt.toLowerCase();
+    final promptTokens = promptLower
+        .split(RegExp(r'[^a-z0-9\u0600-\u06ff]+'))
+        .where((t) => t.isNotEmpty)
+        .toList(growable: false);
+
+    String? bestMatch;
+    var bestScore = 0;
+    for (final t in allowed) {
+      final tl = t.toLowerCase();
+      if (tl.isEmpty) continue;
+      var score = 0;
+      if (promptLower.contains(tl)) {
+        score = tl.length * 2;
+      } else {
+        for (final word in tl.split(RegExp(r'\s+'))) {
+          if (word.length < 3) continue;
+          if (promptLower.contains(word)) {
+            score += word.length * 2;
+            continue;
+          }
+          // Stem-aware match: e.g. allowed "Hashing" matches prompt "hash".
+          final prefix = word.substring(0, word.length < 4 ? word.length : 4);
+          for (final tok in promptTokens) {
+            if (tok.length < 3) continue;
+            if (tok.startsWith(prefix) || word.startsWith(tok)) {
+              score += prefix.length;
+              break;
+            }
+          }
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestMatch = t;
+      }
+    }
+    if (bestMatch != null) return bestMatch;
+
+    return allowed.first;
   }
 
   static Map<String, dynamic> _coerceToMap(Object? data) {
