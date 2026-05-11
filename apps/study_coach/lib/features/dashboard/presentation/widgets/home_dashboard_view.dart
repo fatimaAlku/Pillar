@@ -7,6 +7,7 @@ import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../academic_tasks/domain/entities/academic_task.dart';
 import '../../../academic_tasks/presentation/screens/academic_tasks_screen.dart';
+import '../../../focus/presentation/screens/focus_session_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 import '../../../study_plan/domain/entities/study_personalization_models.dart';
 import '../../../study_plan/domain/entities/study_session.dart';
@@ -117,6 +118,22 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => const AcademicTasksScreen(),
+      ),
+    );
+  }
+
+  void _openFocusSession({
+    required String uid,
+    required StudySession session,
+    required String title,
+  }) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FocusSessionScreen(
+          uid: uid,
+          session: session,
+          topicTitle: title,
+        ),
       ),
     );
   }
@@ -271,6 +288,11 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                       onToggle: (index) => _toggleSession(
                         uid: user.uid,
                         session: rows[index].session,
+                      ),
+                      onStartFocus: (index) => _openFocusSession(
+                        uid: user.uid,
+                        session: rows[index].session,
+                        title: rows[index].title,
                       ),
                       onAddToSchedule: topics.isEmpty
                           ? null
@@ -630,12 +652,14 @@ class _TodayPlanCard extends StatelessWidget {
     required this.rows,
     required this.emptyMessage,
     required this.onToggle,
+    required this.onStartFocus,
     this.onAddToSchedule,
   });
 
   final List<_SessionRow> rows;
   final String emptyMessage;
   final void Function(int index) onToggle;
+  final void Function(int index) onStartFocus;
   final VoidCallback? onAddToSchedule;
 
   @override
@@ -757,6 +781,18 @@ class _TodayPlanCard extends StatelessWidget {
                               ],
                             ),
                           ),
+                          if (!row.session.completed) ...[
+                            const SizedBox(width: 8),
+                            IconButton.filledTonal(
+                              onPressed: () => onStartFocus(index),
+                              tooltip: strings.startFocusSessionTooltip,
+                              icon: const Icon(
+                                Icons.play_arrow_rounded,
+                                size: 20,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ],
                       ),
                     ),

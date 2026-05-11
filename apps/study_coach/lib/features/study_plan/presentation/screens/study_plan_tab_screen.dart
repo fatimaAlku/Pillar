@@ -6,6 +6,7 @@ import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/theme/pillar_theme.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../focus/presentation/screens/focus_session_screen.dart';
 import '../../../profile/domain/entities/user_profile_data.dart';
 import '../../../quizzes/domain/entities/quiz_history_entry.dart';
 import '../../domain/entities/study_personalization_models.dart';
@@ -23,6 +24,7 @@ class StudyPlanTabScreen extends ConsumerStatefulWidget {
 
 class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   late DateTime _selectedDate;
+
   /// Local override of the day's study budget. `null` follows the user's
   /// profile preference; otherwise the planner uses [_dayBudgetOverride].
   int? _dayBudgetOverride;
@@ -207,8 +209,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                               divisions: 21,
                               value: duration,
                               label: '${duration.round()}',
-                              onChanged: (v) =>
-                                  setLocal(() => duration = v),
+                              onChanged: (v) => setLocal(() => duration = v),
                             ),
                           ),
                           Text('${duration.round()}'),
@@ -301,6 +302,31 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     );
   }
 
+  void _openFocusSession({
+    required String uid,
+    required _ScheduleItem item,
+    required DateTime scheduleDate,
+  }) {
+    if (item.planId.isEmpty || item.sessionId.isEmpty) return;
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FocusSessionScreen(
+          uid: uid,
+          topicTitle: item.title,
+          session: StudySession(
+            id: item.sessionId,
+            planId: item.planId,
+            topicId: item.topicId,
+            date: DateFormat('yyyy-MM-dd').format(scheduleDate),
+            durationMin: item.durationMin,
+            startMinute: item.startMinute,
+            completed: item.completed,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPlanScrollView(
     BuildContext context,
     AppStrings strings,
@@ -330,8 +356,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final dynamicResult = ref.watch(studyPlanDynamicResultProvider(input));
     final tasks = dynamicResult.updatedPlan;
     final dateIso = DateFormat('yyyy-MM-dd').format(_selectedDate);
-    final sessionsAsync =
-        ref.watch(sessionsForDateStreamProvider(SessionsForDateKey(uid, dateIso)));
+    final sessionsAsync = ref
+        .watch(sessionsForDateStreamProvider(SessionsForDateKey(uid, dateIso)));
 
     final allocatedMinutes = tasks.fold<int>(
       0,
@@ -432,6 +458,13 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                     ...daySchedule.map(
                       (item) => _ScheduleCard(
                         item: item,
+                        onStartFocus: item.canStartFocus
+                            ? () => _openFocusSession(
+                                  uid: uid,
+                                  item: item,
+                                  scheduleDate: _selectedDate,
+                                )
+                            : null,
                         onEditSession:
                             item.sessionId.isNotEmpty && item.planId.isNotEmpty
                                 ? () => _editScheduledSession(
@@ -595,11 +628,13 @@ class _DayChip extends StatelessWidget {
 class _ScheduleCard extends StatelessWidget {
   const _ScheduleCard({
     required this.item,
+    this.onStartFocus,
     this.onEditSession,
     this.onDeleteSession,
   });
 
   final _ScheduleItem item;
+  final VoidCallback? onStartFocus;
   final VoidCallback? onEditSession;
   final VoidCallback? onDeleteSession;
 
@@ -666,6 +701,21 @@ class _ScheduleCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (onStartFocus != null)
+                          IconButton.filledTonal(
+                            onPressed: onStartFocus,
+                            tooltip: strings.startFocusSessionTooltip,
+                            icon: const Icon(
+                              Icons.play_arrow_rounded,
+                              size: 20,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
                         if (onEditSession != null)
                           IconButton(
                             onPressed: onEditSession,
@@ -782,8 +832,8 @@ class _ScheduleCard extends StatelessWidget {
                           if (item.missedSessions > 0)
                             _SignalChip(
                               icon: Icons.history_toggle_off_outlined,
-                              label:
-                                  strings.missedSessionsBadge(item.missedSessions),
+                              label: strings
+                                  .missedSessionsBadge(item.missedSessions),
                               color: PillarColors.priorityHigh,
                             ),
                           if (item.daysSinceLastStudied != null)
@@ -935,7 +985,8 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(10),
                     child: InkWell(
-                      onTap: () => ref.invalidate(quizHistoryStreamProvider(uid)),
+                      onTap: () =>
+                          ref.invalidate(quizHistoryStreamProvider(uid)),
                       borderRadius: BorderRadius.circular(10),
                       child: SizedBox(
                         width: 30,
@@ -1201,6 +1252,7 @@ class _ScheduleItem {
     required this.missedSessions,
     required this.daysSinceLastStudied,
     required this.isAiSuggested,
+    required this.completed,
     required this.priorityBand,
   });
 
@@ -1242,6 +1294,7 @@ class _ScheduleItem {
         missedSessions: fromTask.missedSessions,
         daysSinceLastStudied: fromTask.daysSinceLastStudied,
         isAiSuggested: fromTask.isAiSuggested,
+        completed: session.completed,
         priorityBand: fromTask.priorityBand,
       );
     }
@@ -1277,6 +1330,7 @@ class _ScheduleItem {
       missedSessions: topic?.missedSessions ?? 0,
       daysSinceLastStudied: _daysSince(topic?.lastStudiedAt),
       isAiSuggested: false,
+      completed: session.completed,
       priorityBand: _PriorityBand.low,
     );
   }
@@ -1317,6 +1371,7 @@ class _ScheduleItem {
       missedSessions: topic?.missedSessions ?? 0,
       daysSinceLastStudied: _daysSince(topic?.lastStudiedAt, today: today),
       isAiSuggested: planId.isEmpty && sessionId.isEmpty,
+      completed: false,
       priorityBand: band,
     );
   }
@@ -1341,7 +1396,11 @@ class _ScheduleItem {
   final int missedSessions;
   final int? daysSinceLastStudied;
   final bool isAiSuggested;
+  final bool completed;
   final _PriorityBand priorityBand;
+
+  bool get canStartFocus =>
+      planId.isNotEmpty && sessionId.isNotEmpty && !completed;
 }
 
 int? _daysSince(DateTime? date, {DateTime? today}) {
@@ -1499,7 +1558,8 @@ List<TopicPerformanceInput> _applyPerformanceSignals(
   if (topics.isEmpty) return const [];
   if (history.isEmpty) return topics;
 
-  final scores = history.map((entry) => entry.scoreFraction).toList(growable: false);
+  final scores =
+      history.map((entry) => entry.scoreFraction).toList(growable: false);
   final baseline = scores.isEmpty
       ? 0.5
       : (scores.reduce((a, b) => a + b) / scores.length).clamp(0.0, 1.0);
@@ -1551,8 +1611,8 @@ String _fallbackTitleFromTopicId(
   const syntheticPrefix = 'subject_';
   const syntheticSuffix = '_overview';
   if (raw.startsWith(syntheticPrefix) && raw.endsWith(syntheticSuffix)) {
-    final subjectId =
-        raw.substring(syntheticPrefix.length, raw.length - syntheticSuffix.length);
+    final subjectId = raw.substring(
+        syntheticPrefix.length, raw.length - syntheticSuffix.length);
     final subjectTitle = subjectTitleById[subjectId]?.trim() ?? '';
     if (subjectTitle.isNotEmpty) {
       return '$subjectTitle overview';
@@ -1561,4 +1621,3 @@ String _fallbackTitleFromTopicId(
   }
   return raw;
 }
-

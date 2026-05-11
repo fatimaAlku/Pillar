@@ -212,6 +212,22 @@ class AppStrings {
       _isArabic ? '$completed من $total مهام' : '$completed of $total tasks';
   String minutesShort(int minutes) =>
       _isArabic ? '$minutes دقيقة' : '$minutes min';
+  String get startFocusSession => _isArabic ? 'بدء التركيز' : 'Start focus';
+  String get startFocusSessionTooltip =>
+      _isArabic ? 'بدء جلسة تركيز' : 'Start focus session';
+  String get focusModeTitle => _isArabic ? 'وضع التركيز' : 'Focus mode';
+  String focusModeSubtitle(int minutes) => _isArabic
+      ? 'جلسة تركيز لمدة $minutes دقيقة'
+      : '$minutes-minute focus session';
+  String get focusSessionRunning =>
+      _isArabic ? 'ركّز على هذه الجلسة الآن.' : 'Stay with this session.';
+  String get focusSessionPaused => _isArabic ? 'متوقف مؤقتًا' : 'Paused';
+  String get pauseFocusSession => _isArabic ? 'إيقاف مؤقت' : 'Pause';
+  String get resumeFocusSession => _isArabic ? 'استئناف' : 'Resume';
+  String get finishFocusSession =>
+      _isArabic ? 'إنهاء وتحديدها كمكتملة' : 'Finish and mark complete';
+  String get focusSessionCompleted =>
+      _isArabic ? 'تم إكمال جلسة التركيز.' : 'Focus session completed.';
 
   String get planDayNothingScheduled => _isArabic
       ? 'لا توجد جلسات مجدولة لهذا اليوم. اضغط «إضافة إلى الجدول» لإظهار المواضيع هنا.'
