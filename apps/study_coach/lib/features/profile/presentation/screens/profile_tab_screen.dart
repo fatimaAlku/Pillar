@@ -25,6 +25,7 @@ import 'password_change_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'profile_editor_screen.dart';
 import 'quiz_history_screen.dart';
+import '../../../academic_tasks/presentation/screens/academic_tasks_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerStatefulWidget {
@@ -330,6 +331,18 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                   Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
                       builder: (_) => const SubjectsManageScreen(),
+                    ),
+                  );
+                },
+              ),
+              const _TileDivider(),
+              _ProfileMenuTile(
+                icon: Icons.event_available_outlined,
+                title: strings.academicTasksShort,
+                onTap: () {
+                  Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AcademicTasksScreen(),
                     ),
                   );
                 },

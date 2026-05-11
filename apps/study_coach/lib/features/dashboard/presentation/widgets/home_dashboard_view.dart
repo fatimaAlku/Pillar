@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/config/app_time_zone.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../academic_tasks/domain/entities/academic_task.dart';
+import '../../../academic_tasks/presentation/screens/academic_tasks_screen.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 import '../../../study_plan/domain/entities/study_personalization_models.dart';
 import '../../../study_plan/domain/entities/study_session.dart';
@@ -26,6 +28,35 @@ String _topicTitle(
     if (t.topicId == session.topicId) return t.topicTitle;
   }
   return session.topicId;
+}
+
+List<AcademicTask> _upcomingAcademicTasks(List<AcademicTask> tasks) {
+  final openTasks = tasks.where((task) => !task.isCompleted).toList()
+    ..sort((a, b) {
+      final aDue = a.dueDate ?? DateTime(9999);
+      final bDue = b.dueDate ?? DateTime(9999);
+      return aDue.compareTo(bDue);
+    });
+  return openTasks.take(4).toList(growable: false);
+}
+
+String _academicTaskDueLabel(
+  BuildContext context,
+  AppStrings strings,
+  AcademicTask task,
+) {
+  final dueDate = task.dueDate;
+  if (dueDate == null) return strings.academicTaskDueDate;
+  final dateOnly = DateTime(dueDate.year, dueDate.month, dueDate.day);
+  final today = appTodayDateOnly();
+  final days = dateOnly.difference(today).inDays;
+  final formatted = DateFormat.yMMMd(
+    Localizations.localeOf(context).languageCode,
+  ).format(dateOnly);
+  if (days == 0) return strings.academicTaskDueToday(formatted);
+  if (days == 1) return strings.academicTaskDueTomorrow(formatted);
+  if (days > 1) return strings.academicTaskDueInDays(days, formatted);
+  return strings.academicTaskOverdue(days.abs(), formatted);
 }
 
 /// Home tab: today’s plan from Firestore sessions, progress, AI placeholder, and quick actions.
@@ -80,6 +111,33 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
         builder: (_) => const StudyChatScreen(),
       ),
     );
+  }
+
+  void _openAcademicTasks() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const AcademicTasksScreen(),
+      ),
+    );
+  }
+
+  Future<void> _toggleAcademicTask({
+    required String uid,
+    required AcademicTask task,
+  }) async {
+    final strings = AppStrings.of(context);
+    try {
+      await ref.read(academicTasksRepositoryProvider).setTaskCompleted(
+            uid: uid,
+            taskId: task.id,
+            completed: !task.isCompleted,
+          );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotToggleAcademicTask)),
+      );
+    }
   }
 
   Future<void> _openAddToSchedule({
@@ -139,6 +197,8 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
           );
         }
         final sessionsAsync = ref.watch(todaysSessionsStreamProvider(user.uid));
+        final academicTasksAsync =
+            ref.watch(academicTasksStreamProvider(user.uid));
         final topicsAsync =
             ref.watch(topicPerformanceInputsStreamProvider(user.uid));
 
@@ -163,6 +223,9 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                 final progress =
                     sessions.isEmpty ? 0.0 : completedCount / sessions.length;
                 final pct = (progress * 100).round();
+                final academicTasks =
+                    academicTasksAsync.valueOrNull ?? const <AcademicTask>[];
+                final upcomingTasks = _upcomingAcademicTasks(academicTasks);
 
                 return ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -193,6 +256,15 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                       total: sessions.length,
                     ),
                     const SizedBox(height: 16),
+                    _UpcomingDeadlinesCard(
+                      tasks: upcomingTasks,
+                      onViewAll: _openAcademicTasks,
+                      onToggle: (task) => _toggleAcademicTask(
+                        uid: user.uid,
+                        task: task,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     _TodayPlanCard(
                       rows: rows,
                       emptyMessage: strings.noSessionsTodayHome,
@@ -216,10 +288,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                     ),
                     const SizedBox(height: 12),
                     _QuickActionsRow(
-                      onAddTask: () => _openAddToSchedule(
-                        uid: user.uid,
-                        topics: topics,
-                      ),
+                      onAddTask: _openAcademicTasks,
                       onGenerateQuiz: widget.onGenerateQuizTap ??
                           () => _onQuickAction(context, strings.generateQuiz),
                       onAddTopic: widget.onAddTopicTap ??
@@ -415,6 +484,140 @@ class _ProgressCard extends StatelessWidget {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpcomingDeadlinesCard extends StatelessWidget {
+  const _UpcomingDeadlinesCard({
+    required this.tasks,
+    required this.onViewAll,
+    required this.onToggle,
+  });
+
+  final List<AcademicTask> tasks;
+  final VoidCallback onViewAll;
+  final void Function(AcademicTask task) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = AppStrings.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.event_available_rounded,
+                    size: 20,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      strings.upcomingDeadlines,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: onViewAll,
+                    child: Text(strings.viewAllDeadlines),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            if (tasks.isEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                child: Text(
+                  strings.noUpcomingDeadlines,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              )
+            else
+              ...tasks.map(
+                (task) => Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onToggle(task),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Checkbox(
+                              value: task.isCompleted,
+                              onChanged: (_) => onToggle(task),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  task.title,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  [
+                                    strings.academicTaskTypeLabel(
+                                      task.type.name,
+                                    ),
+                                    _academicTaskDueLabel(
+                                      context,
+                                      strings,
+                                      task,
+                                    ),
+                                  ].join(' • '),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),

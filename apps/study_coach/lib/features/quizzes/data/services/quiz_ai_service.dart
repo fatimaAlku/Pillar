@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
 import '../../domain/entities/quiz_question.dart';
 
@@ -21,13 +21,15 @@ abstract class QuizAiService {
 }
 
 final quizAiServiceProvider = Provider<QuizAiService>((ref) {
-  return OpenAiQuizAiService();
+  return CloudFunctionsQuizAiService(FirebaseFunctions.instance);
 });
 
-class OpenAiQuizAiService implements QuizAiService {
-  OpenAiQuizAiService();
-  static const String _openAiApiKey = String.fromEnvironment('OPENAI_API_KEY');
-  static const Duration _openAiRequestTimeout = Duration(seconds: 45);
+/// Calls [generateQuizQuestions] on Cloud Functions (OpenAI key stays server-side).
+/// On failure, falls back to a local note-based quiz so the runner still works offline.
+class CloudFunctionsQuizAiService implements QuizAiService {
+  CloudFunctionsQuizAiService(this._functions);
+
+  final FirebaseFunctions _functions;
 
   @override
   Future<List<QuizQuestion>> generateQuiz({
@@ -58,28 +60,27 @@ class OpenAiQuizAiService implements QuizAiService {
 
     final fallbackTopic =
         trimmedTopics.isEmpty ? 'General' : trimmedTopics.first;
-    final openAiKey = _openAiApiKey.trim();
-    if (openAiKey.isEmpty) {
-      throw const QuizAiServiceException(
-        'AI quiz generation is not configured. Set OPENAI_API_KEY.',
-      );
-    }
+    final allowedTopics =
+        trimmedTopics.isEmpty ? const <String>['General'] : trimmedTopics;
+    final emphasis =
+        quizEmphasis.trim().isEmpty ? 'balanced' : quizEmphasis.trim();
 
     try {
-      final aiPayload = await _requestOpenAiQuestions(
-        apiKey: openAiKey,
-        topics: trimmedTopics,
-        notesText: normalizedNotes,
-        difficulty: difficulty,
-        numberOfQuestions: numberOfQuestions,
-        languageCode: languageCode,
-        quizEmphasis: quizEmphasis.trim().isEmpty ? 'balanced' : quizEmphasis.trim(),
-      );
+      final callable = _functions.httpsCallable('generateQuizQuestions');
+      final result = await callable.call(<String, dynamic>{
+        'topics': trimmedTopics,
+        'notesText': normalizedNotes,
+        'difficulty': difficulty.trim(),
+        'numberOfQuestions': numberOfQuestions,
+        'languageCode': languageCode,
+        'quizEmphasis': emphasis,
+      });
 
+      final data = Map<String, dynamic>.from(result.data as Map);
       final parsed = QuizAiResponseParser.parseToQuestions(
-        data: aiPayload,
+        data: data,
         fallbackTopic: fallbackTopic,
-        allowedTopics: trimmedTopics,
+        allowedTopics: allowedTopics,
       );
       if (parsed.length > numberOfQuestions) {
         return _ensureQuestionDiversity(
@@ -87,9 +88,31 @@ class OpenAiQuizAiService implements QuizAiService {
         );
       }
       return _ensureQuestionDiversity(parsed);
+    } on FirebaseFunctionsException catch (e) {
+      final code = e.code;
+      if (code == 'invalid-argument' ||
+          code == 'failed-precondition' ||
+          code == 'unauthenticated') {
+        throw QuizAiServiceException(
+          e.message ?? 'Quiz generation was rejected.',
+          details: e.details?.toString(),
+        );
+      }
+      return _localFallbackQuizFromNotes(
+        notesText: normalizedNotes,
+        numberOfQuestions: numberOfQuestions,
+        fallbackTopic: fallbackTopic,
+        languageCode: languageCode,
+      );
     } on QuizAiException {
-      // Fallback keeps quiz flow available when provider is rate-limited/unavailable.
-      return _generateLocalFallbackQuiz(
+      return _localFallbackQuizFromNotes(
+        notesText: normalizedNotes,
+        numberOfQuestions: numberOfQuestions,
+        fallbackTopic: fallbackTopic,
+        languageCode: languageCode,
+      );
+    } catch (_) {
+      return _localFallbackQuizFromNotes(
         notesText: normalizedNotes,
         numberOfQuestions: numberOfQuestions,
         fallbackTopic: fallbackTopic,
@@ -97,271 +120,137 @@ class OpenAiQuizAiService implements QuizAiService {
       );
     }
   }
+}
 
-  List<QuizQuestion> _generateLocalFallbackQuiz({
-    required String notesText,
-    required int numberOfQuestions,
-    required String fallbackTopic,
-    required String languageCode,
-  }) {
-    final isArabic = languageCode == 'ar';
-    final facts = notesText
-        .split(RegExp(r'[\n\r]+'))
-        .map((e) => e.trim())
-        .where((e) => e.length >= 6)
-        .toList();
-    final normalizedFacts = facts.isEmpty
-        ? <String>[
-            if (isArabic) ...[
-              'راجع أساسيات الموضوع والتعريفات بعناية',
-              'قسّم المسألة إلى خطوات واضحة ومتسلسلة',
-              'اختبر بأمثلة صغيرة قبل زيادة التعقيد',
-              'تحقّق من الأخطاء وصححها بعد كل محاولة',
-            ] else ...[
-              'Review the topic fundamentals and definitions carefully',
-              'Break problems into clear step-by-step actions',
-              'Test with small examples before scaling complexity',
-              'Check and correct mistakes after each attempt',
-            ],
-          ]
-        : facts;
+List<QuizQuestion> _localFallbackQuizFromNotes({
+  required String notesText,
+  required int numberOfQuestions,
+  required String fallbackTopic,
+  required String languageCode,
+}) {
+  final isArabic = languageCode == 'ar';
+  final facts = notesText
+      .split(RegExp(r'[\n\r]+'))
+      .map((e) => e.trim())
+      .where((e) => e.length >= 6)
+      .toList();
+  final normalizedFacts = facts.isEmpty
+      ? <String>[
+          if (isArabic) ...[
+            'راجع أساسيات الموضوع والتعاريف بعناية',
+            'قسّم المسألة إلى خطوات واضحة ومتسلسلة',
+            'اختبر بأمثلة صغيرة قبل زيادة التعقيد',
+            'تحقّق من الأخطاء وصححها بعد كل محاولة',
+          ] else ...[
+            'Review the topic fundamentals and definitions carefully',
+            'Break problems into clear step-by-step actions',
+            'Test with small examples before scaling complexity',
+            'Check and correct mistakes after each attempt',
+          ],
+        ]
+      : facts;
 
-    final questions = <QuizQuestion>[];
-    for (var i = 0; i < numberOfQuestions; i++) {
-      final fact = normalizedFacts[i % normalizedFacts.length];
-      final distractorA =
-          normalizedFacts[(i + 1) % normalizedFacts.length].toLowerCase();
-      final distractorB =
-          normalizedFacts[(i + 2) % normalizedFacts.length].toLowerCase();
-      final distractorC =
-          normalizedFacts[(i + 3) % normalizedFacts.length].toLowerCase();
+  final questions = <QuizQuestion>[];
+  for (var i = 0; i < numberOfQuestions; i++) {
+    final fact = normalizedFacts[i % normalizedFacts.length];
+    final distractorA =
+        normalizedFacts[(i + 1) % normalizedFacts.length].toLowerCase();
+    final distractorB =
+        normalizedFacts[(i + 2) % normalizedFacts.length].toLowerCase();
+    final distractorC =
+        normalizedFacts[(i + 3) % normalizedFacts.length].toLowerCase();
 
-      final options = <String>[
-        fact,
-        if (isArabic) ...[
-          'تجاهل هذا وركّز بدلًا من ذلك على: $distractorA',
-          'اعتمد على الحفظ فقط وتجاوز الفهم ($distractorB)',
-          'اتبع العكس تمامًا: $distractorC',
-        ] else ...[
-          'Ignore this and instead focus on: $distractorA',
-          'Use only memorization and skip reasoning ($distractorB)',
-          'Do the opposite approach: $distractorC',
-        ],
-      ];
+    final options = <String>[
+      fact,
+      if (isArabic) ...[
+        'تجاهل هذا وركّز بدلًا من ذلك على: $distractorA',
+        'اعتمد على الحفظ فقط وتجاوز الفهم ($distractorB)',
+        'اتبع العكس تمامًا: $distractorC',
+      ] else ...[
+        'Ignore this and instead focus on: $distractorA',
+        'Use only memorization and skip reasoning ($distractorB)',
+        'Do the opposite approach: $distractorC',
+      ],
+    ];
 
-      questions.add(
-        QuizQuestion(
-          id: 'local_q_${i + 1}',
-          topicId: 'topic_${QuizAiResponseParser._slug(fallbackTopic)}',
-          topicTitle: fallbackTopic,
-          prompt: isArabic
-              ? 'وفقًا لملاحظاتك، أي عبارة هي الأدق؟'
-              : 'According to your notes, which statement is most accurate?',
-          options: options,
-          correctIndex: 0,
-          explanation: isArabic
-              ? 'تم إنشاء هذا السؤال من ملاحظاتك أثناء انشغال خدمة الذكاء الاصطناعي.'
-              : 'Generated from your notes while AI service is busy.',
-        ),
-      );
-    }
-    return _ensureQuestionDiversity(questions);
+    questions.add(
+      QuizQuestion(
+        id: 'local_q_${i + 1}',
+        topicId: 'topic_$_slugTopicId(fallbackTopic)',
+        topicTitle: fallbackTopic,
+        prompt: isArabic
+            ? 'وفقًا لملاحظاتك، أي عبارة هي الأدق؟'
+            : 'According to your notes, which statement is most accurate?',
+        options: options,
+        correctIndex: 0,
+        explanation: isArabic
+            ? 'تم إنشاء هذا السؤال من ملاحظاتك أثناء انشغال خدمة الذكاء الاصطناعي.'
+            : 'Generated from your notes while AI service is busy.',
+      ),
+    );
   }
+  return _ensureQuestionDiversity(questions);
+}
 
-  static String _emphasisInstruction(String emphasis) {
-    switch (emphasis) {
-      case 'definitions':
-        return 'Prioritize terminology, definitions, and fine-grained conceptual distinctions grounded in the notes.';
-      case 'application':
-        return 'Prioritize short scenarios, examples, and applying ideas to new situations that the notes support.';
-      case 'exam':
-      case 'exam_style':
-        return 'Use formal exam-style stems, no hints in wording, and distractors that feel like real university MCQs.';
-      case 'balanced':
-      default:
-        return 'Balance recall, understanding, and light application according to what the notes support.';
+String _slugTopicId(String s) {
+  final lower = s.trim().toLowerCase();
+  final replaced = lower.replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+  return replaced.replaceAll(RegExp(r'^_+|_+$'), '');
+}
+
+List<QuizQuestion> _ensureQuestionDiversity(List<QuizQuestion> questions) {
+  final usedPrompts = <String>{};
+  final usedOptionSets = <String>{};
+  final sanitized = <QuizQuestion>[];
+
+  for (var i = 0; i < questions.length; i++) {
+    final q = questions[i];
+    var prompt = q.prompt.trim();
+    if (prompt.isEmpty) {
+      prompt = 'Question ${i + 1}';
     }
-  }
-
-  Future<Map<String, dynamic>> _requestOpenAiQuestions({
-    required String apiKey,
-    required List<String> topics,
-    required String difficulty,
-    required int numberOfQuestions,
-    required String? notesText,
-    required String languageCode,
-    required String quizEmphasis,
-  }) async {
-    final isArabic = languageCode == 'ar';
-    final emphasisLine = _emphasisInstruction(quizEmphasis);
-    final allowedTopicsList = topics.isEmpty ? <String>['General'] : topics;
-    final allowedTopicsJson = jsonEncode(allowedTopicsList);
-    final systemPrompt = [
-      'You generate high-quality MCQ quizzes for university students.',
-      'Return JSON only with shape: {"questions":[{"prompt":"string","options":["a","b","c","d"],"correctIndex":0,"explanation":"string","topicTitle":"string"}]}',
-      'Rules:',
-      '- Use the notes as the primary source of truth.',
-      '- Every correct answer must be directly supported by the notes.',
-      '- Keep distractors plausible but incorrect relative to the notes.',
-      '- Exactly 4 options per question.',
-      '- correctIndex must be 0,1,2,3.',
-      '- Return exactly $numberOfQuestions questions.',
-      '- Difficulty level is $difficulty.',
-      '- Question style: $emphasisLine',
-      '- topicTitle MUST be copied VERBATIM from this allowed list: $allowedTopicsJson.',
-      '- NEVER invent generic labels (e.g. "general", "miscellaneous", "common mistakes", "fundamentals", "review"). Always pick the most specific allowed topic that the question targets.',
-      '- Distribute questions across the allowed topics so each chosen topic is represented when there are enough questions.',
-      if (isArabic)
-        '- Write all questions, options, and explanations in Arabic. Keep topicTitle EXACTLY as in the allowed list (do not translate).'
-      else
-        '- Write all questions, options, and explanations in English. Keep topicTitle EXACTLY as in the allowed list.',
-    ].join('\n');
-    final userPrompt = [
-      'Allowed topics (use as topicTitle exactly): $allowedTopicsJson',
-      notesText == null || notesText.isEmpty
-          ? 'Notes: not provided'
-          : 'Notes:\n$notesText',
-    ].join('\n\n');
-
-    final response = await http
-        .post(
-      Uri.parse('https://api.openai.com/v1/chat/completions'),
-      headers: <String, String>{
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(<String, dynamic>{
-        'model': 'gpt-4o-mini',
-        'temperature': 0.4,
-        'response_format': {'type': 'json_object'},
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': userPrompt},
-        ],
-      }),
-    )
-        .timeout(_openAiRequestTimeout, onTimeout: () {
-      throw const QuizAiServiceException(
-        'OpenAI request timed out. Check connection and try again.',
-      );
-    });
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuizAiServiceException(
-        'OpenAI request failed (${response.statusCode}).',
-        details: response.body,
-      );
+    final promptKey = prompt.toLowerCase();
+    if (!usedPrompts.add(promptKey)) {
+      prompt = '$prompt (variation ${i + 1})';
     }
 
-    final decoded = jsonDecode(response.body);
-    if (decoded is! Map) {
-      throw const QuizAiParseException(
-        'OpenAI response must be a JSON object.',
-      );
-    }
-    final body = Map<String, dynamic>.from(decoded);
-    final choices = body['choices'];
-    if (choices is! List || choices.isEmpty) {
-      throw const QuizAiParseException('OpenAI response missing choices.');
-    }
-
-    final firstChoice = choices.first;
-    if (firstChoice is! Map) {
-      throw const QuizAiParseException('OpenAI choice must be an object.');
-    }
-    final message = firstChoice['message'];
-    if (message is! Map) {
-      throw const QuizAiParseException('OpenAI choice message missing.');
-    }
-    final content = message['content'];
-    if (content is! String || content.trim().isEmpty) {
-      throw const QuizAiParseException('OpenAI content missing.');
-    }
-
-    return _parseJsonObject(content);
-  }
-
-  List<QuizQuestion> _ensureQuestionDiversity(List<QuizQuestion> questions) {
-    final usedPrompts = <String>{};
-    final usedOptionSets = <String>{};
-    final sanitized = <QuizQuestion>[];
-
-    for (var i = 0; i < questions.length; i++) {
-      final q = questions[i];
-      var prompt = q.prompt.trim();
-      if (prompt.isEmpty) {
-        prompt = 'Question ${i + 1}';
+    final options = List<String>.from(q.options);
+    final optionValuesInQuestion = <String>{};
+    for (var j = 0; j < options.length; j++) {
+      var value = options[j].trim();
+      if (value.isEmpty) {
+        value = 'Option ${j + 1} for question ${i + 1}';
       }
-      final promptKey = prompt.toLowerCase();
-      if (!usedPrompts.add(promptKey)) {
-        prompt = '$prompt (variation ${i + 1})';
+      final dedupeKey = value.toLowerCase();
+      if (!optionValuesInQuestion.add(dedupeKey)) {
+        value = '$value (alt ${j + 1})';
+        optionValuesInQuestion.add(value.toLowerCase());
       }
+      options[j] = value;
+    }
 
-      final options = List<String>.from(q.options);
-      final optionValuesInQuestion = <String>{};
+    final optionSetKey = options.map((e) => e.toLowerCase()).join('||');
+    if (!usedOptionSets.add(optionSetKey)) {
       for (var j = 0; j < options.length; j++) {
-        var value = options[j].trim();
-        if (value.isEmpty) {
-          value = 'Option ${j + 1} for question ${i + 1}';
-        }
-        final dedupeKey = value.toLowerCase();
-        if (!optionValuesInQuestion.add(dedupeKey)) {
-          value = '$value (alt ${j + 1})';
-          optionValuesInQuestion.add(value.toLowerCase());
-        }
-        options[j] = value;
+        options[j] = '${options[j]} [set ${i + 1}]';
       }
-
-      final optionSetKey = options.map((e) => e.toLowerCase()).join('||');
-      if (!usedOptionSets.add(optionSetKey)) {
-        for (var j = 0; j < options.length; j++) {
-          options[j] = '${options[j]} [set ${i + 1}]';
-        }
-        usedOptionSets.add(options.map((e) => e.toLowerCase()).join('||'));
-      }
-
-      sanitized.add(
-        QuizQuestion(
-          id: q.id,
-          topicId: q.topicId,
-          topicTitle: q.topicTitle,
-          prompt: prompt,
-          options: options,
-          correctIndex: q.correctIndex,
-          explanation: q.explanation,
-        ),
-      );
+      usedOptionSets.add(options.map((e) => e.toLowerCase()).join('||'));
     }
 
-    return sanitized;
-  }
-
-  Map<String, dynamic> _parseJsonObject(String input) {
-    final direct = _tryParseJson(input);
-    if (direct is Map) return Map<String, dynamic>.from(direct);
-
-    final fenced = RegExp(
-      r'```(?:json)?\s*([\s\S]*?)\s*```',
-      caseSensitive: false,
-    ).firstMatch(input);
-    if (fenced != null) {
-      final block = fenced.group(1);
-      final fromFence = _tryParseJson(block ?? '');
-      if (fromFence is Map) return Map<String, dynamic>.from(fromFence);
-    }
-
-    throw const QuizAiParseException(
-      'Could not parse JSON object from AI response.',
+    sanitized.add(
+      QuizQuestion(
+        id: q.id,
+        topicId: q.topicId,
+        topicTitle: q.topicTitle,
+        prompt: prompt,
+        options: options,
+        correctIndex: q.correctIndex,
+        explanation: q.explanation,
+      ),
     );
   }
 
-  Object? _tryParseJson(String raw) {
-    try {
-      return jsonDecode(raw);
-    } catch (_) {
-      return null;
-    }
-  }
+  return sanitized;
 }
 
 class QuizAiResponseParser {

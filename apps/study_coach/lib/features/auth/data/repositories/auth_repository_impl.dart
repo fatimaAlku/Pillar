@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
@@ -7,10 +8,15 @@ import '../../domain/entities/auth_user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._firebaseAuth, this._firebaseStorage);
+  AuthRepositoryImpl(
+    this._firebaseAuth,
+    this._firebaseStorage,
+    this._functions,
+  );
 
   final FirebaseAuth _firebaseAuth;
   final FirebaseStorage _firebaseStorage;
+  final FirebaseFunctions _functions;
 
   @override
   Stream<AuthUser?> watchAuthUser() {
@@ -62,14 +68,10 @@ class AuthRepositoryImpl implements AuthRepository {
       await user.reload();
       user = _firebaseAuth.currentUser ?? user;
     }
-    // New accounts are always unverified until the user opens the email link.
-    if (!user.emailVerified) {
-      await user.sendEmailVerification();
-    }
   }
 
   @override
-  Future<void> sendEmailVerification() async {
+  Future<void> sendEmailVerificationOtp({String? languageCode}) async {
     final user = _firebaseAuth.currentUser;
     if (user == null) {
       throw FirebaseAuthException(
@@ -80,7 +82,28 @@ class AuthRepositoryImpl implements AuthRepository {
     if (user.emailVerified) {
       return;
     }
-    await user.sendEmailVerification();
+    final callable = _functions.httpsCallable('sendEmailVerificationOtp');
+    await callable.call(<String, dynamic>{
+      'languageCode': languageCode ?? 'en',
+    });
+  }
+
+  @override
+  Future<void> verifyEmailWithOtp(String code) async {
+    final user = _firebaseAuth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'user-not-found',
+        message: 'No signed-in user to verify.',
+      );
+    }
+    if (user.emailVerified) {
+      return;
+    }
+    final trimmed = code.trim();
+    final callable = _functions.httpsCallable('verifyEmailWithOtp');
+    await callable.call(<String, dynamic>{'code': trimmed});
+    await user.reload();
   }
 
   @override

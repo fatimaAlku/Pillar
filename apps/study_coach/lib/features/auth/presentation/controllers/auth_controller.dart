@@ -1,6 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_locale_controller.dart';
@@ -99,7 +100,15 @@ class AuthFormController extends StateNotifier<AuthFormState> {
 
   Future<void> resendVerificationEmail() async {
     await _runAuthAction(() async {
-      await _ref.read(authRepositoryProvider).sendEmailVerification();
+      await _ref.read(authRepositoryProvider).sendEmailVerificationOtp(
+            languageCode: _ref.read(appLocaleProvider).languageCode,
+          );
+    });
+  }
+
+  Future<void> verifyEmailWithOtp(String code) async {
+    await _runAuthAction(() async {
+      await _ref.read(authRepositoryProvider).verifyEmailWithOtp(code);
     });
   }
 
@@ -114,6 +123,9 @@ class AuthFormController extends StateNotifier<AuthFormState> {
   }
 
   Future<void> _runAuthAction(Future<void> Function() action) async {
+    final strings = AppStrings.forLanguageCode(
+      _ref.read(appLocaleProvider).languageCode,
+    );
     state = state.copyWith(isLoading: true, clearError: true);
     try {
       await action();
@@ -121,7 +133,12 @@ class AuthFormController extends StateNotifier<AuthFormState> {
     } on FirebaseAuthException catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: _mapFirebaseAuthError(e.code),
+        errorMessage: _mapFirebaseAuthError(e.code, strings),
+      );
+    } on FirebaseFunctionsException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: _mapFunctionsError(e, strings),
       );
     } catch (_) {
       state = state.copyWith(
@@ -131,10 +148,7 @@ class AuthFormController extends StateNotifier<AuthFormState> {
     }
   }
 
-  String _mapFirebaseAuthError(String code) {
-    final strings = AppStrings.forLanguageCode(
-      _ref.read(appLocaleProvider).languageCode,
-    );
+  String _mapFirebaseAuthError(String code, AppStrings strings) {
     switch (code) {
       case 'invalid-email':
         return 'Please enter a valid email address.';
@@ -156,6 +170,32 @@ class AuthFormController extends StateNotifier<AuthFormState> {
       default:
         debugPrint('Unhandled FirebaseAuthException code: $code');
         return 'Authentication failed. Please try again.';
+    }
+  }
+
+  String _mapFunctionsError(
+    FirebaseFunctionsException e,
+    AppStrings strings,
+  ) {
+    final message = e.message?.trim();
+    switch (e.code) {
+      case 'invalid-argument':
+        return strings.verifyEmailOtpInvalidFormat;
+      case 'permission-denied':
+        return strings.verifyEmailOtpWrongCode;
+      case 'not-found':
+        return strings.verifyEmailOtpExpiredOrMissing;
+      case 'resource-exhausted':
+        return strings.verifyEmailOtpRateLimited;
+      case 'failed-precondition':
+        return strings.verifyEmailServerNotConfigured;
+      case 'unauthenticated':
+        return strings.verifyEmailUnauthenticated;
+      default:
+        if (message != null && message.isNotEmpty) {
+          return message;
+        }
+        return strings.verifyEmailOtpGenericError;
     }
   }
 }

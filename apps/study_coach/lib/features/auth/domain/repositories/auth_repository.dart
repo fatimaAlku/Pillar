@@ -13,10 +13,13 @@ abstract class AuthRepository {
     String? displayName,
   });
 
-  /// Sends Firebase’s verification email to the signed-in user’s address.
-  Future<void> sendEmailVerification();
+  /// Sends a 6-digit verification code to the signed-in user’s email (Cloud Function).
+  Future<void> sendEmailVerificationOtp({String? languageCode});
 
-  /// Reloads the current user from Firebase (e.g. after they tap the email link).
+  /// Verifies the email with [code] and refreshes the Firebase user (Cloud Function + reload).
+  Future<void> verifyEmailWithOtp(String code);
+
+  /// Reloads the current user from Firebase (e.g. after verification on another device).
   Future<void> reloadCurrentUser();
 
   Future<String> uploadProfilePhoto({

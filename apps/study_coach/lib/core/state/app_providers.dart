@@ -4,6 +4,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/academic_tasks/data/repositories/academic_tasks_repository_impl.dart';
+import '../../features/academic_tasks/domain/entities/academic_task.dart';
+import '../../features/academic_tasks/domain/repositories/academic_tasks_repository.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../features/auth/domain/entities/auth_user.dart';
 import '../../features/profile/data/repositories/user_profile_repository_impl.dart';
@@ -19,6 +22,8 @@ import '../../features/quizzes/domain/repositories/quiz_history_repository.dart'
 import '../../features/recommendations/data/repositories/recommendations_repository_impl.dart';
 import '../../features/recommendations/domain/entities/recommendation.dart';
 import '../../features/recommendations/domain/repositories/recommendations_repository.dart';
+import '../../features/study_plan/data/repositories/study_plan_repository_impl.dart';
+import '../../features/study_plan/domain/repositories/study_plan_repository.dart';
 import '../../features/subjects/data/repositories/subjects_repository_impl.dart';
 import '../../features/subjects/domain/entities/subject.dart';
 import '../../features/subjects/domain/repositories/subjects_repository.dart';
@@ -64,6 +69,7 @@ final authRepositoryProvider = Provider<AuthRepositoryImpl>((ref) {
   return AuthRepositoryImpl(
     ref.watch(firebaseAuthProvider),
     ref.watch(storageProvider),
+    ref.watch(functionsProvider),
   );
 });
 
@@ -79,6 +85,11 @@ final postSigninWelcomeCompletedProvider =
 
 final subjectsRepositoryProvider = Provider<SubjectsRepository>((ref) {
   return SubjectsRepositoryImpl(ref.watch(firestoreProvider));
+});
+
+final academicTasksRepositoryProvider =
+    Provider<AcademicTasksRepository>((ref) {
+  return AcademicTasksRepositoryImpl(ref.watch(firestoreProvider));
 });
 
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
@@ -117,7 +128,12 @@ final quizHistoryRepositoryProvider = Provider<QuizHistoryRepository>((ref) {
   return QuizHistoryRepositoryImpl(ref.watch(firestoreProvider));
 });
 
-final recommendationsRepositoryProvider = Provider<RecommendationsRepository>((ref) {
+final studyPlanRepositoryProvider = Provider<StudyPlanRepository>((ref) {
+  return StudyPlanRepositoryImpl(ref.watch(functionsProvider));
+});
+
+final recommendationsRepositoryProvider =
+    Provider<RecommendationsRepository>((ref) {
   return RecommendationsRepositoryImpl(
     ref.watch(functionsProvider),
     ref.watch(firestoreProvider),
@@ -129,6 +145,11 @@ final subjectsStreamProvider =
   return ref.watch(subjectsRepositoryProvider).watchSubjects(uid);
 });
 
+final academicTasksStreamProvider =
+    StreamProvider.family<List<AcademicTask>, String>((ref, uid) {
+  return ref.watch(academicTasksRepositoryProvider).watchTasks(uid);
+});
+
 final quizHistoryStreamProvider =
     StreamProvider.family<List<QuizHistoryEntry>, String>((ref, uid) {
   return ref.watch(quizHistoryRepositoryProvider).watchHistory(uid);
@@ -136,5 +157,7 @@ final quizHistoryStreamProvider =
 
 final latestRecommendationProvider =
     StreamProvider.family<Recommendation?, String>((ref, uid) {
-  return ref.watch(recommendationsRepositoryProvider).watchLatestRecommendation(uid);
+  return ref
+      .watch(recommendationsRepositoryProvider)
+      .watchLatestRecommendation(uid);
 });

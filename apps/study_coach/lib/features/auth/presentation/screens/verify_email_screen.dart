@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../controllers/auth_controller.dart';
 
 /// Shown when the user is signed in but Firebase [emailVerified] is false.
-class VerifyEmailScreen extends ConsumerWidget {
+class VerifyEmailScreen extends ConsumerStatefulWidget {
   const VerifyEmailScreen({
     super.key,
     required this.email,
@@ -14,7 +15,33 @@ class VerifyEmailScreen extends ConsumerWidget {
   final String? email;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
+}
+
+class _VerifyEmailScreenState extends ConsumerState<VerifyEmailScreen> {
+  final _otpController = TextEditingController();
+  bool _autoSendStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _autoSendStarted) {
+        return;
+      }
+      _autoSendStarted = true;
+      ref.read(authFormControllerProvider.notifier).resendVerificationEmail();
+    });
+  }
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
@@ -30,9 +57,12 @@ class VerifyEmailScreen extends ConsumerWidget {
       }
     });
 
-    final emailLine = email != null && email!.trim().isNotEmpty
-        ? email!.trim()
+    final emailLine = widget.email != null && widget.email!.trim().isNotEmpty
+        ? widget.email!.trim()
         : strings.verifyEmailNoAddressPlaceholder;
+
+    final otp = _otpController.text.trim();
+    final canSubmitOtp = otp.length == 6 && !isLoading;
 
     return Scaffold(
       body: Container(
@@ -81,27 +111,38 @@ class VerifyEmailScreen extends ConsumerWidget {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 14),
-                        Text(
-                          strings.verifyEmailLinkTroubleshoot,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant
-                                .withValues(alpha: 0.9),
-                            height: 1.35,
-                          ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          controller: _otpController,
+                          enabled: !isLoading,
+                          keyboardType: TextInputType.number,
                           textAlign: TextAlign.center,
+                          maxLength: 6,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            letterSpacing: 8,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            counterText: '',
+                            labelText: strings.verifyEmailOtpLabel,
+                            hintText: strings.verifyEmailOtpHint,
+                            border: const OutlineInputBorder(),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
                         FilledButton(
-                          onPressed: isLoading
+                          onPressed: !canSubmitOtp
                               ? null
                               : () async {
                                   await ref
-                                      .read(authFormControllerProvider
-                                          .notifier)
-                                      .reloadAuthUserAfterVerification();
+                                      .read(authFormControllerProvider.notifier)
+                                      .verifyEmailWithOtp(otp);
                                 },
-                          child: Text(strings.verifyEmailCheckedInbox),
+                          child: Text(strings.verifyEmailConfirmCode),
                         ),
                         const SizedBox(height: 10),
                         OutlinedButton(
@@ -109,8 +150,7 @@ class VerifyEmailScreen extends ConsumerWidget {
                               ? null
                               : () async {
                                   await ref
-                                      .read(authFormControllerProvider
-                                          .notifier)
+                                      .read(authFormControllerProvider.notifier)
                                       .resendVerificationEmail();
                                   if (!context.mounted) {
                                     return;
@@ -129,6 +169,16 @@ class VerifyEmailScreen extends ConsumerWidget {
                           child: Text(strings.verifyEmailResend),
                         ),
                         const SizedBox(height: 8),
+                        TextButton(
+                          onPressed: isLoading
+                              ? null
+                              : () async {
+                                  await ref
+                                      .read(authFormControllerProvider.notifier)
+                                      .reloadAuthUserAfterVerification();
+                                },
+                          child: Text(strings.verifyEmailCheckedInbox),
+                        ),
                         TextButton(
                           onPressed: isLoading
                               ? null

@@ -14,7 +14,7 @@ Cross-platform study assistant for university students, built with Flutter and F
 
 - Frontend: Flutter (iOS, Android, Web)
 - Backend: Firebase Auth, Firestore, Storage, Cloud Functions
-- AI: External LLM API via Cloud Functions
+- AI: OpenAI via authenticated HTTPS callables (quiz generation)
 
 ## Repository Layout
 
@@ -52,11 +52,43 @@ npm install
 npm run build
 ```
 
-Set the quiz AI provider key in the Flutter client:
+Main **HTTPS callables** (all require a signed-in user except where noted):
+
+| Area | Functions |
+|------|-----------|
+| Study plan | `generateStudyPlan`, `rebalanceStudyPlan` |
+| Quizzes (OpenAI) | `generateQuiz`, `generateQuizQuestions` |
+| Progress | `submitQuizAttempt`, `generateRecommendations` |
+| Email | `sendEmailVerificationOtp`, `verifyEmailWithOtp` |
+| Google Calendar | `connectGoogleCalendarWithAuthCode`, `getGoogleCalendarConnectionStatus`, `disconnectGoogleCalendar`, `syncStudySessionToGoogleCalendar` |
+
+The Flutter app calls these over HTTPS; it does not embed `OPENAI_API_KEY` for quiz generation.
+
+#### Secrets and environment (production)
+
+- **Quiz AI:** set the OpenAI key as a Firebase secret:
+
+  ```bash
+  firebase functions:secrets:set OPENAI_API_KEY
+  ```
+
+- **Email OTP:** set a long random pepper and SMTP for sending codes:
+
+  ```bash
+  firebase functions:secrets:set EMAIL_OTP_SECRET
+  ```
+
+  Configure SMTP on the deployed function environment (for example `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`). See comments in `firebase/functions/src/emailVerificationOtp.ts` for details.
+
+For local emulators:
 
 ```bash
-flutter run --dart-define=OPENAI_API_KEY=your_openai_key
+export OPENAI_API_KEY=your_openai_key
+# Optional: export EMAIL_OTP_SECRET=... and SMTP_* if you want real email locally
+firebase emulators:start
 ```
+
+With the emulator, OTP flows may log the code instead of sending mail when SMTP is not configured.
 
 ### 3) Firebase Emulator (optional)
 
@@ -81,8 +113,13 @@ The app follows Clean Architecture with feature-first modules:
 
 Firebase and AI providers are abstracted behind repository interfaces for testability and future scalability.
 
-## Next Steps
+## Tests
 
-- Connect Auth flows (email/password + provider sign-in)
-- Implement first end-to-end feature: Subjects + Study Plan generation
-- Add Cloud Function AI endpoints and secure callable invocation
+```bash
+cd apps/study_coach
+flutter test
+```
+
+## Further Reading
+
+- Deeper architecture notes: `docs/architecture.md`

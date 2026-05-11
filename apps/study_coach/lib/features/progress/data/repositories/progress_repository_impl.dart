@@ -108,6 +108,39 @@ class ProgressRepositoryImpl implements ProgressRepository {
   }
 
   Future<(double, List<String>)> _computeQuizSignal(String uid) async {
+    final scores = <double>[];
+    final weakCounts = <String, int>{};
+
+    final historyQuery = await _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.quizHistory)
+        .orderBy('completedAt', descending: true)
+        .limit(30)
+        .get();
+
+    for (final doc in historyQuery.docs) {
+      final data = doc.data();
+      final sf = (data['scoreFraction'] as num?)?.toDouble();
+      if (sf != null) {
+        scores.add(sf.clamp(0.0, 1.0));
+      } else {
+        final correct = (data['correctCount'] as num?)?.toInt() ?? 0;
+        final total = (data['totalCount'] as num?)?.toInt() ?? 0;
+        if (total > 0) {
+          scores.add((correct / total).clamp(0.0, 1.0));
+        }
+      }
+      final weakRaw = data['weakTopicTitles'];
+      if (weakRaw is List) {
+        for (final tag in weakRaw.whereType<String>()) {
+          final trimmed = tag.trim();
+          if (trimmed.isEmpty) continue;
+          weakCounts[trimmed] = (weakCounts[trimmed] ?? 0) + 1;
+        }
+      }
+    }
+
     final quizzesQuery = await _db
         .collection(FirestorePaths.users)
         .doc(uid)
@@ -115,8 +148,6 @@ class ProgressRepositoryImpl implements ProgressRepository {
         .limit(12)
         .get();
 
-    final scores = <double>[];
-    final weakCounts = <String, int>{};
     for (final quizDoc in quizzesQuery.docs) {
       final attempts = await quizDoc.reference
           .collection(FirestorePaths.attempts)

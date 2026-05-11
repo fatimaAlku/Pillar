@@ -2,6 +2,7 @@ class FirestorePaths {
   static const users = 'users';
   static const subjects = 'subjects';
   static const topics = 'topics';
+  static const academicTasks = 'academicTasks';
   static const notes = 'notes';
   static const studyPlans = 'studyPlans';
   static const sessions = 'sessions';

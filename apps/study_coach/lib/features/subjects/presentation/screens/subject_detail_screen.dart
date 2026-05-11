@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../study_plan/application/schedule_study_plan_rebalance.dart';
 import '../../domain/entities/subject.dart';
 import '../../domain/entities/topic_item.dart';
 import '../controllers/subject_topics_providers.dart';
@@ -92,6 +93,7 @@ class SubjectDetailScreen extends ConsumerWidget {
             title: title,
             difficultyEstimate: difficulty,
           );
+      scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.topicSaved)),
@@ -182,6 +184,7 @@ class SubjectDetailScreen extends ConsumerWidget {
             title: title,
             difficultyEstimate: difficulty,
           );
+      scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.topicUpdated)),
@@ -226,6 +229,7 @@ class SubjectDetailScreen extends ConsumerWidget {
             subjectId: subject.id,
             topicId: topic.id,
           );
+      scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.topicDeleted)),

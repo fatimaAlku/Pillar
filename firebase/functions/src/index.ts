@@ -1,10 +1,20 @@
 import * as admin from "firebase-admin";
 import {HttpsError, onCall} from "firebase-functions/v2/https";
 
+import {sendEmailVerificationOtp, verifyEmailWithOtp} from "./emailVerificationOtp";
+import {buildRecommendationsInsight} from "./generateRecommendations";
+import {openAiApiKey, produceQuizQuestions} from "./quizGeneration";
+import {
+  APP_CALENDAR_TIME_ZONE,
+  addCalendarDaysIso,
+  manamaTodayIso,
+  runGenerateStudyPlan,
+  runRebalanceStudyPlan,
+} from "./studyPlanGenerator";
+
 admin.initializeApp();
 
-/** Study sessions use calendar dates in this zone (Manama / Bahrain). */
-const APP_CALENDAR_TIME_ZONE = "Asia/Bahrain";
+export {sendEmailVerificationOtp, verifyEmailWithOtp};
 
 type GeneratePlanRequest = {
   subjectIds: string[];
@@ -12,34 +22,16 @@ type GeneratePlanRequest = {
 
 export const generateStudyPlan = onCall<GeneratePlanRequest>(async (request) => {
   if (!request.auth) {
-    throw new Error("Unauthenticated");
+    throw new HttpsError("unauthenticated", "Unauthenticated");
   }
 
   const {subjectIds} = request.data;
   if (!subjectIds || subjectIds.length === 0) {
-    throw new Error("subjectIds are required");
+    throw new HttpsError("invalid-argument", "subjectIds are required");
   }
 
   const userId = request.auth.uid;
-  const planRef = admin
-    .firestore()
-    .collection("users")
-    .doc(userId)
-    .collection("studyPlans")
-    .doc();
-
-  const now = new Date().toISOString();
-  await planRef.set({
-    startDate: now,
-    endDate: now,
-    generatedAt: now,
-    status: "active",
-    generatedBy: "ai",
-    lastAdjustedAt: now,
-    subjectIds,
-  });
-
-  return {planId: planRef.id, generatedAt: now};
+  return runGenerateStudyPlan(admin.firestore(), userId, subjectIds);
 });
 
 type GenerateQuizRequest = {
@@ -47,235 +39,97 @@ type GenerateQuizRequest = {
   notesText?: string;
   difficulty?: string;
   numberOfQuestions?: number;
+  languageCode?: string;
+  quizEmphasis?: string;
 };
 
-export const generateQuiz = onCall<GenerateQuizRequest>(async (request) => {
-  if (!request.auth) {
-    throw new Error("Unauthenticated");
-  }
+export const generateQuiz = onCall<GenerateQuizRequest>(
+  {secrets: [openAiApiKey]},
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "Unauthenticated");
+    }
 
-  const {topicIds, notesText} = request.data;
-  const difficulty = normalizeDifficulty(request.data.difficulty);
-  const numberOfQuestions = normalizeQuestionCount(request.data.numberOfQuestions);
-  if ((!topicIds || topicIds.length === 0) && !notesText) {
-    throw new Error("Provide topicIds or notesText");
-  }
+    const topicIds = (request.data.topicIds ?? [])
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0);
+    const notesText = request.data.notesText?.trim();
+    if (topicIds.length === 0 && !notesText) {
+      throw new HttpsError("invalid-argument", "Provide topicIds or notesText");
+    }
 
-  const userId = request.auth.uid;
-  const quizRef = admin
-    .firestore()
-    .collection("users")
-    .doc(userId)
-    .collection("quizzes")
-    .doc();
+    const userId = request.auth.uid;
+    const quizRef = admin
+      .firestore()
+      .collection("users")
+      .doc(userId)
+      .collection("quizzes")
+      .doc();
 
-  // AI integration flow:
-  // 1) Validate auth/input
-  // 2) Fetch context (topics/notes/history)
-  // 3) Call external LLM provider
-  // 4) Validate normalized response schema
-  // 5) Persist quiz + questions
-  const payload = {
-    title: "Generated Quiz",
-    questions: buildQuestions({
+    const questions = await produceQuizQuestions({
       topics: topicIds,
       notesText,
-      difficulty,
-      numberOfQuestions,
-    }),
-  };
+      difficulty: request.data.difficulty,
+      numberOfQuestions: request.data.numberOfQuestions,
+      languageCode: request.data.languageCode,
+      quizEmphasis: request.data.quizEmphasis,
+    });
 
-  await quizRef.set({
-    sourceType: notesText ? "mixed" : "topic",
-    topicIds,
-    generatedAt: new Date().toISOString(),
-    questionCount: payload.questions.length,
-  });
+    const payload = {
+      title: "Generated Quiz",
+      questions,
+    };
 
-  return {quizId: quizRef.id, ...payload};
-});
+    await quizRef.set({
+      sourceType: notesText ? "mixed" : "topic",
+      topicIds,
+      generatedAt: new Date().toISOString(),
+      questionCount: payload.questions.length,
+    });
+
+    return {quizId: quizRef.id, ...payload};
+  },
+);
 
 type GenerateQuizQuestionsRequest = {
   topics?: string[];
   notesText?: string;
   difficulty?: string;
   numberOfQuestions?: number;
+  languageCode?: string;
+  quizEmphasis?: string;
 };
 
 export const generateQuizQuestions = onCall<GenerateQuizQuestionsRequest>(
+  {secrets: [openAiApiKey]},
   async (request) => {
     if (!request.auth) {
-      throw new Error("Unauthenticated");
+      throw new HttpsError("unauthenticated", "Unauthenticated");
     }
 
     const topics = (request.data.topics ?? [])
       .map((topic) => topic.trim())
       .filter((topic) => topic.length > 0);
     const notesText = request.data.notesText?.trim();
-    const difficulty = normalizeDifficulty(request.data.difficulty);
-    const numberOfQuestions = normalizeQuestionCount(request.data.numberOfQuestions);
-
-    if (topics.length === 0 && !notesText) {
-      throw new Error("Provide topics or notesText");
+    if (!notesText || notesText.length === 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Notes are required. Paste or upload notes so AI can generate the quiz.",
+      );
     }
 
-    const questions = buildQuestions({
+    const questions = await produceQuizQuestions({
       topics,
       notesText,
-      difficulty,
-      numberOfQuestions,
+      difficulty: request.data.difficulty,
+      numberOfQuestions: request.data.numberOfQuestions,
+      languageCode: request.data.languageCode,
+      quizEmphasis: request.data.quizEmphasis,
     });
 
     return {questions};
-  }
+  },
 );
-
-function normalizeDifficulty(rawDifficulty?: string): "easy" | "medium" | "hard" {
-  const lowered = rawDifficulty?.toLowerCase();
-  if (lowered === "easy" || lowered === "hard") {
-    return lowered;
-  }
-  return "medium";
-}
-
-function normalizeQuestionCount(rawCount?: number): number {
-  const count = rawCount ?? 10;
-  if (!Number.isFinite(count)) {
-    return 10;
-  }
-  return Math.min(20, Math.max(1, Math.floor(count)));
-}
-
-type QuizQuestionShape = {
-  id: string;
-  topicId: string;
-  topicTitle: string;
-  prompt: string;
-  options: string[];
-  choices: string[];
-  correctIndex: number;
-  answerIndex: number;
-  explanation: string;
-};
-
-function buildQuestions(input: {
-  topics: string[];
-  notesText?: string;
-  difficulty: "easy" | "medium" | "hard";
-  numberOfQuestions: number;
-}): QuizQuestionShape[] {
-  const sourceTopics = input.topics.length > 0 ? input.topics : ["General"];
-  const notesSignal = !!input.notesText && input.notesText.length > 0;
-
-  return Array.from({length: input.numberOfQuestions}, (_, index) => {
-    const topicTitle = sourceTopics[index % sourceTopics.length];
-    const topicId = slugify(topicTitle);
-    const difficultyHint = difficultyLabel(input.difficulty);
-    const prompt = promptFor({
-      topicTitle,
-      index,
-      hasNotes: notesSignal,
-      difficultyHint,
-    });
-    const correctStatement = correctStatementFor({
-      topicTitle,
-      difficultyHint,
-      index,
-    });
-    const distractors = distractorsFor({topicTitle, index});
-    const correctIndex = index % 4;
-    const options = Array<string>(4).fill("");
-    let distractorPointer = 0;
-    for (let optionIndex = 0; optionIndex < 4; optionIndex++) {
-      if (optionIndex === correctIndex) {
-        options[optionIndex] = correctStatement;
-      } else {
-        options[optionIndex] = distractors[distractorPointer++];
-      }
-    }
-
-    return {
-      id: `ai_q_${index + 1}`,
-      topicId,
-      topicTitle,
-      prompt,
-      options,
-      choices: options,
-      correctIndex,
-      answerIndex: correctIndex,
-      explanation: `Fallback question tuned for ${input.difficulty} difficulty.`,
-    };
-  });
-}
-
-function promptFor(input: {
-  topicTitle: string;
-  index: number;
-  hasNotes: boolean;
-  difficultyHint: string;
-}): string {
-  const prompts = [
-    `Which statement is most accurate about ${input.topicTitle}?`,
-    `Which option best explains the key idea in ${input.topicTitle}?`,
-    `Choose the most reliable summary of ${input.topicTitle}.`,
-    `Which statement would be best to remember for ${input.topicTitle}?`,
-    `Which choice correctly describes ${input.topicTitle} at a ${input.difficultyHint} level?`,
-  ];
-  const notesPrompts = [
-    `Based on your notes, which statement best matches ${input.topicTitle}?`,
-    `From your notes, what is the strongest summary of ${input.topicTitle}?`,
-    `Using your notes, which option is most accurate for ${input.topicTitle}?`,
-    `According to your notes, which statement correctly captures ${input.topicTitle}?`,
-    `From your notes at a ${input.difficultyHint} level, which statement fits ${input.topicTitle}?`,
-  ];
-  const pool = input.hasNotes ? notesPrompts : prompts;
-  return pool[input.index % pool.length];
-}
-
-function correctStatementFor(input: {
-  topicTitle: string;
-  difficultyHint: string;
-  index: number;
-}): string {
-  const variants = [
-    `${input.topicTitle} focuses on core principles and practical application (${input.difficultyHint}).`,
-    `${input.topicTitle} builds understanding by connecting concepts step by step.`,
-    `${input.topicTitle} is best learned by identifying patterns and testing examples.`,
-    `${input.topicTitle} requires using definitions accurately before solving problems.`,
-  ];
-  return variants[input.index % variants.length];
-}
-
-function distractorsFor(input: {topicTitle: string; index: number}): string[] {
-  const base = [
-    `${input.topicTitle} is mainly about memorizing unrelated facts.`,
-    `${input.topicTitle} never uses structured reasoning.`,
-    `${input.topicTitle} can be solved by guessing without understanding.`,
-    `${input.topicTitle} avoids using definitions and examples.`,
-    `${input.topicTitle} is only relevant in one narrow scenario.`,
-    `${input.topicTitle} has no link between theory and practice.`,
-  ];
-  return [
-    base[input.index % base.length],
-    base[(input.index + 2) % base.length],
-    base[(input.index + 4) % base.length],
-  ];
-}
-
-function slugify(value: string): string {
-  return `topic_${value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "general"}`;
-}
-
-function difficultyLabel(difficulty: "easy" | "medium" | "hard"): string {
-  switch (difficulty) {
-    case "easy":
-      return "intro";
-    case "hard":
-      return "advanced";
-    default:
-      return "balanced";
-  }
-}
 
 type SubmitQuizAttemptRequest = {
   quizId: string;
@@ -316,54 +170,42 @@ export const submitQuizAttempt = onCall<SubmitQuizAttemptRequest>(
 
 export const rebalanceStudyPlan = onCall(async (request) => {
   if (!request.auth) {
-    throw new Error("Unauthenticated");
+    throw new HttpsError("unauthenticated", "Unauthenticated");
   }
 
   const userId = request.auth.uid;
-  const planQuery = await admin
-    .firestore()
-    .collection("users")
-    .doc(userId)
-    .collection("studyPlans")
-    .where("status", "==", "active")
-    .limit(1)
-    .get();
-
-  if (planQuery.empty) {
-    return {updated: false, reason: "no_active_plan"};
-  }
-
-  const planRef = planQuery.docs[0].ref;
-  await planRef.update({
-    lastAdjustedAt: new Date().toISOString(),
-  });
-
-  return {updated: true, planId: planRef.id};
+  return runRebalanceStudyPlan(admin.firestore(), userId);
 });
 
 export const generateRecommendations = onCall(async (request) => {
   if (!request.auth) {
-    throw new Error("Unauthenticated");
+    throw new HttpsError("unauthenticated", "Unauthenticated");
   }
 
   const userId = request.auth.uid;
-  const insightRef = admin
-    .firestore()
+  const db = admin.firestore();
+  const payload = await buildRecommendationsInsight(db, userId);
+
+  const insightRef = db
     .collection("users")
     .doc(userId)
     .collection("insights")
     .doc();
 
-  const now = new Date().toISOString();
   await insightRef.set({
-    weakAreas: ["time_management", "revision_consistency"],
-    strengths: ["short_quiz_accuracy"],
-    confidenceByTopic: {"topicA": 0.62},
-    recommendationText: "Prioritize daily review blocks before new content.",
-    generatedAt: now,
+    weakAreas: payload.weakAreas,
+    strengths: payload.strengths,
+    confidenceByTopic: payload.confidenceByTopic,
+    recommendationText: payload.recommendationText,
+    generatedAt: payload.generatedAt,
+    quizSampleSize: payload.quizSampleSize,
   });
 
-  return {insightId: insightRef.id, generatedAt: now};
+  return {
+    insightId: insightRef.id,
+    generatedAt: payload.generatedAt,
+    quizSampleSize: payload.quizSampleSize,
+  };
 });
 
 type GoogleCalendarSyncAction = "create" | "update" | "delete";
@@ -584,25 +426,6 @@ export const syncStudySessionToGoogleCalendar = onCall<SyncStudySessionToGoogleC
     return {synced: true, action: "create", eventId: createdEvent.id};
   }
 );
-
-function manamaTodayIso(): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: APP_CALENDAR_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date());
-  const y = parts.find((p) => p.type === "year")?.value ?? "1970";
-  const mo = parts.find((p) => p.type === "month")?.value ?? "01";
-  const d = parts.find((p) => p.type === "day")?.value ?? "01";
-  return `${y}-${mo}-${d}`;
-}
-
-function addCalendarDaysIso(isoDate: string, days: number): string {
-  const [y, mo, day] = isoDate.split("-").map(Number);
-  const shifted = new Date(Date.UTC(y, mo - 1, day + days));
-  return `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}`;
-}
 
 function buildGoogleCalendarEventPayload(sessionData: Record<string, unknown>) {
   const date = asString(sessionData["date"]);

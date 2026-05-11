@@ -82,27 +82,48 @@ class AppStrings {
       : 'Password must include a special character (e.g. ! @ #)';
   String get signUp => _isArabic ? 'إنشاء حساب' : 'Sign up';
   String get signUpVerificationEmailSent => _isArabic
-      ? 'تحقق من بريدك وافتح رابط التحقق، ثم سجّل الدخول.'
-      : 'Check your email for a verification link, then sign in.';
+      ? 'تم إنشاء الحساب. سجّل الدخول، ثم أدخل رمز التحقق المُرسل إلى بريدك.'
+      : 'Account created. Sign in, then enter the verification code sent to your email.';
   String get verifyEmailTitle =>
       _isArabic ? 'تحقّق من بريدك' : 'Verify your email';
   String verifyEmailBody(String address) => _isArabic
-      ? 'أرسلنا رابط تحقق إلى $address. افتح الرسالة واضغط الرابط، ثم اضغط «تحقّقت» أدناه.'
-      : 'We sent a verification link to $address. Open the message, tap the link, then tap "I\'ve verified" below.';
+      ? 'أرسلنا رمزًا مكوّنًا من 6 أرقام إلى $address. أدخله أدناه.'
+      : 'We sent a 6-digit code to $address. Enter it below.';
   String get verifyEmailNoAddressPlaceholder =>
       _isArabic ? 'عنوان بريدك' : 'your email address';
+  String get verifyEmailOtpLabel =>
+      _isArabic ? 'رمز التحقق' : 'Verification code';
+  String get verifyEmailOtpHint => _isArabic ? '000000' : '000000';
+  String get verifyEmailConfirmCode =>
+      _isArabic ? 'تأكيد الرمز' : 'Verify code';
   String get verifyEmailCheckedInbox =>
-      _isArabic ? 'تحقّقت من بريدي' : "I've verified";
+      _isArabic ? 'تحديث من الخادم' : 'Reload from server';
   String get verifyEmailResend =>
-      _isArabic ? 'إعادة إرسال البريد' : 'Resend email';
-  String get verifyEmailSignOut =>
-      _isArabic ? 'تسجيل الخروج' : 'Sign out';
+      _isArabic ? 'إعادة إرسال الرمز' : 'Resend code';
+  String get verifyEmailSignOut => _isArabic ? 'تسجيل الخروج' : 'Sign out';
   String get verifyEmailResent => _isArabic
-      ? 'تم إرسال رسالة التحقق مرة أخرى.'
-      : 'Verification email sent again.';
-  String get verifyEmailLinkTroubleshoot => _isArabic
-      ? 'إذا ظهر أن الرابط منتهٍ أو مُستخدَم، قد يكون بريدك فتحه تلقائيًا (شائع في Outlook والبريد غير الهام). أعد الإرسال، ثم افتح أحدث رسالة واضغط الرابط مرة واحدة فقط.'
-      : 'If the link says expired or already used, your inbox may have opened it once automatically (common in Outlook and junk mail). Tap Resend, open only the newest email, then tap the link once.';
+      ? 'تم إرسال رمز جديد إلى بريدك.'
+      : 'A new code was sent to your email.';
+  String get verifyEmailOtpInvalidFormat => _isArabic
+      ? 'أدخل الرمز المكوّن من 6 أرقام.'
+      : 'Enter the 6-digit code from your email.';
+  String get verifyEmailOtpWrongCode => _isArabic
+      ? 'الرمز غير صحيح. حاول مرة أخرى.'
+      : 'Incorrect code. Try again.';
+  String get verifyEmailOtpExpiredOrMissing => _isArabic
+      ? 'انتهت صلاحية الرمز أو لم يُطلب بعد. اطلب رمزًا جديدًا.'
+      : 'That code expired or was not requested. Request a new code.';
+  String get verifyEmailOtpRateLimited => _isArabic
+      ? 'طلبات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.'
+      : 'Too many requests. Wait a moment and try again.';
+  String get verifyEmailServerNotConfigured => _isArabic
+      ? 'التحقق بالبريد غير مهيأ على الخادم. اتصل بالدعم.'
+      : 'Email verification is not configured on the server. Contact support.';
+  String get verifyEmailUnauthenticated =>
+      _isArabic ? 'يجب تسجيل الدخول أولًا.' : 'Please sign in first.';
+  String get verifyEmailOtpGenericError => _isArabic
+      ? 'تعذّر التحقق. حاول مرة أخرى.'
+      : 'Verification failed. Please try again.';
   String get chooseMajor => _isArabic ? 'اختر التخصص' : 'Choose major';
   String get majorOptional => _isArabic
       ? 'اختياري - يمكنك الاختيار لاحقًا'
@@ -154,8 +175,7 @@ class AppStrings {
       : 'This assistant only answers within your declared major. Set your major in your profile, then come back.';
   String get studyChatOpenProfile =>
       _isArabic ? 'فتح الملف الشخصي' : 'Open profile';
-  String get studyChatMajorLabel =>
-      _isArabic ? 'التخصص' : 'Major';
+  String get studyChatMajorLabel => _isArabic ? 'التخصص' : 'Major';
   String get studyChatDisclaimer => _isArabic
       ? 'قد يخطئ الذكاء الاصطناعي؛ تحقق من مصادرك الأكاديمية.'
       : 'AI can make mistakes; verify with your course materials.';
@@ -257,9 +277,8 @@ class AppStrings {
       ? 'مثال: أشجار، رسوم بيانية، تجزئة'
       : 'e.g. Trees, Graphs, Hashing';
 
-  String get quizLinkCourseRequiredTitle => _isArabic
-      ? 'المقرر والمواضيع (مطلوب)'
-      : 'Course & topics (required)';
+  String get quizLinkCourseRequiredTitle =>
+      _isArabic ? 'المقرر والمواضيع (مطلوب)' : 'Course & topics (required)';
   String get quizLinkCourseRequiredHint => _isArabic
       ? 'اختر المقرر والمواضيع حتى يُربط الاختبار بالسجل وتظهر نقاط الضعف بوضوح.'
       : 'Pick your course and topics so each quiz is tied to your courses and weak areas are clear.';
@@ -282,10 +301,8 @@ class AppStrings {
   String get quizFillTopicsFromSelection => _isArabic
       ? 'نسخ المواضيع المحددة إلى الحقل'
       : 'Copy selected topics into field';
-  String get quizLinkedScopeLabel =>
-      _isArabic ? 'نطاق الاختبار' : 'Quiz scope';
-  String get quizHistoryCourseLink =>
-      _isArabic ? 'المقرر' : 'Course';
+  String get quizLinkedScopeLabel => _isArabic ? 'نطاق الاختبار' : 'Quiz scope';
+  String get quizHistoryCourseLink => _isArabic ? 'المقرر' : 'Course';
   String get quizHistoryTopicsLink =>
       _isArabic ? 'المواضيع المرتبطة' : 'Linked topics';
 
@@ -320,14 +337,12 @@ class AppStrings {
       _isArabic ? 'عدد الأسئلة' : 'Number of questions';
   String get quizQuestionStyle =>
       _isArabic ? 'أسلوب الأسئلة' : 'Question style';
-  String get quizStyleBalanced =>
-      _isArabic ? 'متوازن' : 'Balanced';
+  String get quizStyleBalanced => _isArabic ? 'متوازن' : 'Balanced';
   String get quizStyleDefinitions =>
       _isArabic ? 'تعريفات ومصطلحات' : 'Definitions & terms';
   String get quizStyleApplication =>
       _isArabic ? 'تطبيق وسيناريوهات' : 'Application & scenarios';
-  String get quizStyleExam =>
-      _isArabic ? 'أسلوب امتحان' : 'Exam-style';
+  String get quizStyleExam => _isArabic ? 'أسلوب امتحان' : 'Exam-style';
   String get generating => _isArabic ? 'جارٍ الإنشاء...' : 'Generating...';
   String get startQuiz => _isArabic ? 'بدء الاختبار' : 'Start quiz';
 
@@ -511,18 +526,15 @@ class AppStrings {
       _isArabic ? 'تقويم Google' : 'Google Calendar';
   String get googleConnected => _isArabic ? 'متصل' : 'Connected';
   String get googleNotConnected => _isArabic ? 'غير متصل' : 'Not connected';
-  String get connectGoogleCalendar =>
-      _isArabic ? 'مزامنة' : 'Sync';
-  String get disconnectGoogleCalendar =>
-      _isArabic ? 'فصل' : 'Disconnect';
+  String get connectGoogleCalendar => _isArabic ? 'مزامنة' : 'Sync';
+  String get disconnectGoogleCalendar => _isArabic ? 'فصل' : 'Disconnect';
   String get reconnectGoogleCalendar =>
       _isArabic ? 'إعادة ربط Google Calendar' : 'Reconnect Google Calendar';
   String get googleConnectedSuccess => _isArabic
       ? 'تم ربط Google Calendar بنجاح.'
       : 'Google Calendar connected successfully.';
-  String get googleDisconnectedSuccess => _isArabic
-      ? 'تم فصل Google Calendar.'
-      : 'Google Calendar disconnected.';
+  String get googleDisconnectedSuccess =>
+      _isArabic ? 'تم فصل Google Calendar.' : 'Google Calendar disconnected.';
   String get googleConnectFailed => _isArabic
       ? 'تعذّر ربط Google Calendar. حاول مرة أخرى.'
       : 'Could not connect Google Calendar. Please try again.';
@@ -558,8 +570,7 @@ class AppStrings {
       _isArabic ? 'تعذّر تحديث المقرر.' : 'Could not update course.';
   String get couldNotDeleteCourse =>
       _isArabic ? 'تعذّر حذف المقرر.' : 'Could not delete course.';
-  String get deleteCourseTitle =>
-      _isArabic ? 'حذف المقرر؟' : 'Delete course?';
+  String get deleteCourseTitle => _isArabic ? 'حذف المقرر؟' : 'Delete course?';
   String get deleteCourseConfirm => _isArabic
       ? 'سيتم حذف هذا المقرر وجميع المواضيع التابعة له.'
       : 'This will delete the course and all its topics.';
@@ -567,6 +578,103 @@ class AppStrings {
       ? 'سجّل الدخول لإدارة مقرراتك ومواضيعك.'
       : 'Sign in to manage your courses and topics.';
   String get unnamedCourse => _isArabic ? 'مقرر بدون اسم' : 'Untitled course';
+  String get academicTasks =>
+      _isArabic ? 'المهام والمواعيد الدراسية' : 'Academic tasks & deadlines';
+  String get academicTasksShort =>
+      _isArabic ? 'المهام والمواعيد' : 'Tasks & deadlines';
+  String get addAcademicTask =>
+      _isArabic ? 'إضافة مهمة دراسية' : 'Add academic task';
+  String get editAcademicTask =>
+      _isArabic ? 'تعديل المهمة الدراسية' : 'Edit academic task';
+  String get deleteAcademicTask => _isArabic ? 'حذف المهمة' : 'Delete task';
+  String get deleteAcademicTaskTitle =>
+      _isArabic ? 'حذف المهمة؟' : 'Delete task?';
+  String get deleteAcademicTaskConfirm => _isArabic
+      ? 'سيتم حذف هذه المهمة والموعد المرتبط بها.'
+      : 'This will delete the task and its deadline.';
+  String get academicTaskTitle => _isArabic ? 'عنوان المهمة' : 'Task title';
+  String get academicTaskTitleRequired =>
+      _isArabic ? 'يرجى إدخال عنوان المهمة.' : 'Please enter a task title.';
+  String get academicTaskType => _isArabic ? 'نوع المهمة' : 'Task type';
+  String get academicTaskCourseOptional =>
+      _isArabic ? 'المقرر (اختياري)' : 'Course (optional)';
+  String get academicTaskNoCourse =>
+      _isArabic ? 'بدون مقرر محدد' : 'No specific course';
+  String get academicTaskDueDate => _isArabic ? 'تاريخ التسليم' : 'Due date';
+  String get academicTaskEstimatedMinutes =>
+      _isArabic ? 'الوقت المتوقع بالدقائق' : 'Estimated minutes';
+  String get academicTaskPriority => _isArabic ? 'الأولوية' : 'Priority';
+  String get academicTaskNotesOptional =>
+      _isArabic ? 'ملاحظات (اختياري)' : 'Notes (optional)';
+  String get academicTasksEmptyHint => _isArabic
+      ? 'أضف واجبات، مشاريع، قراءات، مختبرات، عروض، اختبارات قصيرة، أو مواعيد الفصل لتظهر هنا.'
+      : 'Add homework, projects, readings, labs, presentations, quizzes, or semester deadlines to track everything in one place.';
+  String get upcomingDeadlines =>
+      _isArabic ? 'المواعيد القادمة' : 'Upcoming deadlines';
+  String get noUpcomingDeadlines => _isArabic
+      ? 'لا توجد مواعيد دراسية مفتوحة حالياً.'
+      : 'No open academic deadlines right now.';
+  String get viewAllDeadlines => _isArabic ? 'عرض' : 'View';
+  String get academicTaskSaved => _isArabic ? 'تم حفظ المهمة.' : 'Task saved.';
+  String get academicTaskUpdated =>
+      _isArabic ? 'تم تحديث المهمة.' : 'Task updated.';
+  String get academicTaskDeleted =>
+      _isArabic ? 'تم حذف المهمة.' : 'Task deleted.';
+  String get academicTaskCompleted =>
+      _isArabic ? 'تم إكمال المهمة.' : 'Task completed.';
+  String get academicTaskReopened =>
+      _isArabic ? 'تمت إعادة فتح المهمة.' : 'Task reopened.';
+  String get couldNotSaveAcademicTask =>
+      _isArabic ? 'تعذّر حفظ المهمة.' : 'Could not save task.';
+  String get couldNotUpdateAcademicTask =>
+      _isArabic ? 'تعذّر تحديث المهمة.' : 'Could not update task.';
+  String get couldNotDeleteAcademicTask =>
+      _isArabic ? 'تعذّر حذف المهمة.' : 'Could not delete task.';
+  String get couldNotToggleAcademicTask =>
+      _isArabic ? 'تعذّر تحديث حالة المهمة.' : 'Could not update task status.';
+  String academicTaskTypeLabel(String value) {
+    switch (value) {
+      case 'homework':
+        return _isArabic ? 'واجب' : 'Homework';
+      case 'project':
+        return _isArabic ? 'مشروع' : 'Project';
+      case 'quiz':
+        return _isArabic ? 'اختبار قصير' : 'Quiz';
+      case 'lab':
+        return _isArabic ? 'مختبر' : 'Lab';
+      case 'presentation':
+        return _isArabic ? 'عرض تقديمي' : 'Presentation';
+      case 'reading':
+        return _isArabic ? 'قراءة' : 'Reading';
+      case 'exam':
+        return _isArabic ? 'امتحان' : 'Exam';
+      case 'semesterDeadline':
+        return _isArabic ? 'موعد فصلي' : 'Semester deadline';
+      default:
+        return _isArabic ? 'أخرى' : 'Other';
+    }
+  }
+
+  String academicTaskPriorityLabel(String value) {
+    switch (value) {
+      case 'low':
+        return _isArabic ? 'منخفضة' : 'Low';
+      case 'high':
+        return _isArabic ? 'عالية' : 'High';
+      default:
+        return _isArabic ? 'متوسطة' : 'Medium';
+    }
+  }
+
+  String academicTaskDueToday(String formatted) =>
+      _isArabic ? 'اليوم، $formatted' : 'Today, $formatted';
+  String academicTaskDueTomorrow(String formatted) =>
+      _isArabic ? 'غداً، $formatted' : 'Tomorrow, $formatted';
+  String academicTaskDueInDays(int days, String formatted) =>
+      _isArabic ? 'بعد $days أيام، $formatted' : 'In $days days, $formatted';
+  String academicTaskOverdue(int days, String formatted) => _isArabic
+      ? 'متأخرة $days أيام، $formatted'
+      : '$days days overdue, $formatted';
   String get addTopic => _isArabic ? 'إضافة موضوع' : 'Add topic';
   String get editTopic => _isArabic ? 'تعديل الموضوع' : 'Edit topic';
   String get deleteTopic => _isArabic ? 'حذف الموضوع' : 'Delete topic';
@@ -588,8 +696,7 @@ class AppStrings {
       _isArabic ? 'تعذّر تحديث الموضوع.' : 'Could not update topic.';
   String get couldNotDeleteTopic =>
       _isArabic ? 'تعذّر حذف الموضوع.' : 'Could not delete topic.';
-  String get deleteTopicTitle =>
-      _isArabic ? 'حذف الموضوع؟' : 'Delete topic?';
+  String get deleteTopicTitle => _isArabic ? 'حذف الموضوع؟' : 'Delete topic?';
   String get deleteTopicConfirm => _isArabic
       ? 'سيتم حذف هذا الموضوع من المقرر.'
       : 'This topic will be removed from the course.';
@@ -628,9 +735,8 @@ class AppStrings {
       ? 'لا توجد مواد أو مواضيع بعد. أضفها من الملف الشخصي ← «موادي ومقرراتي».'
       : 'No subjects or topics yet. Add them from Profile → My courses.';
 
-  String get dailyStudyBudgetTitle => _isArabic
-      ? 'الوقت اليومي للدراسة'
-      : 'Daily study time';
+  String get dailyStudyBudgetTitle =>
+      _isArabic ? 'الوقت اليومي للدراسة' : 'Daily study time';
   String get dailyStudyBudgetHint => _isArabic
       ? 'يستخدمه المخطط لتوزيع الجلسات المقترحة بحسب أولوية كل موضوع.'
       : 'Used by the planner to divide suggested sessions by topic priority.';
@@ -645,9 +751,7 @@ class AppStrings {
           ? (hours == 1 ? 'ساعة واحدة' : '$hours ساعات')
           : (hours == 1 ? '1 hr' : '$hours hrs');
     }
-    return _isArabic
-        ? '$hours س $remainder د'
-        : '${hours}h ${remainder}m';
+    return _isArabic ? '$hours س $remainder د' : '${hours}h ${remainder}m';
   }
 
   String get planTodayMinutesLabel =>
@@ -656,10 +760,9 @@ class AppStrings {
       _isArabic ? 'وقت الغد' : 'Tomorrow’s budget';
   String get planUpcomingMinutesLabel =>
       _isArabic ? 'وقت اليوم المختار' : 'Day budget';
-  String planMinutesAllocatedSummary(int allocated, int budget) =>
-      _isArabic
-          ? 'تم توزيع $allocated من $budget دقيقة على أولوياتك.'
-          : 'Allocated $allocated of $budget minutes across your priorities.';
+  String planMinutesAllocatedSummary(int allocated, int budget) => _isArabic
+      ? 'تم توزيع $allocated من $budget دقيقة على أولوياتك.'
+      : 'Allocated $allocated of $budget minutes across your priorities.';
 
   String get whyThisPlanChanged =>
       _isArabic ? 'لماذا تغيّرت الخطة' : 'Why this plan changed';
@@ -670,10 +773,8 @@ class AppStrings {
       _isArabic ? '• $topic: $reason' : '• $topic: $reason';
   String get reasonLowQuiz =>
       _isArabic ? 'أداء ضعيف في الاختبارات' : 'low quiz performance';
-  String get reasonExamSoon =>
-      _isArabic ? 'امتحان قريب' : 'upcoming exam';
-  String get reasonMissed =>
-      _isArabic ? 'جلسات فائتة' : 'missed sessions';
+  String get reasonExamSoon => _isArabic ? 'امتحان قريب' : 'upcoming exam';
+  String get reasonMissed => _isArabic ? 'جلسات فائتة' : 'missed sessions';
   String get reasonStale =>
       _isArabic ? 'لم تُدرَس منذ فترة' : 'long time since last study';
   String get reasonBaseline =>
@@ -689,7 +790,9 @@ class AppStrings {
     if (daysAgo == 1) {
       return _isArabic ? 'دُرِس أمس' : 'Studied yesterday';
     }
-    return _isArabic ? 'آخر دراسة قبل $daysAgo أيام' : 'Last studied $daysAgo days ago';
+    return _isArabic
+        ? 'آخر دراسة قبل $daysAgo أيام'
+        : 'Last studied $daysAgo days ago';
   }
 
   String get planEmptyStudyBudget => _isArabic

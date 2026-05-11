@@ -8,6 +8,8 @@ import '../../data/services/quiz_ai_service.dart';
 import '../../domain/entities/quiz_question.dart';
 import '../../domain/entities/quiz_submission_result.dart';
 import '../../domain/repositories/quiz_history_repository.dart';
+import '../../../study_plan/application/schedule_study_plan_rebalance.dart';
+import '../../../study_plan/domain/repositories/study_plan_repository.dart';
 
 /// Holds client-side quiz runner state (answer selection, progress, submission).
 final quizRunnerControllerProvider =
@@ -15,6 +17,7 @@ final quizRunnerControllerProvider =
   return QuizRunnerController(
     ref.watch(quizAiServiceProvider),
     ref.watch(quizHistoryRepositoryProvider),
+    ref.watch(studyPlanRepositoryProvider),
     () => ref.read(currentAuthUserProvider).valueOrNull?.uid,
     () => ref.read(appLocaleProvider).languageCode,
   );
@@ -104,6 +107,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
   QuizRunnerController(
     this._quizAiService,
     this._quizHistoryRepository,
+    this._studyPlanRepository,
     this._currentUserId,
     this._currentLanguageCode,
   ) : super(const QuizRunnerIdle());
@@ -111,6 +115,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
 
   final QuizAiService _quizAiService;
   final QuizHistoryRepository _quizHistoryRepository;
+  final StudyPlanRepository _studyPlanRepository;
   final String? Function() _currentUserId;
   final String Function() _currentLanguageCode;
   QuizGenerationRequest? _lastRequest;
@@ -293,6 +298,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
         result: result,
         completedAt: DateTime.now(),
       );
+      scheduleStudyPlanRebalance(_studyPlanRepository);
     } catch (_) {
       // History persistence failure should not block quiz submission UX.
     }

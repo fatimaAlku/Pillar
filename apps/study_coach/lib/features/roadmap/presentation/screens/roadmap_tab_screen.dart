@@ -1538,10 +1538,12 @@ class _RoadmapPhaseCard extends StatelessWidget {
                           children: [
                             Icon(
                               isActionCompleted(entry.key)
-                                  ? Icons.check_circle_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                              size: 18,
-                              color: colorScheme.primary,
+                                  ? Icons.check_box_rounded
+                                  : Icons.check_box_outline_blank_rounded,
+                              size: 22,
+                              color: isActionCompleted(entry.key)
+                                  ? colorScheme.primary
+                                  : colorScheme.outline,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -1610,10 +1612,12 @@ class _SubjectTopicsCard extends StatelessWidget {
                           children: [
                             Icon(
                               isTopicCompleted(entry.key)
-                                  ? Icons.check_circle_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                              size: 18,
-                              color: colorScheme.primary,
+                                  ? Icons.check_box_rounded
+                                  : Icons.check_box_outline_blank_rounded,
+                              size: 22,
+                              color: isTopicCompleted(entry.key)
+                                  ? colorScheme.primary
+                                  : colorScheme.outline,
                             ),
                             const SizedBox(width: 8),
                             Expanded(

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
+import '../../../study_plan/application/schedule_study_plan_rebalance.dart';
 import '../../domain/entities/subject.dart';
 import 'subject_detail_screen.dart';
 
@@ -118,6 +119,7 @@ class SubjectsManageScreen extends ConsumerWidget {
               name: name,
               examDateIso: examIso,
             );
+        scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(strings.courseSaved)),
@@ -235,6 +237,7 @@ class SubjectsManageScreen extends ConsumerWidget {
               name: name,
               examDateIso: _toExamDateIso(examDate),
             );
+        scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(strings.courseUpdated)),
@@ -280,6 +283,7 @@ class SubjectsManageScreen extends ConsumerWidget {
             uid: uid,
             subjectId: subject.id,
           );
+      scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.courseDeleted)),
