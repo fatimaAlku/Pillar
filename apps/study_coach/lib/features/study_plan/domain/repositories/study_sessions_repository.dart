@@ -7,6 +7,13 @@ abstract class StudySessionsRepository {
   /// Sessions on the active study plan for [dateIso] (`yyyy-MM-dd`).
   Stream<List<StudySession>> watchSessionsForDate(String uid, String dateIso);
 
+  /// Upcoming sessions on the active study plan, including today, for reminder
+  /// scheduling and other forward-looking summaries.
+  Stream<List<StudySession>> watchUpcomingSessions(
+    String uid, {
+    int horizonDays = 30,
+  });
+
   /// Aggregated per-topic session activity over the trailing [windowDays]
   /// (defaulting to two weeks). Powers dynamic "missed sessions" + "last
   /// studied" signals in the planner.

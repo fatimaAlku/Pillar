@@ -92,8 +92,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
         .doc(uid)
         .collection(FirestorePaths.studyPlans)
         .doc();
-    final sessionRef =
-        newPlanRef.collection(FirestorePaths.sessions).doc();
+    final sessionRef = newPlanRef.collection(FirestorePaths.sessions).doc();
     final batch = _db.batch()
       ..set(newPlanRef, {
         'startDate': now,
@@ -260,6 +259,49 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     });
   }
 
+  @override
+  Stream<List<StudySession>> watchUpcomingSessions(
+    String uid, {
+    int horizonDays = 30,
+  }) {
+    final today = appTodayDateOnly();
+    final through =
+        _dateOnlyIso(today.add(Duration(days: horizonDays.clamp(1, 365))));
+    final todayIso = _dateOnlyIso(today);
+    final userRef = _db.collection(FirestorePaths.users).doc(uid);
+    return userRef
+        .collection(FirestorePaths.studyPlans)
+        .where('status', isEqualTo: 'active')
+        .limit(1)
+        .snapshots()
+        .asyncExpand((planSnap) {
+      if (planSnap.docs.isEmpty) {
+        return Stream.value(<StudySession>[]);
+      }
+      final planDoc = planSnap.docs.first;
+      final planId = planDoc.id;
+      return planDoc.reference
+          .collection(FirestorePaths.sessions)
+          .where('date', isGreaterThanOrEqualTo: todayIso)
+          .where('date', isLessThanOrEqualTo: through)
+          .snapshots()
+          .map(
+        (sessionsSnap) {
+          final sessions = sessionsSnap.docs
+              .where((d) => !sessionDocIsDeleted(d.data()))
+              .map((d) => _fromDoc(planId: planId, id: d.id, data: d.data()))
+              .toList();
+          sessions.sort((a, b) {
+            final dateCompare = a.date.compareTo(b.date);
+            if (dateCompare != 0) return dateCompare;
+            return (a.startMinute ?? 0).compareTo(b.startMinute ?? 0);
+          });
+          return sessions;
+        },
+      );
+    });
+  }
+
   StudySession _fromDoc({
     required String planId,
     required String id,
@@ -275,7 +317,9 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     final startMinuteRaw = data['startMinute'];
     final startMinute = startMinuteRaw is int
         ? startMinuteRaw.clamp(0, 1439)
-        : (startMinuteRaw is num ? startMinuteRaw.toInt().clamp(0, 1439) : null);
+        : (startMinuteRaw is num
+            ? startMinuteRaw.toInt().clamp(0, 1439)
+            : null);
     return StudySession(
       id: id,
       planId: planId,
