@@ -782,6 +782,13 @@ class AppStrings {
 
   String get whyThisPlanChanged =>
       _isArabic ? 'لماذا تغيّرت الخطة' : 'Why this plan changed';
+  String recommendationPlanChanged(String topic, String dayLabel) => _isArabic
+      ? 'كان أداؤك منخفضًا في $topic، لذلك تعطي خطة $dayLabel أولوية أكبر له.'
+      : 'You scored low on $topic, so $dayLabel’s plan now gives it more time.';
+  String get planDayTodayInline => _isArabic ? 'اليوم' : 'today';
+  String get planDayTomorrowInline => _isArabic ? 'الغد' : 'tomorrow';
+  String get planDaySelectedInline =>
+      _isArabic ? 'اليوم المحدد' : 'the selected day';
   String get planAdjustedReasonsHeader => _isArabic
       ? 'تكيّف المخطط بناءً على هذه الإشارات'
       : 'The planner adjusted from these signals';

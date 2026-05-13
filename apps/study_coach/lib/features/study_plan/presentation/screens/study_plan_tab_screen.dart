@@ -9,6 +9,7 @@ import '../../../../core/state/app_providers.dart';
 import '../../../focus/presentation/screens/focus_session_screen.dart';
 import '../../../profile/domain/entities/user_profile_data.dart';
 import '../../../quizzes/domain/entities/quiz_history_entry.dart';
+import '../../../recommendations/domain/entities/recommendation.dart';
 import '../../domain/entities/study_personalization_models.dart';
 import '../../domain/entities/study_session.dart';
 import '../controllers/study_plan_controller.dart';
@@ -337,11 +338,17 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     final days = _buildWeekDays(anchor: _selectedDate);
     final quizHistory =
         ref.watch(quizHistoryStreamProvider(uid)).valueOrNull ?? const [];
+    final latestRecommendation =
+        ref.watch(latestRecommendationProvider(uid)).valueOrNull;
     final enrichedTopics =
         ref.watch(enrichedTopicPerformanceInputsProvider(uid));
-    final topicsForPlanning = enrichedTopics.isEmpty
+    final baseTopicsForPlanning = enrichedTopics.isEmpty
         ? _applyPerformanceSignals(topics, quizHistory)
         : enrichedTopics;
+    final topicsForPlanning = _applyRecommendationSignals(
+      baseTopicsForPlanning,
+      latestRecommendation,
+    );
     final preferredMinutes = ref
             .watch(userProfileStreamProvider(uid))
             .valueOrNull
@@ -401,6 +408,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           topics: topicsForPlanning,
           selectedDate: _selectedDate,
           history: quizHistory,
+          latestRecommendation: latestRecommendation,
           dynamicResult: dynamicResult,
         ),
         const SizedBox(height: 18),
@@ -901,6 +909,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
     required this.topics,
     required this.selectedDate,
     required this.history,
+    required this.latestRecommendation,
     required this.dynamicResult,
   });
 
@@ -908,6 +917,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
   final List<TopicPerformanceInput> topics;
   final DateTime selectedDate;
   final List<QuizHistoryEntry> history;
+  final Recommendation? latestRecommendation;
   final StudyPlanAdjustmentResult dynamicResult;
 
   @override
@@ -916,40 +926,31 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    String mapWeakAreaToTitle(String weakArea) {
-      final normalizedWeak = weakArea.toLowerCase().replaceAll('_', ' ').trim();
-      for (final topic in topics) {
-        final title = topic.topicTitle.trim();
-        if (title.isEmpty) continue;
-        final normalizedTitle = title.toLowerCase();
-        if (normalizedTitle.contains(normalizedWeak) ||
-            normalizedWeak.contains(normalizedTitle)) {
-          return title;
-        }
-      }
-      return weakArea.replaceAll('_', ' ');
-    }
-
-    final weakCounts = <String, int>{};
-    for (final entry in history.take(10)) {
-      for (final weak in entry.weakTopicTitles) {
-        final key = weak.trim();
-        if (key.isEmpty) continue;
-        weakCounts[key] = (weakCounts[key] ?? 0) + 1;
-      }
-    }
-    final visibleWeakAreas = weakCounts.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final weakTopicTitles = visibleWeakAreas
-        .map((e) => mapWeakAreaToTitle(e.key))
-        .where((item) => item.trim().isNotEmpty)
-        .take(4)
-        .toList(growable: false);
-    final recommendationText = weakTopicTitles.isEmpty
-        ? (history.isEmpty
-            ? 'Complete a quiz to unlock personalized recommendations.'
-            : strings.noWeakTopics)
-        : 'Focus on ${weakTopicTitles.take(2).join(' and ')} in your next sessions.';
+    final recommendationWeakAreas = _recommendationWeakAreas(
+      latestRecommendation,
+    );
+    final weakTopicTitles = recommendationWeakAreas.isNotEmpty
+        ? recommendationWeakAreas
+            .map((area) => _mapWeakAreaToTopicTitle(area, topics))
+            .where((item) => item.trim().isNotEmpty)
+            .take(4)
+            .toList(growable: false)
+        : _weakTopicTitlesFromHistory(history, topics);
+    final backendRecommendationText =
+        latestRecommendation?.recommendationText.trim() ?? '';
+    final recommendationText = backendRecommendationText.isNotEmpty
+        ? backendRecommendationText
+        : weakTopicTitles.isEmpty
+            ? (history.isEmpty
+                ? 'Complete a quiz to unlock personalized recommendations.'
+                : strings.noWeakTopics)
+            : 'Focus on ${weakTopicTitles.take(2).join(' and ')} in your next sessions.';
+    final recommendationPlanChangeText = _recommendationPlanChangeText(
+      strings: strings,
+      selectedDate: selectedDate,
+      recommendation: latestRecommendation,
+      plan: dynamicResult.updatedPlan,
+    );
     final showPlanChangeExplanation = _isTodayOrFuture(selectedDate) &&
         dynamicResult.updatedPlan.any(
           (item) =>
@@ -985,8 +986,12 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                     color: colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(10),
                     child: InkWell(
-                      onTap: () =>
-                          ref.invalidate(quizHistoryStreamProvider(uid)),
+                      onTap: () => _refreshRecommendationsAndPlan(
+                        context,
+                        ref,
+                        strings,
+                        uid,
+                      ),
                       borderRadius: BorderRadius.circular(10),
                       child: SizedBox(
                         width: 30,
@@ -1009,6 +1014,17 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  IconButton(
+                    tooltip: strings.refreshRecommendations,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () => _refreshRecommendationsAndPlan(
+                      context,
+                      ref,
+                      strings,
+                      uid,
+                    ),
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -1016,6 +1032,21 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                 recommendationText,
                 style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
               ),
+              if ((latestRecommendation?.generatedAtIso ?? '').isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  strings.lastGeneratedAt(
+                    _formatRecommendationGeneratedAt(
+                      context,
+                      latestRecommendation!.generatedAtIso,
+                    ),
+                  ),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
               if (showPlanChangeExplanation) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -1028,7 +1059,8 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  dynamicResult.explanationMessage,
+                  recommendationPlanChangeText ??
+                      dynamicResult.explanationMessage,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                     fontSize: 12,
@@ -1087,6 +1119,29 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+Future<void> _refreshRecommendationsAndPlan(
+  BuildContext context,
+  WidgetRef ref,
+  AppStrings strings,
+  String uid,
+) async {
+  try {
+    await ref.read(recommendationsRepositoryProvider).generateRecommendations();
+    await ref.read(studyPlanRepositoryProvider).rebalanceStudyPlan();
+    ref.invalidate(latestRecommendationProvider(uid));
+    ref.invalidate(quizHistoryStreamProvider(uid));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.recommendationsUpdated)),
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(strings.couldNotGenerateRecommendations)),
     );
   }
 }
@@ -1435,6 +1490,122 @@ String _localizedReason(AppStrings strings, String? rawReason) {
   }
 }
 
+String _formatRecommendationGeneratedAt(BuildContext context, String iso) {
+  final parsed = DateTime.tryParse(iso);
+  if (parsed == null) return iso;
+  final localeCode = Localizations.localeOf(context).languageCode;
+  return DateFormat.yMMMd(localeCode).add_jm().format(parsed.toLocal());
+}
+
+String _planDayInlineLabel(AppStrings strings, DateTime date) {
+  if (_isSameDay(date, appTodayDateOnly())) {
+    return strings.planDayTodayInline;
+  }
+  if (_isTomorrow(date)) {
+    return strings.planDayTomorrowInline;
+  }
+  return strings.planDaySelectedInline;
+}
+
+String? _recommendationPlanChangeText({
+  required AppStrings strings,
+  required DateTime selectedDate,
+  required Recommendation? recommendation,
+  required List<StudyTaskPriority> plan,
+}) {
+  if (!_isTodayOrFuture(selectedDate) || recommendation == null) return null;
+  for (final task in plan) {
+    if (task.recommendedMinutes <= 0) continue;
+    if (_topicMatchesRecommendation(task.topicTitle, recommendation)) {
+      return strings.recommendationPlanChanged(
+        task.topicTitle,
+        _planDayInlineLabel(strings, selectedDate),
+      );
+    }
+  }
+  return null;
+}
+
+List<String> _recommendationWeakAreas(Recommendation? recommendation) {
+  if (recommendation == null) return const [];
+  final areas = <String>[];
+  final seen = <String>{};
+  void addArea(String value) {
+    final trimmed = value.trim();
+    final normalized = _normalizePerformanceKey(trimmed);
+    if (trimmed.isEmpty || normalized.isEmpty || !seen.add(normalized)) {
+      return;
+    }
+    areas.add(trimmed);
+  }
+
+  for (final weakArea in recommendation.weakAreas) {
+    addArea(weakArea);
+  }
+  for (final entry in recommendation.confidenceByTopic.entries) {
+    if (entry.value < 0.6) {
+      addArea(entry.key);
+    }
+  }
+  return areas;
+}
+
+List<String> _weakTopicTitlesFromHistory(
+  List<QuizHistoryEntry> history,
+  List<TopicPerformanceInput> topics,
+) {
+  final weakCounts = <String, int>{};
+  for (final entry in history.take(10)) {
+    for (final weak in entry.weakTopicTitles) {
+      final key = weak.trim();
+      if (key.isEmpty) continue;
+      weakCounts[key] = (weakCounts[key] ?? 0) + 1;
+    }
+  }
+  final visibleWeakAreas = weakCounts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
+  return visibleWeakAreas
+      .map((e) => _mapWeakAreaToTopicTitle(e.key, topics))
+      .where((item) => item.trim().isNotEmpty)
+      .take(4)
+      .toList(growable: false);
+}
+
+String _mapWeakAreaToTopicTitle(
+  String weakArea,
+  List<TopicPerformanceInput> topics,
+) {
+  final normalizedWeak = _normalizePerformanceKey(weakArea);
+  for (final topic in topics) {
+    final title = topic.topicTitle.trim();
+    if (title.isEmpty) continue;
+    final normalizedTitle = _normalizePerformanceKey(title);
+    if (_performanceKeysMatch(normalizedWeak, normalizedTitle)) {
+      return title;
+    }
+  }
+  return weakArea.replaceAll('_', ' ');
+}
+
+bool _topicMatchesRecommendation(
+  String topicTitle,
+  Recommendation recommendation,
+) {
+  final topicKey = _normalizePerformanceKey(topicTitle);
+  if (topicKey.isEmpty) return false;
+  return _recommendationWeakAreas(recommendation).any(
+    (area) => _performanceKeysMatch(
+      topicKey,
+      _normalizePerformanceKey(area),
+    ),
+  );
+}
+
+bool _performanceKeysMatch(String a, String b) {
+  if (a.isEmpty || b.isEmpty) return false;
+  return a.contains(b) || b.contains(a);
+}
+
 class _DayBudgetPill extends StatelessWidget {
   const _DayBudgetPill({
     required this.selectedDate,
@@ -1596,6 +1767,62 @@ List<TopicPerformanceInput> _applyPerformanceSignals(
       missedSessions: topic.missedSessions,
     );
   }).toList(growable: false);
+}
+
+List<TopicPerformanceInput> _applyRecommendationSignals(
+  List<TopicPerformanceInput> topics,
+  Recommendation? recommendation,
+) {
+  if (topics.isEmpty || recommendation == null) return topics;
+  final weakAreas = _recommendationWeakAreas(recommendation);
+  if (weakAreas.isEmpty) return topics;
+
+  return topics.map((topic) {
+    final matchingConfidence = _confidenceForTopic(
+      recommendation,
+      topic.topicTitle,
+    );
+    final isRecommendationWeak = weakAreas.any(
+      (area) => _performanceKeysMatch(
+        _normalizePerformanceKey(topic.topicTitle),
+        _normalizePerformanceKey(area),
+      ),
+    );
+    if (!isRecommendationWeak && matchingConfidence == null) {
+      return topic;
+    }
+    final cap = matchingConfidence != null && matchingConfidence < 0.6
+        ? matchingConfidence
+        : 0.45;
+    final adjustedAccuracy =
+        topic.quizAccuracy > cap ? cap : topic.quizAccuracy;
+    return TopicPerformanceInput(
+      topicId: topic.topicId,
+      topicTitle: topic.topicTitle,
+      subjectId: topic.subjectId,
+      subjectTitle: topic.subjectTitle,
+      examDate: topic.examDate,
+      quizAccuracy: adjustedAccuracy,
+      subjectDifficulty: topic.subjectDifficulty,
+      lastStudiedAt: topic.lastStudiedAt,
+      missedSessions: topic.missedSessions,
+    );
+  }).toList(growable: false);
+}
+
+double? _confidenceForTopic(
+  Recommendation recommendation,
+  String topicTitle,
+) {
+  final topicKey = _normalizePerformanceKey(topicTitle);
+  if (topicKey.isEmpty) return null;
+  for (final entry in recommendation.confidenceByTopic.entries) {
+    final confidenceKey = _normalizePerformanceKey(entry.key);
+    if (_performanceKeysMatch(topicKey, confidenceKey)) {
+      return entry.value.clamp(0.0, 1.0).toDouble();
+    }
+  }
+  return null;
 }
 
 String _normalizePerformanceKey(String value) {

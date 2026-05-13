@@ -135,6 +135,59 @@ function normalizeTitle(value: string): string {
   return value.trim().toLowerCase().replaceAll("_", " ");
 }
 
+async function loadLatestRecommendationWeakSignals(
+  db: admin.firestore.Firestore,
+  uid: string,
+): Promise<Map<string, number>> {
+  let snap: admin.firestore.QuerySnapshot;
+  try {
+    snap = await db
+      .collection("users")
+      .doc(uid)
+      .collection("insights")
+      .orderBy("generatedAt", "desc")
+      .limit(1)
+      .get();
+  } catch {
+    return new Map();
+  }
+  if (snap.empty) return new Map();
+
+  const data = snap.docs[0].data();
+  const signals = new Map<string, number>();
+  const addSignal = (raw: unknown, weight: number) => {
+    if (typeof raw !== "string") return;
+    const normalized = normalizeTitle(raw);
+    if (!normalized) return;
+    signals.set(normalized, (signals.get(normalized) ?? 0) + weight);
+  };
+
+  const weakAreas = data["weakAreas"];
+  if (Array.isArray(weakAreas)) {
+    for (const weakArea of weakAreas) {
+      addSignal(weakArea, 2);
+    }
+  }
+
+  const confidenceByTopic = data["confidenceByTopic"];
+  if (confidenceByTopic && typeof confidenceByTopic === "object") {
+    for (const [topic, confidenceRaw] of Object.entries(confidenceByTopic)) {
+      const confidence =
+        typeof confidenceRaw === "number" && Number.isFinite(confidenceRaw)
+          ? confidenceRaw
+          : Number.parseFloat(String(confidenceRaw));
+      if (Number.isFinite(confidence) && confidence < QUIZ_LOW_THRESHOLD) {
+        addSignal(
+          topic,
+          Math.max(1, Math.round((QUIZ_LOW_THRESHOLD - confidence) / 0.15)),
+        );
+      }
+    }
+  }
+
+  return signals;
+}
+
 type QuizSignals = {globalScore: number; byWeakTitle: Map<string, number>};
 
 async function loadQuizSignals(
@@ -180,6 +233,11 @@ async function loadQuizSignals(
 
   const globalScore =
     scores.length === 0 ? 0.5 : clamp01(scores.reduce((a, b) => a + b, 0) / scores.length);
+
+  const recommendationSignals = await loadLatestRecommendationWeakSignals(db, uid);
+  recommendationSignals.forEach((count, weakTitle) => {
+    weakCounts.set(weakTitle, (weakCounts.get(weakTitle) ?? 0) + count);
+  });
 
   return {globalScore, byWeakTitle: weakCounts};
 }

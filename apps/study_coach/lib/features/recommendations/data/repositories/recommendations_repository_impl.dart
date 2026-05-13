@@ -34,16 +34,30 @@ class RecommendationsRepositoryImpl implements RecommendationsRepository {
       final strengths = (data['strengths'] as List<dynamic>? ?? const [])
           .map((e) => e.toString())
           .toList(growable: false);
+      final rawConfidence = data['confidenceByTopic'];
+      final confidenceByTopic = rawConfidence is Map
+          ? rawConfidence.map<String, double>((key, value) {
+              final parsed =
+                  value is num ? value.toDouble() : double.tryParse('$value');
+              return MapEntry(
+                key.toString(),
+                (parsed ?? 0.5).clamp(0.0, 1.0).toDouble(),
+              );
+            })
+          : const <String, double>{};
+      final rawQuizSampleSize = data['quizSampleSize'];
       return Recommendation(
-        recommendationText: (data['recommendationText'] as String?)?.trim().isNotEmpty ==
-                true
-            ? (data['recommendationText'] as String).trim()
-            : 'No recommendation text returned.',
+        recommendationText:
+            (data['recommendationText'] as String?)?.trim().isNotEmpty == true
+                ? (data['recommendationText'] as String).trim()
+                : 'No recommendation text returned.',
         generatedAtIso: (data['generatedAt'] as String?) ?? '',
         weakAreas: weakAreas,
         strengths: strengths,
+        confidenceByTopic: confidenceByTopic,
+        quizSampleSize:
+            rawQuizSampleSize is num ? rawQuizSampleSize.toInt() : 0,
       );
     });
   }
-
 }
