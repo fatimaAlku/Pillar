@@ -46,7 +46,7 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       data: (user) {
         if (user == null) {
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             children: [
               Text(
                 strings.signInToSeeStudyPlan,
@@ -370,9 +370,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
       0,
       (acc, task) => acc + task.recommendedMinutes,
     );
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       children: [
         _CalendarHeader(
           selectedDate: _selectedDate,
@@ -380,8 +382,8 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           onDayTap: (d) => setState(() => _selectedDate = d),
           onPickDate: _pickDate,
         ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
+        const SizedBox(height: 18),
+        _PlanPrimaryCta(
           onPressed: topics.isEmpty
               ? null
               : () => _openAddToSchedule(
@@ -389,10 +391,10 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                     topics: topics,
                     scheduleDate: _selectedDate,
                   ),
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add_rounded),
           label: Text(strings.addSchedule),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         if (topics.isNotEmpty)
           _DayBudgetPill(
             selectedDate: _selectedDate,
@@ -411,20 +413,65 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
           latestRecommendation: latestRecommendation,
           dynamicResult: dynamicResult,
         ),
-        const SizedBox(height: 18),
-        Text(
-          _formatDateHeader(_selectedDate, localeCode),
-          style: Theme.of(context).textTheme.titleMedium,
+        const SizedBox(height: 20),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.tertiary,
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    _formatDateHeader(_selectedDate, localeCode),
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         if (topics.isEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 8),
-            child: Text(
-              strings.noSubjectsForPersonalizedPlan,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.school_outlined,
+                  size: 24,
+                  color: colorScheme.primary.withValues(alpha: 0.75),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    strings.noSubjectsForPersonalizedPlan,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
+                ),
+              ],
             ),
           )
         else
@@ -452,14 +499,35 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                 children: [
                   if (daySchedule.isEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8, bottom: 8),
-                      child: Text(
-                        strings.planDayNothingScheduled,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.event_available_outlined,
+                            size: 24,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.72),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              strings.planDayNothingScheduled,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge
+                                  ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                    height: 1.4,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                             ),
+                          ),
+                        ],
                       ),
                     )
                   else
@@ -511,6 +579,156 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   }
 }
 
+class _PlanGradientFrame extends StatelessWidget {
+  const _PlanGradientFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.16),
+            colorScheme.tertiary.withValues(alpha: 0.1),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5),
+        child: Material(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(22.5),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _PlanSectionIcon extends StatelessWidget {
+  const _PlanSectionIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.tertiaryContainer.withValues(alpha: 0.65),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.14),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Icon(icon, color: colorScheme.primary, size: 22),
+      ),
+    );
+  }
+}
+
+class _PlanPrimaryCta extends StatelessWidget {
+  const _PlanPrimaryCta({
+    required this.onPressed,
+    required this.icon,
+    required this.label,
+  });
+
+  final VoidCallback? onPressed;
+  final Widget icon;
+  final Widget label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onPrimary = colorScheme.onPrimary;
+    final disabled = onPressed == null;
+    return Opacity(
+      opacity: disabled ? 0.45 : 1,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onPressed,
+          child: Ink(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary,
+                  Color.lerp(
+                        colorScheme.primary,
+                        colorScheme.tertiary,
+                        0.75,
+                      )!,
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: 0.32),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconTheme(
+                    data: IconThemeData(color: onPrimary, size: 22),
+                    child: icon,
+                  ),
+                  const SizedBox(width: 10),
+                  DefaultTextStyle.merge(
+                    style: theme.textTheme.titleSmall!.copyWith(
+                      color: onPrimary,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                    child: label,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CalendarHeader extends StatelessWidget {
   const _CalendarHeader({
     required this.selectedDate,
@@ -527,53 +745,120 @@ class _CalendarHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = theme.colorScheme.primaryContainer;
+    final colorScheme = theme.colorScheme;
     final localeCode = Localizations.localeOf(context).languageCode;
+    final onCont = colorScheme.onPrimaryContainer;
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       elevation: 0,
-      color: color,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
-        child: Column(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: colorScheme.primary.withValues(alpha: 0.08),
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          clipBehavior: Clip.antiAlias,
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: onPickDate,
-                  icon: const Icon(Icons.chevron_left),
-                ),
-                Expanded(
-                  child: Text(
-                    _formatMonthYear(selectedDate, localeCode),
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.primaryContainer,
+                      Color.lerp(
+                            colorScheme.tertiaryContainer,
+                            colorScheme.primaryContainer,
+                            0.35,
+                          )!
+                          .withValues(alpha: 0.92),
+                    ],
                   ),
                 ),
-                IconButton(
-                  onPressed: onPickDate,
-                  icon: const Icon(Icons.chevron_right),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 6),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: days.map((day) {
-                  final selected = _isSameDay(day, selectedDate);
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _DayChip(
-                      date: day,
-                      selected: selected,
-                      onTap: () => onDayTap(day),
+            Positioned(
+              right: -28,
+              top: -36,
+              child: Icon(
+                Icons.calendar_month_rounded,
+                size: 108,
+                color: colorScheme.primary.withValues(alpha: 0.06),
+              ),
+            ),
+            Positioned(
+              left: -20,
+              bottom: -24,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorScheme.tertiary.withValues(alpha: 0.12),
+                ),
+                child: const SizedBox.square(dimension: 80),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.all(10),
+                          minimumSize: const Size(42, 42),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onPickDate,
+                        icon: const Icon(Icons.chevron_left_rounded, size: 22),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _formatMonthYear(selectedDate, localeCode),
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                            color: onCont,
+                          ),
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        style: IconButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.all(10),
+                          minimumSize: const Size(42, 42),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: onPickDate,
+                        icon: const Icon(Icons.chevron_right_rounded, size: 22),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 7),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: days.map((day) {
+                        final selected = _isSameDay(day, selectedDate);
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: _DayChip(
+                            date: day,
+                            selected: selected,
+                            onTap: () => onDayTap(day),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
+                  ),
+                ],
               ),
             ),
           ],
@@ -599,33 +884,75 @@ class _DayChip extends StatelessWidget {
     final localeCode = Localizations.localeOf(context).languageCode;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final bg = selected ? colorScheme.onSurface : colorScheme.surface;
-    final fg = selected ? colorScheme.surface : colorScheme.onSurface;
 
     return Material(
-      color: bg,
-      borderRadius: BorderRadius.circular(14),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: onTap,
-        child: Container(
-          width: 54,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Column(
-            children: [
-              Text(
-                _weekdayShort(date, localeCode),
-                style: theme.textTheme.labelSmall?.copyWith(color: fg),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: selected
+                ? LinearGradient(
+                    colors: [
+                      colorScheme.primary,
+                      Color.lerp(
+                            colorScheme.primary,
+                            colorScheme.tertiary,
+                            0.72,
+                          )!,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : null,
+            color: selected ? null : colorScheme.surface,
+            border: selected
+                ? null
+                : Border.all(
+                    color:
+                        colorScheme.outlineVariant.withValues(alpha: 0.45),
+                  ),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: colorScheme.primary.withValues(alpha: 0.28),
+                      blurRadius: 12,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: SizedBox(
+              width: 54,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _weekdayShort(date, localeCode),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: selected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '${date.day}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: selected
+                          ? colorScheme.onPrimary
+                          : colorScheme.onSurface,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                '${date.day}',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: fg,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -674,38 +1001,38 @@ class _ScheduleCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(22),
-                side: BorderSide(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.75),
-                ),
-              ),
-              color: colorScheme.surfaceContainerLowest,
+            child: _PlanGradientFrame(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 10,
+                          height: 10,
                           decoration: BoxDecoration(
                             color: priorityColor,
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: priorityColor.withValues(alpha: 0.45),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             item.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.1,
                             ),
                           ),
                         ),
@@ -880,10 +1207,11 @@ class _SignalChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.32)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -972,49 +1300,38 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
         .toList(growable: false);
 
     return ExcludeSemantics(
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: _PlanGradientFrame(
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Material(
-                    color: colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(10),
-                    child: InkWell(
-                      onTap: () => _refreshRecommendationsAndPlan(
-                        context,
-                        ref,
-                        strings,
-                        uid,
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      child: SizedBox(
-                        width: 30,
-                        height: 30,
-                        child: Icon(
-                          Icons.psychology_alt_outlined,
-                          color: colorScheme.primary,
-                          size: 18,
-                        ),
-                      ),
+                  InkWell(
+                    onTap: () => _refreshRecommendationsAndPlan(
+                      context,
+                      ref,
+                      strings,
+                      uid,
+                    ),
+                    borderRadius: BorderRadius.circular(999),
+                    child: const _PlanSectionIcon(
+                      icon: Icons.psychology_alt_outlined,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       strings.aiSuggestion,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         fontSize: 16,
+                        letterSpacing: -0.15,
                       ),
                     ),
                   ),
-                  IconButton(
+                  IconButton.filledTonal(
                     tooltip: strings.refreshRecommendations,
                     visualDensity: VisualDensity.compact,
                     onPressed: () => _refreshRecommendationsAndPlan(
@@ -1023,7 +1340,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                       strings,
                       uid,
                     ),
-                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
                   ),
                 ],
               ),
@@ -1318,6 +1635,11 @@ class _ScheduleItem {
     TopicPerformanceInput? topic,
     Map<String, String> subjectTitleById = const {},
   }) {
+    // Server-side reason is the source of truth when present; fall back to the
+    // client-computed reason from the personalization service.
+    final serverReason = session.reason?.trim();
+    final hasServerReason = serverReason != null && serverReason.isNotEmpty;
+
     if (task != null) {
       final fromTask = _ScheduleItem.fromTask(
         task,
@@ -1327,6 +1649,11 @@ class _ScheduleItem {
         topic: topic,
         today: appTodayDateOnly(),
       );
+      final effectiveReason =
+          hasServerReason ? serverReason : fromTask.adjustmentReason;
+      final effectiveReasonKey = hasServerReason
+          ? serverReason.toLowerCase()
+          : fromTask.adjustmentReasonLocalizationKey;
       return _ScheduleItem(
         planId: fromTask.planId,
         sessionId: fromTask.sessionId,
@@ -1343,9 +1670,8 @@ class _ScheduleItem {
         recencyLabel: fromTask.recencyLabel,
         performancePercentLabel: fromTask.performancePercentLabel,
         performanceStatusLabel: fromTask.performanceStatusLabel,
-        adjustmentReason: fromTask.adjustmentReason,
-        adjustmentReasonLocalizationKey:
-            fromTask.adjustmentReasonLocalizationKey,
+        adjustmentReason: effectiveReason,
+        adjustmentReasonLocalizationKey: effectiveReasonKey,
         missedSessions: fromTask.missedSessions,
         daysSinceLastStudied: fromTask.daysSinceLastStudied,
         isAiSuggested: fromTask.isAiSuggested,
@@ -1380,8 +1706,9 @@ class _ScheduleItem {
       recencyLabel: '–',
       performancePercentLabel: null,
       performanceStatusLabel: null,
-      adjustmentReason: null,
-      adjustmentReasonLocalizationKey: null,
+      adjustmentReason: hasServerReason ? serverReason : null,
+      adjustmentReasonLocalizationKey:
+          hasServerReason ? serverReason.toLowerCase() : null,
       missedSessions: topic?.missedSessions ?? 0,
       daysSinceLastStudied: _daysSince(topic?.lastStudiedAt),
       isAiSuggested: false,
@@ -1641,30 +1968,25 @@ class _DayBudgetPill extends StatelessWidget {
     }
     final canReset = currentMinutes != preferredMinutes;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: colorScheme.surfaceContainerLowest,
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.7),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.timer_outlined, size: 18, color: colorScheme.primary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+    return _PlanGradientFrame(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const _PlanSectionIcon(icon: Icons.timer_outlined),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                 ),
-              ),
               Text(
                 strings.dailyStudyBudgetValue(currentMinutes),
                 style: theme.textTheme.labelLarge?.copyWith(
@@ -1716,6 +2038,7 @@ class _DayBudgetPill extends StatelessWidget {
           ),
         ],
       ),
+    ),
     );
   }
 }

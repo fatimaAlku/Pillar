@@ -78,7 +78,47 @@ The Flutter app calls these over HTTPS; it does not embed `OPENAI_API_KEY` for q
   firebase functions:secrets:set EMAIL_OTP_SECRET
   ```
 
-  Configure SMTP on the deployed function environment (for example `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`). See comments in `firebase/functions/src/emailVerificationOtp.ts` for details.
+  `EMAIL_OTP_SECRET` is only used to **hash** OTPs in Firestore; it is **not** your SMTP password. Mail credentials are `SMTP_USER` and `SMTP_PASS` (environment variables on Cloud Run).
+
+  Deploy at least once so the functions exist, then attach the secret to the OTP callables if the CLI prompts you to.
+
+  **SMTP in production (required or mail is never sent):** Gen 2 callables run on **Cloud Run**. Plain environment variables such as `SMTP_HOST` are **not** picked up from your laptop; you must set them on the **Cloud Run service** for `sendEmailVerificationOtp` (the verify callable does not send email).
+
+  1. In [Google Cloud Console](https://console.cloud.google.com/) pick the **same project** as Firebase (see `.firebaserc` → `default`).
+  2. Open **Cloud Run** → find the service whose name matches the function, usually `sendemailverificationotp` (lowercase). Confirm the **region** in the URL or list (often `us-central1` if you never set a custom region).
+  3. Open that service → **Edit & deploy new revision** → **Variables & secrets** → **Add variable** and set at least:
+     - `SMTP_HOST` — your provider’s SMTP hostname (required in production).
+     - `SMTP_PORT` — optional; default is `587` in code.
+     - `SMTP_USER` / `SMTP_PASS` — if the provider requires authentication (prefer [Secret Manager](https://console.cloud.google.com/security/secret-manager) for `SMTP_PASS` and reference it as a secret on the service instead of a plain variable).
+     - `EMAIL_FROM` — sender address; for **Microsoft 365** use the **same** address as `SMTP_USER` unless your admin documents otherwise (if unset, the function defaults `From` to `SMTP_USER`).
+  4. **Deploy** the revision. No Flutter rebuild is required.
+
+  From a machine with [`gcloud`](https://cloud.google.com/sdk/docs/install) and access to the project, you can list services and regions:
+
+  ```bash
+  gcloud run services list --project=YOUR_PROJECT_ID
+  ```
+
+  Variable names and behavior are documented in `firebase/functions/src/emailVerificationOtp.ts`.
+
+  **Gmail SMTP (step-by-step, good for testing OTP):**
+
+  1. Open [Google Account security](https://myaccount.google.com/security) for the Gmail address you will use to send mail.
+  2. Enable **2-Step Verification** if it is not already on (required for app passwords).
+  3. Open [App passwords](https://myaccount.google.com/apppasswords), create one (e.g. app “Mail”, device “Pillar functions”), and copy the **16-character** password (spaces optional); this is **not** your normal Gmail password.
+  4. In [Google Cloud Console](https://console.cloud.google.com/) select the same project as Firebase (see `.firebaserc`).
+  5. Go to **Cloud Run** → open the service **`sendemailverificationotp`** (region is often `us-central1`).
+  6. Click **Edit & deploy new revision** → **Variables & secrets** → add or update:
+     - `SMTP_HOST` = `smtp.gmail.com`
+     - `SMTP_PORT` = `587`
+     - `SMTP_USER` = your full Gmail address (e.g. `you@gmail.com`)
+     - `SMTP_PASS` = the app password from step 3 (store as a **secret** reference on Cloud Run if possible, not in chat or screenshots).
+     - `EMAIL_FROM` = the **same** Gmail as `SMTP_USER` (or omit it; the function defaults `From` to `SMTP_USER` when `EMAIL_FROM` is empty).
+  7. Under **Secrets**, ensure **`EMAIL_OTP_SECRET`** is still mounted for this function (that secret is only for hashing OTPs in Firestore, not for Gmail).
+  8. **Deploy** the new revision.
+  9. In the app, open **Verify your email** and tap **Resend code**; check the **student inbox** and **Spam** for the message.
+
+  Gmail has daily send limits; for production traffic use a transactional provider (SendGrid, SES, etc.) and a verified domain.
 
 For local emulators:
 

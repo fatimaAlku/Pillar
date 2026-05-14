@@ -191,10 +191,8 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
       final topicId = (data['topicId'] as String?)?.trim() ?? '';
       if (topicId.isEmpty) continue;
       final dateIso = (data['date'] as String?)?.trim() ?? '';
-      final sessionDate = DateTime.tryParse(dateIso);
-      if (sessionDate == null) continue;
-      final dateOnly =
-          DateTime(sessionDate.year, sessionDate.month, sessionDate.day);
+      final dateOnly = appParseCalendarDateOnly(dateIso);
+      if (dateOnly == null) continue;
       final isPast = dateOnly.isBefore(today);
       final completed = data['completed'] == true;
 
@@ -264,10 +262,9 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
     String uid, {
     int horizonDays = 30,
   }) {
-    final today = appTodayDateOnly();
-    final through =
-        _dateOnlyIso(today.add(Duration(days: horizonDays.clamp(1, 365))));
-    final todayIso = _dateOnlyIso(today);
+    final horizon = horizonDays.clamp(1, 365);
+    final todayIso = appTodayDateIso();
+    final through = appEndDateIsoFromToday(horizon);
     final userRef = _db.collection(FirestorePaths.users).doc(uid);
     return userRef
         .collection(FirestorePaths.studyPlans)
@@ -320,6 +317,10 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
         : (startMinuteRaw is num
             ? startMinuteRaw.toInt().clamp(0, 1439)
             : null);
+    final reasonRaw = data['reason'];
+    final reason = reasonRaw is String && reasonRaw.trim().isNotEmpty
+        ? reasonRaw.trim()
+        : null;
     return StudySession(
       id: id,
       planId: planId,
@@ -328,6 +329,7 @@ class StudySessionsRepositoryImpl implements StudySessionsRepository {
       durationMin: durationMin,
       startMinute: startMinute,
       completed: completed,
+      reason: reason,
     );
   }
 

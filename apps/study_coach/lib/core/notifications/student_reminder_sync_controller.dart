@@ -44,15 +44,27 @@ class StudentReminderSyncController {
     if (_started) return;
     _started = true;
     unawaited(_notificationService.initialize());
-    _sessionsSub = _studySessionsRepository
-        .watchUpcomingSessions(uid)
-        .listen(_onSessions, onError: _ignoreStreamError);
-    _tasksSub = _academicTasksRepository
-        .watchTasks(uid)
-        .listen(_onTasks, onError: _ignoreStreamError);
-    _subjectsSub = _subjectsRepository
-        .watchSubjects(uid)
-        .listen(_onSubjects, onError: _ignoreStreamError);
+    _sessionsSub = _studySessionsRepository.watchUpcomingSessions(uid).listen(
+          _onSessions,
+          onError: (Object error, StackTrace stackTrace) {
+            _ignoreStreamError(error, stackTrace);
+            _onSessions(const <StudySession>[]);
+          },
+        );
+    _tasksSub = _academicTasksRepository.watchTasks(uid).listen(
+          _onTasks,
+          onError: (Object error, StackTrace stackTrace) {
+            _ignoreStreamError(error, stackTrace);
+            _onTasks(const <AcademicTask>[]);
+          },
+        );
+    _subjectsSub = _subjectsRepository.watchSubjects(uid).listen(
+          _onSubjects,
+          onError: (Object error, StackTrace stackTrace) {
+            _ignoreStreamError(error, stackTrace);
+            _onSubjects(const <Subject>[]);
+          },
+        );
   }
 
   void dispose() {

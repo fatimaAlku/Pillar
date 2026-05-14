@@ -1,8 +1,8 @@
 /**
  * Email OTP verification (6-digit code). Production setup:
- * 1) firebase functions:secrets:set EMAIL_OTP_SECRET  (long random string)
+ * 1) firebase functions:secrets:set EMAIL_OTP_SECRET  (long random string; used only to hash OTPs in Firestore — not SMTP)
  * 2) Set on the Cloud Run service (or Functions env): SMTP_HOST, SMTP_PORT (optional, default 587),
- *    SMTP_USER, SMTP_PASS, EMAIL_FROM
+ *    SMTP_USER, SMTP_PASS, EMAIL_FROM (for Microsoft 365, EMAIL_FROM should match SMTP_USER)
  * 3) Deploy: firebase deploy --only functions,firestore:rules
  * Emulator: OTP is printed to the function log; SMTP_HOST may be omitted.
  */
@@ -101,7 +101,10 @@ async function sendOtpEmail(input: {
   const port = Number.parseInt(process.env.SMTP_PORT ?? "587", 10) || 587;
   const user = process.env.SMTP_USER?.trim() ?? "";
   const pass = process.env.SMTP_PASS?.trim() ?? "";
-  const from = process.env.EMAIL_FROM?.trim() ?? "noreply@localhost";
+  const fromEnv = process.env.EMAIL_FROM?.trim();
+  // Microsoft 365 often rejects mail if From ≠ authenticated mailbox.
+  const from =
+    fromEnv && fromEnv.length > 0 ? fromEnv : user.length > 0 ? user : "noreply@localhost";
 
   const transporter = nodemailer.createTransport({
     host,
@@ -125,13 +128,21 @@ async function sendOtpEmail(input: {
       ? `<p>رمز التحقق الخاص بك:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${input.code}</p><p>صالح لمدة 15 دقيقة.</p>`
       : `<p>Your verification code:</p><p style="font-size:24px;font-weight:bold;letter-spacing:4px;">${input.code}</p><p>This code expires in 15 minutes.</p>`;
 
-  await transporter.sendMail({
-    from,
-    to: input.to,
-    subject,
-    text,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from,
+      to: input.to,
+      subject,
+      text,
+      html,
+    });
+  } catch (err) {
+    console.error("sendOtpEmail: sendMail failed", err);
+    throw new HttpsError(
+      "internal",
+      "Verification email could not be sent. Check SMTP credentials and deploy logs, then try again.",
+    );
+  }
 }
 
 export const sendEmailVerificationOtp = onCall(
@@ -194,6 +205,10 @@ export const sendEmailVerificationOtp = onCall(
       ? admin.firestore.Timestamp.fromMillis(now)
       : (data?.sendWindowStart ?? admin.firestore.Timestamp.fromMillis(now));
 
+    // Send email before persisting the OTP so we never store a code the user
+    // did not receive (e.g. SMTP misconfiguration or send failure).
+    await sendOtpEmail({to: email, code, lang});
+
     await ref.set(
       {
         codeHash,
@@ -205,8 +220,6 @@ export const sendEmailVerificationOtp = onCall(
       },
       {merge: true},
     );
-
-    await sendOtpEmail({to: email, code, lang});
 
     return {sent: true};
   },

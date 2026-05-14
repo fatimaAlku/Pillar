@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -56,23 +57,34 @@ class StudentNotificationService {
     final nextIds = reminders.map((r) => r.id).toSet();
     final staleIds = currentIds.difference(nextIds);
 
+    final scheduledIds = <int>{};
     try {
       for (final id in staleIds) {
         await _plugin.cancel(id: id);
       }
       for (final reminder in reminders) {
-        await _plugin.cancel(id: reminder.id);
-        await _plugin.zonedSchedule(
-          id: reminder.id,
-          title: reminder.title,
-          body: reminder.body,
-          scheduledDate: reminder.fireAt,
-          notificationDetails: _notificationDetails,
-          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-          payload: reminder.key,
-          matchDateTimeComponents:
-              reminder.repeatsDaily ? DateTimeComponents.time : null,
-        );
+        try {
+          await _plugin.cancel(id: reminder.id);
+          await _plugin.zonedSchedule(
+            id: reminder.id,
+            title: reminder.title,
+            body: reminder.body,
+            scheduledDate: reminder.fireAt,
+            notificationDetails: _notificationDetails,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            payload: reminder.key,
+            matchDateTimeComponents:
+                reminder.repeatsDaily ? DateTimeComponents.time : null,
+          );
+          scheduledIds.add(reminder.id);
+        } on Object catch (e, st) {
+          if (kDebugMode) {
+            debugPrint(
+              'StudentNotificationService: skipped reminder ${reminder.key}: $e',
+            );
+            debugPrintStack(stackTrace: st);
+          }
+        }
       }
     } on MissingPluginException {
       _pluginUnavailable = true;
@@ -80,7 +92,7 @@ class StudentNotificationService {
       return;
     }
 
-    await _storeIds(nextIds);
+    await _storeIds(scheduledIds);
   }
 
   Future<void> clearScheduledStudentReminders() async {

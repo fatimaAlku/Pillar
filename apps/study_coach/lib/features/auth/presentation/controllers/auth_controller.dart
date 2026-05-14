@@ -191,11 +191,31 @@ class AuthFormController extends StateNotifier<AuthFormState> {
         return strings.verifyEmailServerNotConfigured;
       case 'unauthenticated':
         return strings.verifyEmailUnauthenticated;
+      case 'internal':
+        // Clients often receive message "INTERNAL" with no usable detail.
+        if (_isLikelyUsefulCallableDetail(message)) {
+          return message!;
+        }
+        return strings.verifyEmailSendFailed;
       default:
         if (message != null && message.isNotEmpty) {
-          return message;
+          final m = message.trim();
+          if (_isLikelyUsefulCallableDetail(m)) {
+            return m;
+          }
         }
         return strings.verifyEmailOtpGenericError;
     }
+  }
+
+  /// Firebase often surfaces [FirebaseFunctionsException.message] as the bare
+  /// error code (e.g. "INTERNAL"). Only show [raw] when it looks like a sentence.
+  bool _isLikelyUsefulCallableDetail(String? raw) {
+    final m = raw?.trim() ?? '';
+    if (m.isEmpty) return false;
+    if (m.length <= 12 && !m.contains(' ')) return false;
+    final upper = m.toUpperCase();
+    if (upper == m && m.length < 48 && !m.contains(' ')) return false;
+    return true;
   }
 }

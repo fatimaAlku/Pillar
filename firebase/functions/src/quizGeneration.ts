@@ -450,6 +450,7 @@ async function fetchOpenAiQuizQuestions(
   input: {
     topics: string[];
     notesText: string;
+    hasNotes: boolean;
     difficulty: string;
     numberOfQuestions: number;
     languageCode: string;
@@ -461,15 +462,27 @@ async function fetchOpenAiQuizQuestions(
   const isArabic = input.languageCode === "ar";
   const emphasisLine = emphasisInstruction(input.quizEmphasis);
 
+  const sourceRules = input.hasNotes
+    ? [
+        "- The learner notes below are the primary source of truth.",
+        "- Every correct option must be directly entailed by or paraphrased from the notes (no facts from outside the notes unless they are trivial glue text).",
+        "- Distractors must be plausible but clearly wrong given the notes.",
+      ]
+    : [
+        "- No learner notes were provided. Use widely taught, textbook-level material normally associated with these topic titles.",
+        "- Do not invent instructor-specific rules, exam tricks, or facts that depend on a reading you were not given.",
+        "- Prefer precise definitions, standard classifications, and mainstream facts that students could verify in a typical course textbook.",
+        "- If a topic title is ambiguous, ask questions that remain objectively correct under the usual interpretation of that name.",
+      ];
+
   const systemPrompt = [
     "You generate high-quality MCQ quizzes for university students.",
     'Return JSON only with shape: {"questions":[{"prompt":"string","options":["a","b","c","d"],"correctIndex":0,"explanation":"string","topicTitle":"string"}]}',
     "Rules:",
-    "- Use the notes as the primary source of truth.",
-    "- Every correct answer must be directly supported by the notes.",
-    "- Keep distractors plausible but incorrect relative to the notes.",
-    "- Exactly 4 options per question.",
-    "- correctIndex must be 0,1,2,3.",
+    ...sourceRules,
+    "- Exactly 4 distinct options per question (no duplicate or near-duplicate answers).",
+    "- correctIndex must be 0,1,2, or 3 and must index the single correct option for that prompt.",
+    "- Explanations must briefly justify why the keyed answer is correct (and, when notes exist, tie them to the notes).",
     `- Return exactly ${input.numberOfQuestions} questions.`,
     `- Difficulty level is ${input.difficulty}.`,
     `- Question style: ${emphasisLine}`,
@@ -481,10 +494,12 @@ async function fetchOpenAiQuizQuestions(
       : "- Write all questions, options, and explanations in English. Keep topicTitle EXACTLY as in the allowed list.",
   ].join("\n");
 
-  const userPrompt = [
-    `Allowed topics (use as topicTitle exactly): ${allowedTopicsJson}`,
-    `Notes:\n${input.notesText}`,
-  ].join("\n\n");
+  const userPrompt = input.hasNotes
+    ? [`Allowed topics (use as topicTitle exactly): ${allowedTopicsJson}`, `Notes:\n${input.notesText}`].join("\n\n")
+    : [
+        `Allowed topics (use as topicTitle exactly): ${allowedTopicsJson}`,
+        "No uploaded notes. Generate questions from established domain knowledge for those topic titles only.",
+      ].join("\n\n");
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), OPENAI_TIMEOUT_MS);
@@ -498,7 +513,7 @@ async function fetchOpenAiQuizQuestions(
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        temperature: 0.4,
+        temperature: 0.25,
         response_format: {type: "json_object"},
         messages: [
           {role: "system", content: systemPrompt},
@@ -570,7 +585,8 @@ export type ProduceQuizInput = {
 };
 
 /**
- * Uses OpenAI when API key is set and notes are non-empty; otherwise template questions.
+ * Uses OpenAI when the API key is set (notes-grounded when notes exist, otherwise
+ * topic-title-grounded); falls back to template questions only when the key is missing or OpenAI fails.
  */
 export async function produceQuizQuestions(raw: ProduceQuizInput): Promise<QuizQuestionShape[]> {
   const difficulty = normalizeDifficulty(raw.difficulty);
@@ -582,11 +598,15 @@ export async function produceQuizQuestions(raw: ProduceQuizInput): Promise<QuizQ
   const quizEmphasis = raw.quizEmphasis?.trim() || "balanced";
 
   const key = resolveOpenAiKey();
-  if (key && notesText.length > 0) {
+  const hasNotes = notesText.length > 0;
+  // Use OpenAI whenever the key is set: notes-grounded when provided, otherwise
+  // topic-title-grounded (avoids generic client-side template quizzes).
+  if (key) {
     try {
       const ai = await fetchOpenAiQuizQuestions(key, {
         topics,
         notesText,
+        hasNotes,
         difficulty: raw.difficulty ?? "medium",
         numberOfQuestions,
         languageCode,

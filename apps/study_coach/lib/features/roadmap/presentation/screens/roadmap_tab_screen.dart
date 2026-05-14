@@ -22,7 +22,7 @@ class RoadmapTabScreen extends ConsumerWidget {
         : _majors.where((major) => major.id == userMajorId).toList();
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 36),
       children: [
         if (majors.isEmpty) ...[
           _RoadmapEmptyState(
@@ -62,7 +62,7 @@ int _totalRoadmapChecklistCount(_RoadmapMajor major, AppStrings strings) {
       );
 }
 
-/// Same layout/size as the home tab welcome hero in `home_dashboard_view.dart`.
+/// Hero aligned in spirit with the home welcome card, with roadmap-specific accents.
 class _RoadmapTabHero extends StatelessWidget {
   const _RoadmapTabHero({required this.majorTitle});
 
@@ -72,71 +72,144 @@ class _RoadmapTabHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final onCont = colorScheme.onPrimaryContainer;
 
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primaryContainer,
-              colorScheme.tertiaryContainer.withValues(alpha: 0.95),
-            ],
-          ),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: colorScheme.primary.withValues(alpha: 0.08),
         ),
-        padding: const EdgeInsets.all(18),
-        child: Row(
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          clipBehavior: Clip.antiAlias,
           children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _roadmapText(context, 'Your study map'),
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      colorScheme.primaryContainer,
+                      Color.lerp(
+                            colorScheme.tertiaryContainer,
+                            colorScheme.primaryContainer,
+                            0.35,
+                          )!
+                          .withValues(alpha: 0.92),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    _roadmapText(context, majorTitle),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onPrimaryContainer.withValues(
-                        alpha: 0.78,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
-            const SizedBox(width: 14),
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    colorScheme.primary,
-                    colorScheme.tertiary,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 16,
-                    offset: const Offset(0, 7),
-                  ),
-                ],
-              ),
+            Positioned(
+              right: -36,
+              top: -44,
               child: Icon(
                 Icons.route_rounded,
-                color: colorScheme.onPrimary,
+                size: 120,
+                color: colorScheme.primary.withValues(alpha: 0.06),
+              ),
+            ),
+            Positioned(
+              left: -28,
+              bottom: -32,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: colorScheme.tertiary.withValues(alpha: 0.12),
+                ),
+                child: const SizedBox.square(dimension: 96),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 18, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _roadmapText(context, 'Your study map'),
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            height: 1.15,
+                            color: onCont,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface.withValues(alpha: 0.55),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(alpha: 0.12),
+                            ),
+                          ),
+                          child: Text(
+                            _roadmapText(context, majorTitle),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: onCont.withValues(alpha: 0.88),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.tertiary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.38),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 62,
+                          height: 62,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: colorScheme.onPrimary.withValues(alpha: 0.14),
+                          ),
+                        ),
+                        Icon(
+                          Icons.route_rounded,
+                          size: 34,
+                          color: colorScheme.onPrimary,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -177,128 +250,190 @@ class _RoadmapMajorHomeBlock extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 18),
-        Material(
-          color: colorScheme.surface,
-          elevation: 1.5,
-          shadowColor: colorScheme.shadow.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(26),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(26),
-            onTap: () => _openMajorRoadmap(context, major),
-            child: Ink(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(
-                  color: colorScheme.outlineVariant.withValues(alpha: 0.45),
-                ),
+        const SizedBox(height: 20),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(28),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                colorScheme.primary.withValues(alpha: 0.22),
+                colorScheme.tertiary.withValues(alpha: 0.14),
+              ],
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.12),
+                blurRadius: 28,
+                offset: const Offset(0, 14),
               ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 22, 20, 22),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(1.5),
+            child: Material(
+              color: colorScheme.surface,
+              elevation: 0,
+              borderRadius: BorderRadius.circular(26.5),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(26.5),
+                onTap: () => _openMajorRoadmap(context, major),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(26.5),
+                    border: Border.all(
+                      color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 24, 22, 22),
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: colorScheme.primaryContainer,
-                          child: Icon(
-                            major.icon,
-                            color: colorScheme.primary,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _roadmapText(context, major.title),
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.w800,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    colorScheme.primaryContainer,
+                                    colorScheme.tertiaryContainer
+                                        .withValues(alpha: 0.65),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: colorScheme.primary
+                                        .withValues(alpha: 0.18),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Icon(
+                                  major.icon,
+                                  color: colorScheme.primary,
+                                  size: 30,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _roadmapText(context, major.description),
-                                style: theme.textTheme.bodyMedium?.copyWith(
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _roadmapText(context, major.title),
+                                    style: theme.textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: -0.2,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _roadmapText(context, major.description),
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: colorScheme.onSurfaceVariant,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                strings.roadmapProgress,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                   color: colorScheme.onSurfaceVariant,
-                                  height: 1.35,
+                                  letterSpacing: 0.2,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                            Text(
+                              '$completedCount',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: colorScheme.primary,
+                                height: 1,
+                              ),
+                            ),
+                            Text(
+                              ' / $total',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _RoadmapGradientProgressBar(
+                          progress: progress,
+                          showIndeterminate: showIndeterminateProgress,
+                          colorScheme: colorScheme,
+                        ),
+                        const SizedBox(height: 22),
+                        _RoadmapOpenRoadmapCta(
+                          onPressed: () => _openMajorRoadmap(context, major),
+                          label: _roadmapText(context, 'Open full roadmap'),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 22),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            strings.roadmapProgress,
-                            style: theme.textTheme.labelLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '$completedCount / $total',
-                          style: theme.textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: colorScheme.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: showIndeterminateProgress
-                          ? LinearProgressIndicator(
-                              minHeight: 8,
-                              backgroundColor:
-                                  colorScheme.surfaceContainerHighest,
-                            )
-                          : LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 8,
-                              backgroundColor:
-                                  colorScheme.surfaceContainerHighest,
-                            ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: () => _openMajorRoadmap(context, major),
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        label: Text(
-                          _roadmapText(context, 'Open full roadmap'),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        Text(
-          _roadmapText(context, 'What you will cover'),
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
+        const SizedBox(height: 28),
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 22,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    colorScheme.primary,
+                    colorScheme.tertiary,
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _roadmapText(context, 'What you will cover'),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.15,
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Wrap(
-          spacing: 6,
-          runSpacing: 6,
+          spacing: 10,
+          runSpacing: 10,
           children: [
             for (final subject in previewSubjects)
               _SubjectPreviewPill(
@@ -323,6 +458,149 @@ class _RoadmapMajorHomeBlock extends ConsumerWidget {
   }
 }
 
+class _RoadmapGradientProgressBar extends StatelessWidget {
+  const _RoadmapGradientProgressBar({
+    required this.progress,
+    required this.showIndeterminate,
+    required this.colorScheme,
+  });
+
+  final double progress;
+  final bool showIndeterminate;
+  final ColorScheme colorScheme;
+
+  static const double _height = 11;
+
+  @override
+  Widget build(BuildContext context) {
+    final track = Color.lerp(
+      colorScheme.surfaceContainerHighest,
+      colorScheme.surfaceContainerLow,
+      0.45,
+    )!;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: _height,
+        child: showIndeterminate
+            ? LinearProgressIndicator(
+                minHeight: _height,
+                backgroundColor: track,
+                color: colorScheme.primary,
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final w =
+                      constraints.maxWidth * progress.clamp(0.0, 1.0);
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(color: track),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                          width: w,
+                          height: _height,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary,
+                                colorScheme.tertiary,
+                              ],
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorScheme.primary
+                                    .withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+      ),
+    );
+  }
+}
+
+class _RoadmapOpenRoadmapCta extends StatelessWidget {
+  const _RoadmapOpenRoadmapCta({
+    required this.onPressed,
+    required this.label,
+  });
+
+  final VoidCallback onPressed;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final onPrimary = colorScheme.onPrimary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onPressed,
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            gradient: LinearGradient(
+              colors: [
+                colorScheme.primary,
+                Color.lerp(
+                      colorScheme.primary,
+                      colorScheme.tertiary,
+                      0.75,
+                    )!,
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.32),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 22),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: onPrimary,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  color: onPrimary,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SubjectPreviewPill extends StatelessWidget {
   const _SubjectPreviewPill({required this.label});
 
@@ -330,23 +608,38 @@ class _SubjectPreviewPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer.withValues(alpha: 0.42),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(999),
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer.withValues(alpha: 0.55),
+            colorScheme.secondaryContainer.withValues(alpha: 0.4),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Text(
         label,
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-              height: 1.2,
-            ),
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          height: 1.2,
+          color: colorScheme.onPrimaryContainer.withValues(alpha: 0.92),
+        ),
       ),
     );
   }
@@ -359,38 +652,88 @@ class _RoadmapProfileTip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: colorScheme.primary.withValues(alpha: 0.12),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              colorScheme.primaryContainer.withValues(alpha: 0.45),
+              colorScheme.tertiaryContainer.withValues(alpha: 0.28),
+            ],
+          ),
+          border: Border.all(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.tips_and_updates_outlined,
-              color: colorScheme.primary,
-              size: 26,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _roadmapText(
-                  context,
-                  'Switch majors anytime in Profile → Edit profile. Your checklist progress stays with each major.',
-                ),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurface,
-                  height: 1.35,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                width: 5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      colorScheme.primary,
+                      colorScheme.tertiary,
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 16, 16),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface.withValues(alpha: 0.65),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: colorScheme.primary
+                                  .withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: Icon(
+                            Icons.tips_and_updates_rounded,
+                            color: colorScheme.primary,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          _roadmapText(
+                            context,
+                            'Switch majors anytime in Profile → Edit profile. Your checklist progress stays with each major.',
+                          ),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color:
+                                colorScheme.onSurface.withValues(alpha: 0.88),
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

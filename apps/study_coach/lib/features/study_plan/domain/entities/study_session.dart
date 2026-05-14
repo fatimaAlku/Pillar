@@ -7,6 +7,7 @@ class StudySession {
     required this.durationMin,
     required this.startMinute,
     required this.completed,
+    this.reason,
   });
 
   final String id;
@@ -16,4 +17,9 @@ class StudySession {
   final int durationMin;
   final int? startMinute;
   final bool completed;
+
+  /// Reason this session was scheduled (e.g. "low quiz performance",
+  /// "upcoming exam"). Populated by the server-side planner; null on sessions
+  /// created from older clients or schedule fallbacks.
+  final String? reason;
 }

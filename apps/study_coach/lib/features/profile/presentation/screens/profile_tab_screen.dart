@@ -16,17 +16,19 @@ import '../../../../core/state/app_locale_controller.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../../core/state/google_calendar_connection_provider.dart';
 import '../../../../core/state/theme_mode_controller.dart';
-import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
-import '../../data/local/local_profile_avatar_store.dart';
+import '../../../academic_tasks/presentation/screens/academic_tasks_screen.dart';
 import '../../../auth/presentation/controllers/auth_controller.dart';
+import '../../../dashboard/presentation/providers/dashboard_inbox_provider.dart';
+import '../../../dashboard/presentation/widgets/dashboard_inbox_sheet.dart';
 import '../../../progress/presentation/screens/progress_details_screen.dart';
+import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
+import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
+import '../../data/local/local_profile_avatar_store.dart';
 import 'about_screen.dart';
 import 'password_change_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'profile_editor_screen.dart';
 import 'quiz_history_screen.dart';
-import '../../../academic_tasks/presentation/screens/academic_tasks_screen.dart';
-import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 
 class ProfileTabScreen extends ConsumerStatefulWidget {
   const ProfileTabScreen({super.key});
@@ -72,6 +74,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      ref.invalidate(googleCalendarStatusForDashboardProvider);
       unawaited(_refreshGoogleStatus());
     }
   }
@@ -82,6 +85,14 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
     try {
       final status =
           await ref.read(googleCalendarSyncRepositoryProvider).googleStatus();
+      if (!mounted) return;
+      final connected = status['connected'] == true;
+      final needsReconnect = status['needsReconnect'] == true;
+      await clearInboxGoogleSyncDismissIfConnected(
+        ref,
+        connected: connected,
+        needsReconnect: needsReconnect,
+      );
       if (!mounted) return;
       setState(() => _googleStatus = status);
     } catch (_) {
@@ -226,102 +237,116 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
         googleConnected ? strings.googleConnected : strings.googleNotConnected;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
       children: [
-        Center(
-          child: Text(
-            '',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+        const Row(
+          children: [
+            Spacer(),
+            _ProfileInboxAction(),
+          ],
         ),
         const SizedBox(height: 18),
         Center(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 42,
-                backgroundColor: colorScheme.surfaceContainerHigh,
-                backgroundImage: avatarAssetPath == null ? profileImage : null,
-                child: avatarAssetPath != null
-                    ? ClipOval(
-                        child: SvgPicture.asset(
-                          avatarAssetPath,
-                          width: 84,
-                          height: 84,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : profileImage != null
-                        ? null
-                        : Icon(
-                            Icons.person_rounded,
-                            size: 46,
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  colorScheme.primary.withValues(alpha: 0.4),
+                  colorScheme.tertiary.withValues(alpha: 0.3),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              Positioned(
-                right: -2,
-                bottom: -2,
-                child: Material(
-                  color: colorScheme.surface,
-                  shape: const CircleBorder(),
-                  elevation: 2,
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () {
-                      Navigator.of(context).push<void>(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const ProfileEditorScreen(),
+              boxShadow: [
+                BoxShadow(
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(3),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 42,
+                    backgroundColor: colorScheme.surfaceContainerHigh,
+                    backgroundImage:
+                        avatarAssetPath == null ? profileImage : null,
+                    child: avatarAssetPath != null
+                        ? ClipOval(
+                            child: SvgPicture.asset(
+                              avatarAssetPath,
+                              width: 84,
+                              height: 84,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : profileImage != null
+                            ? null
+                            : Icon(
+                                Icons.person_rounded,
+                                size: 46,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                  ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Material(
+                      color: colorScheme.surface,
+                      shape: const CircleBorder(),
+                      elevation: 2,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: () {
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ProfileEditorScreen(),
+                            ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: colorScheme.primary,
+                          ),
                         ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Icon(
-                        Icons.edit_rounded,
-                        size: 16,
-                        color: colorScheme.primary,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         Center(
           child: Text(
             displayName,
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w700,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.25,
             ),
           ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 4),
         Center(
           child: Text(
             displayEmail,
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodyLarge?.copyWith(
               color: colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        const SizedBox(height: 20),
-        Card(
-          elevation: theme.cardTheme.elevation ?? 0,
-          shadowColor: theme.cardTheme.shadowColor,
-          surfaceTintColor: theme.cardTheme.surfaceTintColor,
-          color: colorScheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(26),
-            side: BorderSide(
-              color: colorScheme.outlineVariant.withValues(alpha: 0.85),
-            ),
-          ),
+        const SizedBox(height: 22),
+        _ProfileGradientFrame(
           child: Column(
             children: [
               _ProfileMenuTile(
@@ -363,11 +388,22 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                     : Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
-                          vertical: 6,
+                          vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: colorScheme.surfaceContainerHighest,
+                          gradient: LinearGradient(
+                            colors: [
+                              colorScheme.primaryContainer
+                                  .withValues(alpha: 0.9),
+                              colorScheme.tertiaryContainer
+                                  .withValues(alpha: 0.5),
+                            ],
+                          ),
                           borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: colorScheme.outlineVariant
+                                .withValues(alpha: 0.4),
+                          ),
                         ),
                         child: Text(
                           googleConnected
@@ -378,7 +414,7 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                           textAlign: TextAlign.end,
                           style: theme.textTheme.titleSmall?.copyWith(
                             color: colorScheme.primary,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
                             height: 1.2,
                             fontSize: 14,
                           ),
@@ -499,8 +535,10 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
             backgroundColor: colorScheme.error,
             foregroundColor: colorScheme.onError,
             minimumSize: const Size.fromHeight(54),
+            elevation: 1,
+            shadowColor: colorScheme.error.withValues(alpha: 0.45),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(999),
             ),
           ),
           onPressed: () =>
@@ -527,6 +565,81 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
   }
 }
 
+class _ProfileGradientFrame extends StatelessWidget {
+  const _ProfileGradientFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.16),
+            colorScheme.tertiary.withValues(alpha: 0.1),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5),
+        child: Material(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(22.5),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileLeadingIcon extends StatelessWidget {
+  const _ProfileLeadingIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.tertiaryContainer.withValues(alpha: 0.62),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, color: colorScheme.primary, size: 22),
+      ),
+    );
+  }
+}
+
 class _ProfileMenuTile extends StatelessWidget {
   const _ProfileMenuTile({
     required this.icon,
@@ -548,14 +661,15 @@ class _ProfileMenuTile extends StatelessWidget {
     final fg = colorScheme.onSurface;
     final theme = Theme.of(context);
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: onTap,
-      leading: Icon(icon, color: colorScheme.primary),
+      leading: _ProfileLeadingIcon(icon: icon),
       title: Text(
         title,
         style: theme.textTheme.titleMedium?.copyWith(
           color: fg,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
         ),
       ),
       subtitle: subtitle == null
@@ -564,6 +678,7 @@ class _ProfileMenuTile extends StatelessWidget {
               subtitle!,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: colorScheme.onSurfaceVariant,
+                height: 1.3,
               ),
             ),
       trailing: trailing ??
@@ -582,11 +697,64 @@ class _TileDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     final outline = Theme.of(context).colorScheme.outlineVariant;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Divider(
         height: 1,
-        color: outline.withValues(alpha: 0.65),
+        color: outline.withValues(alpha: 0.45),
       ),
+    );
+  }
+}
+
+class _ProfileInboxAction extends ConsumerWidget {
+  const _ProfileInboxAction();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final count = ref.watch(dashboardInboxEntriesProvider).length;
+    final iconButton = IconButton.filledTonal(
+      tooltip: AppStrings.of(context).inboxTitle,
+      icon: const Icon(Icons.notifications_outlined),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.standard,
+      ),
+      onPressed: () {
+        showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (ctx) => const DashboardInboxSheet(),
+        );
+      },
+    );
+
+    final circle = Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.shadow.withValues(alpha: 0.14),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: iconButton,
+    );
+
+    final withBadge = count > 0
+        ? Badge(
+            label: Text('$count'),
+            child: circle,
+          )
+        : circle;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: withBadge,
     );
   }
 }
@@ -612,6 +780,9 @@ class _PillToggle extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -111,10 +111,10 @@ export const generateQuizQuestions = onCall<GenerateQuizQuestionsRequest>(
       .map((topic) => topic.trim())
       .filter((topic) => topic.length > 0);
     const notesText = request.data.notesText?.trim();
-    if (!notesText || notesText.length === 0) {
+    if ((!notesText || notesText.length === 0) && topics.length === 0) {
       throw new HttpsError(
         "invalid-argument",
-        "Notes are required. Paste or upload notes so AI can generate the quiz.",
+        "Provide notes or at least one topic so the quiz can be generated.",
       );
     }
 
@@ -127,7 +127,10 @@ export const generateQuizQuestions = onCall<GenerateQuizQuestionsRequest>(
       quizEmphasis: request.data.quizEmphasis,
     });
 
-    return {questions};
+    return {
+      questions,
+      sourceType: notesText && notesText.length > 0 ? "notes" : "topic_bank",
+    };
   },
 );
 

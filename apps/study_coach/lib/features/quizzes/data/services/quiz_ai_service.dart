@@ -43,10 +43,11 @@ class CloudFunctionsQuizAiService implements QuizAiService {
     final trimmedTopics =
         topics.map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
     final normalizedNotes = notesText?.trim();
+    final hasNotes = normalizedNotes != null && normalizedNotes.isNotEmpty;
 
-    if (normalizedNotes == null || normalizedNotes.isEmpty) {
+    if (!hasNotes && trimmedTopics.isEmpty) {
       throw const QuizAiValidationException(
-        'Notes are required. Paste or upload notes so AI can generate the quiz.',
+        'Provide notes or at least one topic so the quiz can be generated.',
       );
     }
     if (difficulty.trim().isEmpty) {
@@ -69,7 +70,7 @@ class CloudFunctionsQuizAiService implements QuizAiService {
       final callable = _functions.httpsCallable('generateQuizQuestions');
       final result = await callable.call(<String, dynamic>{
         'topics': trimmedTopics,
-        'notesText': normalizedNotes,
+        if (hasNotes) 'notesText': normalizedNotes,
         'difficulty': difficulty.trim(),
         'numberOfQuestions': numberOfQuestions,
         'languageCode': languageCode,
@@ -98,22 +99,25 @@ class CloudFunctionsQuizAiService implements QuizAiService {
           details: e.details?.toString(),
         );
       }
-      return _localFallbackQuizFromNotes(
+      return _localFallbackQuiz(
         notesText: normalizedNotes,
+        topics: allowedTopics,
         numberOfQuestions: numberOfQuestions,
         fallbackTopic: fallbackTopic,
         languageCode: languageCode,
       );
     } on QuizAiException {
-      return _localFallbackQuizFromNotes(
+      return _localFallbackQuiz(
         notesText: normalizedNotes,
+        topics: allowedTopics,
         numberOfQuestions: numberOfQuestions,
         fallbackTopic: fallbackTopic,
         languageCode: languageCode,
       );
     } catch (_) {
-      return _localFallbackQuizFromNotes(
+      return _localFallbackQuiz(
         notesText: normalizedNotes,
+        topics: allowedTopics,
         numberOfQuestions: numberOfQuestions,
         fallbackTopic: fallbackTopic,
         languageCode: languageCode,
@@ -122,33 +126,25 @@ class CloudFunctionsQuizAiService implements QuizAiService {
   }
 }
 
-List<QuizQuestion> _localFallbackQuizFromNotes({
-  required String notesText,
+/// Fallback quiz used when the cloud callable is unreachable. Uses note text
+/// when available, otherwise synthesises facts from the topic bank so the
+/// runner remains usable without uploaded notes.
+List<QuizQuestion> _localFallbackQuiz({
+  required String? notesText,
+  required List<String> topics,
   required int numberOfQuestions,
   required String fallbackTopic,
   required String languageCode,
 }) {
   final isArabic = languageCode == 'ar';
-  final facts = notesText
+  final factsFromNotes = (notesText ?? '')
       .split(RegExp(r'[\n\r]+'))
       .map((e) => e.trim())
       .where((e) => e.length >= 6)
       .toList();
-  final normalizedFacts = facts.isEmpty
-      ? <String>[
-          if (isArabic) ...[
-            'راجع أساسيات الموضوع والتعاريف بعناية',
-            'قسّم المسألة إلى خطوات واضحة ومتسلسلة',
-            'اختبر بأمثلة صغيرة قبل زيادة التعقيد',
-            'تحقّق من الأخطاء وصححها بعد كل محاولة',
-          ] else ...[
-            'Review the topic fundamentals and definitions carefully',
-            'Break problems into clear step-by-step actions',
-            'Test with small examples before scaling complexity',
-            'Check and correct mistakes after each attempt',
-          ],
-        ]
-      : facts;
+  final normalizedFacts = factsFromNotes.isNotEmpty
+      ? factsFromNotes
+      : _factsFromTopicBank(topics: topics, isArabic: isArabic);
 
   final questions = <QuizQuestion>[];
   for (var i = 0; i < numberOfQuestions; i++) {
@@ -173,23 +169,74 @@ List<QuizQuestion> _localFallbackQuizFromNotes({
       ],
     ];
 
+    final hasNotes = factsFromNotes.isNotEmpty;
+    final topicTitle = topics.isEmpty
+        ? fallbackTopic
+        : topics[i % topics.length];
     questions.add(
       QuizQuestion(
         id: 'local_q_${i + 1}',
-        topicId: 'topic_$_slugTopicId(fallbackTopic)',
-        topicTitle: fallbackTopic,
-        prompt: isArabic
-            ? 'وفقًا لملاحظاتك، أي عبارة هي الأدق؟'
-            : 'According to your notes, which statement is most accurate?',
+        topicId: 'topic_${_slugTopicId(topicTitle)}',
+        topicTitle: topicTitle,
+        prompt: hasNotes
+            ? (isArabic
+                ? 'وفقًا لملاحظاتك، أي عبارة هي الأدق؟'
+                : 'According to your notes, which statement is most accurate?')
+            : (isArabic
+                ? 'بالنسبة لموضوع "$topicTitle"، أي عبارة أكثر دقة؟'
+                : 'For "$topicTitle", which statement is most accurate?'),
         options: options,
         correctIndex: 0,
-        explanation: isArabic
-            ? 'تم إنشاء هذا السؤال من ملاحظاتك أثناء انشغال خدمة الذكاء الاصطناعي.'
-            : 'Generated from your notes while AI service is busy.',
+        explanation: hasNotes
+            ? (isArabic
+                ? 'تم إنشاء هذا السؤال من ملاحظاتك أثناء انشغال خدمة الذكاء الاصطناعي.'
+                : 'Generated from your notes while AI service is busy.')
+            : (isArabic
+                ? 'تم إنشاء هذا السؤال من بنك مواضيع المقرر المعتمد.'
+                : 'Generated from the approved course topic bank.'),
       ),
     );
   }
   return _ensureQuestionDiversity(questions);
+}
+
+List<String> _factsFromTopicBank({
+  required List<String> topics,
+  required bool isArabic,
+}) {
+  if (topics.isEmpty) {
+    return isArabic
+        ? const [
+            'راجع أساسيات الموضوع والتعاريف بعناية',
+            'قسّم المسألة إلى خطوات واضحة ومتسلسلة',
+            'اختبر بأمثلة صغيرة قبل زيادة التعقيد',
+            'تحقّق من الأخطاء وصححها بعد كل محاولة',
+          ]
+        : const [
+            'Review the topic fundamentals and definitions carefully',
+            'Break problems into clear step-by-step actions',
+            'Test with small examples before scaling complexity',
+            'Check and correct mistakes after each attempt',
+          ];
+  }
+
+  final facts = <String>[];
+  for (final t in topics) {
+    if (isArabic) {
+      facts
+        ..add('يركز "$t" على المفاهيم الأساسية والتطبيق العملي')
+        ..add('يتعمق فهم "$t" بربط التعريفات بالأمثلة')
+        ..add('يتطلب "$t" تحديد الأنماط واختبارها على حالات صغيرة')
+        ..add('يفيد في "$t" استعمال التعاريف بدقة قبل حل المسائل');
+    } else {
+      facts
+        ..add('$t focuses on core principles and practical application')
+        ..add('$t builds understanding by connecting definitions to examples')
+        ..add('$t requires identifying patterns and testing them on small cases')
+        ..add('$t benefits from using definitions accurately before solving');
+    }
+  }
+  return facts;
 }
 
 String _slugTopicId(String s) {

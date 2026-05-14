@@ -28,8 +28,8 @@ final googleCalendarSyncRepositoryProvider =
   return GoogleCalendarSyncRepository(ref.watch(functionsProvider));
 });
 
-final topicPerformanceInputsStreamProvider = StreamProvider.family<
-    List<TopicPerformanceInput>, String>((ref, uid) {
+final topicPerformanceInputsStreamProvider =
+    StreamProvider.family<List<TopicPerformanceInput>, String>((ref, uid) {
   return ref
       .watch(topicPerformanceRepositoryProvider)
       .watchTopicPerformanceInputs(uid);
@@ -78,6 +78,12 @@ final enrichedTopicPerformanceInputsProvider =
 final todaysSessionsStreamProvider =
     StreamProvider.family<List<StudySession>, String>((ref, uid) {
   return ref.watch(studySessionsRepositoryProvider).watchTodaysSessions(uid);
+});
+
+/// Active-plan sessions from today through the next [horizonDays] (default 30).
+final upcomingSessionsStreamProvider =
+    StreamProvider.family<List<StudySession>, String>((ref, uid) {
+  return ref.watch(studySessionsRepositoryProvider).watchUpcomingSessions(uid);
 });
 
 /// Watches sessions for [dateIso] (`yyyy-MM-dd`) on the active study plan.

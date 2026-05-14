@@ -21,6 +21,9 @@ type SessionWrite = {
   topicId: string;
   durationMin: number;
   startMinute: number;
+  reason: string;
+  topicTitle: string;
+  subjectId: string;
 };
 
 type TopicPerformanceInput = {
@@ -429,8 +432,8 @@ async function computeSessionWritesForUserSubjects(
       }),
     );
 
-    const minutesByTopic = buildDayPlan(topicsForDay, dailyMinutes, dayInstant);
-    const ordered = [...minutesByTopic.entries()]
+    const allocation = buildDayPlan(topicsForDay, dailyMinutes, dayInstant);
+    const ordered = [...allocation.minutesByTopic.entries()]
       .filter(([, m]) => m > 0)
       .sort((a, b) => b[1] - a[1]);
 
@@ -445,6 +448,9 @@ async function computeSessionWritesForUserSubjects(
         topicId,
         durationMin,
         startMinute: cursor,
+        reason: allocation.reasonByTopic.get(topicId) ?? "baseline personalization",
+        topicTitle: allocation.titleByTopic.get(topicId) ?? "",
+        subjectId: allocation.subjectByTopic.get(topicId) ?? "",
       });
       cursor += durationMin + SESSION_GAP_MINUTES;
       virtualLastStudied.set(topicId, dayInstant);
@@ -690,17 +696,45 @@ function redistributeForMissedSessions(
   return result;
 }
 
+type DayPlanAllocation = {
+  minutesByTopic: Map<string, number>;
+  reasonByTopic: Map<string, string>;
+  titleByTopic: Map<string, string>;
+  subjectByTopic: Map<string, string>;
+};
+
 function buildDayPlan(
   topics: TopicPerformanceInput[],
   availableStudyMinutes: number,
   dayInstant: Date,
-): Map<string, number> {
-  if (topics.length === 0 || availableStudyMinutes <= 0) return new Map();
+): DayPlanAllocation {
+  if (topics.length === 0 || availableStudyMinutes <= 0) {
+    return {
+      minutesByTopic: new Map(),
+      reasonByTopic: new Map(),
+      titleByTopic: new Map(),
+      subjectByTopic: new Map(),
+    };
+  }
   const scored = scoreTopics(topics, dayInstant);
   scored.sort((a, b) => b.score - a.score);
   let allocated = allocateMinutes(scored, availableStudyMinutes);
   allocated = redistributeForMissedSessions(scored, allocated, availableStudyMinutes);
-  return allocated;
+
+  const reasonByTopic = new Map<string, string>();
+  const titleByTopic = new Map<string, string>();
+  const subjectByTopic = new Map<string, string>();
+  for (const t of scored) {
+    reasonByTopic.set(t.source.topicId, t.reason);
+    titleByTopic.set(t.source.topicId, t.source.topicTitle);
+    subjectByTopic.set(t.source.topicId, t.source.subjectId);
+  }
+  return {
+    minutesByTopic: allocated,
+    reasonByTopic,
+    titleByTopic,
+    subjectByTopic,
+  };
 }
 
 function computeHorizonDays(todayIso: string, topics: TopicPerformanceInput[]): number {
@@ -731,7 +765,12 @@ export async function runGenerateStudyPlan(
   db: admin.firestore.Firestore,
   userId: string,
   subjectIds: string[],
-): Promise<{planId: string; generatedAt: string; sessionCount: number}> {
+): Promise<{
+  planId: string;
+  generatedAt: string;
+  sessionCount: number;
+  adjustments: StudyPlanAdjustment[];
+}> {
   const {sessionWrites, horizon, dailyMinutes, todayIso, uniqSubjects} =
     await computeSessionWritesForUserSubjects(db, userId, subjectIds);
 
@@ -784,6 +823,7 @@ export async function runGenerateStudyPlan(
       durationMin: s.durationMin,
       startMinute: s.startMinute,
       completed: false,
+      reason: s.reason,
     });
     ops += 1;
     if (ops >= 450) {
@@ -795,7 +835,12 @@ export async function runGenerateStudyPlan(
 
   await batch.commit();
 
-  return {planId: planRef.id, generatedAt, sessionCount: sessionWrites.length};
+  return {
+    planId: planRef.id,
+    generatedAt,
+    sessionCount: sessionWrites.length,
+    adjustments: summarizeAdjustments(sessionWrites),
+  };
 }
 
 const FIRESTORE_BATCH_MAX_OPS = 450;
@@ -814,6 +859,7 @@ export async function runRebalanceStudyPlan(
   planId?: string;
   supersededIncompleteSessions?: number;
   sessionCount?: number;
+  adjustments?: StudyPlanAdjustment[];
 }> {
   const planQuery = await db
     .collection("users")
@@ -897,6 +943,7 @@ export async function runRebalanceStudyPlan(
       durationMin: s.durationMin,
       startMinute: s.startMinute,
       completed: false,
+      reason: s.reason,
     });
     ops += 1;
     if (ops >= FIRESTORE_BATCH_MAX_OPS) {
@@ -913,5 +960,52 @@ export async function runRebalanceStudyPlan(
     planId: planRef.id,
     supersededIncompleteSessions,
     sessionCount: sessionWrites.length,
+    adjustments: summarizeAdjustments(sessionWrites),
   };
+}
+
+export type StudyPlanAdjustment = {
+  topicId: string;
+  topicTitle: string;
+  subjectId: string;
+  reason: string;
+  totalMinutes: number;
+  sessionCount: number;
+};
+
+/**
+ * Collapses session-level reasons into one entry per topic so the client can
+ * render a short "what changed and why" summary alongside the active plan.
+ */
+function summarizeAdjustments(sessionWrites: SessionWrite[]): StudyPlanAdjustment[] {
+  const byTopic = new Map<string, StudyPlanAdjustment>();
+  for (const s of sessionWrites) {
+    const existing = byTopic.get(s.topicId);
+    if (existing) {
+      existing.totalMinutes += s.durationMin;
+      existing.sessionCount += 1;
+      continue;
+    }
+    byTopic.set(s.topicId, {
+      topicId: s.topicId,
+      topicTitle: s.topicTitle,
+      subjectId: s.subjectId,
+      reason: s.reason,
+      totalMinutes: s.durationMin,
+      sessionCount: 1,
+    });
+  }
+  return [...byTopic.values()].sort((a, b) => {
+    const reasonRank: Record<string, number> = {
+      "low quiz performance": 0,
+      "upcoming exam": 1,
+      "missed sessions": 2,
+      "long time since last study": 3,
+      "baseline personalization": 4,
+    };
+    const ra = reasonRank[a.reason] ?? 99;
+    const rb = reasonRank[b.reason] ?? 99;
+    if (ra !== rb) return ra - rb;
+    return b.totalMinutes - a.totalMinutes;
+  });
 }

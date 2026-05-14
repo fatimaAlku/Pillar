@@ -245,34 +245,68 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                 final upcomingTasks = _upcomingAcademicTasks(academicTasks);
 
                 return ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                   children: [
                     _WelcomeHero(
                       dateLabel: dateStr,
                       onOpenStudyChat: _openStudyChat,
                     ),
-                    const SizedBox(height: 18),
-                    Text(
-                      strings.focusToday,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
+                    const SizedBox(height: 22),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            width: 4,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(999),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  colorScheme.primary,
+                                  colorScheme.tertiary,
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  strings.focusToday,
+                                  style:
+                                      theme.textTheme.headlineSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.35,
+                                    height: 1.15,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  strings.smallStepsConsistentProgress,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      strings.smallStepsConsistentProgress,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
                     _ProgressCard(
                       progress: progress,
                       percentLabel: pct,
                       completed: completedCount,
                       total: sessions.length,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _UpcomingDeadlinesCard(
                       tasks: upcomingTasks,
                       onViewAll: _openAcademicTasks,
@@ -281,7 +315,7 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                         task: task,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _TodayPlanCard(
                       rows: rows,
                       emptyMessage: strings.noSessionsTodayHome,
@@ -301,14 +335,15 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                                 topics: topics,
                               ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 22),
                     Text(
                       strings.quickActions,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.1,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 14),
                     _QuickActionsRow(
                       onAddTask: _openAcademicTasks,
                       onGenerateQuiz: widget.onGenerateQuizTap ??
@@ -354,80 +389,299 @@ class _WelcomeHero extends StatelessWidget {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final onCont = colorScheme.onPrimaryContainer;
 
     return Tooltip(
       message: strings.studyChatTitle,
       child: Card(
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpenStudyChat,
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  colorScheme.primaryContainer,
-                  colorScheme.tertiaryContainer.withValues(alpha: 0.95),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: colorScheme.primary.withValues(alpha: 0.08),
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onOpenStudyChat,
+              child: Stack(
+                clipBehavior: Clip.antiAlias,
+                children: [
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            colorScheme.primaryContainer,
+                            Color.lerp(
+                                  colorScheme.tertiaryContainer,
+                                  colorScheme.primaryContainer,
+                                  0.35,
+                                )!
+                                .withValues(alpha: 0.92),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: -32,
+                    top: -40,
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      size: 112,
+                      color: colorScheme.primary.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  Positioned(
+                    left: -24,
+                    bottom: -28,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: colorScheme.tertiary.withValues(alpha: 0.12),
+                      ),
+                      child: const SizedBox.square(dimension: 88),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 18, 20),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                strings.smartStudyAssistant,
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.4,
+                                  height: 1.15,
+                                  color: onCont,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.surface.withValues(
+                                    alpha: 0.55,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: colorScheme.outline
+                                        .withValues(alpha: 0.12),
+                                  ),
+                                ),
+                                child: Text(
+                                  dateLabel,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: onCont.withValues(alpha: 0.88),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                colorScheme.primary,
+                                colorScheme.tertiary,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: colorScheme.primary
+                                    .withValues(alpha: 0.38),
+                                blurRadius: 20,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 62,
+                                height: 62,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: colorScheme.onPrimary
+                                      .withValues(alpha: 0.14),
+                                ),
+                              ),
+                              Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 32,
+                                color: colorScheme.onPrimary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            padding: const EdgeInsets.all(18),
-            child: Row(
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardGradientFrame extends StatelessWidget {
+  const _DashboardGradientFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary.withValues(alpha: 0.16),
+            colorScheme.tertiary.withValues(alpha: 0.1),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.1),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(1.5),
+        child: Material(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(22.5),
+          clipBehavior: Clip.antiAlias,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardHeaderIcon extends StatelessWidget {
+  const _DashboardHeaderIcon({required this.icon});
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primaryContainer,
+            colorScheme.tertiaryContainer.withValues(alpha: 0.65),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: 0.14),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Icon(icon, color: colorScheme.primary, size: 22),
+      ),
+    );
+  }
+}
+
+class _DashboardGradientProgressBar extends StatelessWidget {
+  const _DashboardGradientProgressBar({
+    required this.progress,
+    required this.colorScheme,
+  });
+
+  final double progress;
+  final ColorScheme colorScheme;
+
+  static const double _height = 11;
+
+  @override
+  Widget build(BuildContext context) {
+    final track = Color.lerp(
+      colorScheme.surfaceContainerHighest,
+      colorScheme.surfaceContainerLow,
+      0.45,
+    )!;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(999),
+      child: SizedBox(
+        height: _height,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth * progress.clamp(0.0, 1.0);
+            return Stack(
+              fit: StackFit.expand,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        strings.smartStudyAssistant,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
+                ColoredBox(color: track),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    width: w,
+                    height: _height,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      gradient: LinearGradient(
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.tertiary,
+                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        dateLabel,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onPrimaryContainer.withValues(
-                            alpha: 0.78,
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        colorScheme.primary,
-                        colorScheme.tertiary,
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 7),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.auto_awesome_rounded,
-                    color: colorScheme.onPrimary,
                   ),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
@@ -452,60 +706,91 @@ class _ProgressCard extends StatelessWidget {
     final strings = AppStrings.of(context);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final safeProgress = total == 0 ? 0.0 : progress;
 
-    return Card(
-      elevation: 0,
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return _DashboardGradientFrame(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(Icons.trending_up_rounded, color: colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  strings.todaysProgress,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
+                const _DashboardHeaderIcon(icon: Icons.trending_up_rounded),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    strings.todaysProgress,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.15,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: total == 0 ? 0 : progress,
-                minHeight: 10,
-                backgroundColor:
-                    colorScheme.surfaceContainerHigh.withValues(alpha: 0.9),
-                color: colorScheme.primary,
+            const SizedBox(height: 18),
+            _DashboardGradientProgressBar(
+              progress: safeProgress,
+              colorScheme: colorScheme,
+            ),
+            const SizedBox(height: 14),
+            if (total == 0)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.event_note_rounded,
+                        size: 22,
+                        color: colorScheme.primary.withValues(alpha: 0.75),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          strings.todaysProgressNoSessions,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    strings.completedTasks(completed, total),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    strings.percentComplete(percentLabel),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  Text(
+                    strings.completedTasks(completed, total),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  total == 0
-                      ? strings.todaysProgressNoSessions
-                      : strings.percentComplete(percentLabel),
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                Text(
-                  strings.completedTasks(completed, total),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),
@@ -530,54 +815,66 @@ class _UpcomingDeadlinesCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
+    return _DashboardGradientFrame(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.event_available_rounded,
-                    size: 20,
-                    color: colorScheme.primary,
+                  const _DashboardHeaderIcon(
+                    icon: Icons.event_available_rounded,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       strings.upcomingDeadlines,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.15,
                       ),
                     ),
                   ),
                   TextButton(
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
                     onPressed: onViewAll,
                     child: Text(strings.viewAllDeadlines),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
             if (tasks.isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Text(
-                  strings.noUpcomingDeadlines,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                    height: 1.35,
-                  ),
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 22),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.inbox_outlined,
+                      size: 22,
+                      color: colorScheme.primary.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        strings.noUpcomingDeadlines,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
@@ -588,8 +885,8 @@ class _UpcomingDeadlinesCard extends StatelessWidget {
                     onTap: () => onToggle(task),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 14,
+                        vertical: 12,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,7 +901,7 @@ class _UpcomingDeadlinesCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +909,7 @@ class _UpcomingDeadlinesCard extends StatelessWidget {
                                 Text(
                                   task.title,
                                   style: theme.textTheme.bodyLarge?.copyWith(
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -629,6 +926,7 @@ class _UpcomingDeadlinesCard extends StatelessWidget {
                                   ].join(' • '),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
+                                    height: 1.35,
                                   ),
                                 ),
                               ],
@@ -668,54 +966,65 @@ class _TodayPlanCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
+    return _DashboardGradientFrame(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+        padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               child: Row(
                 children: [
-                  Icon(
-                    Icons.calendar_today_rounded,
-                    size: 20,
-                    color: colorScheme.primary,
+                  const _DashboardHeaderIcon(
+                    icon: Icons.calendar_today_rounded,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    strings.todaysStudyPlan,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      strings.todaysStudyPlan,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.15,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(
+              height: 1,
+              color: colorScheme.outlineVariant.withValues(alpha: 0.45),
+            ),
             if (rows.isEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(
-                      emptyMessage,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                        height: 1.35,
-                      ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.calendar_month_outlined,
+                          size: 24,
+                          color: colorScheme.primary.withValues(alpha: 0.72),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            emptyMessage,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                              height: 1.45,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (onAddToSchedule != null) ...[
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       FilledButton.tonalIcon(
                         onPressed: onAddToSchedule,
                         icon: const Icon(Icons.add, size: 20),
@@ -735,8 +1044,8 @@ class _TodayPlanCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 14,
+                        vertical: 12,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -755,7 +1064,7 @@ class _TodayPlanCard extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -763,6 +1072,7 @@ class _TodayPlanCard extends StatelessWidget {
                                 Text(
                                   row.title,
                                   style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w700,
                                     decoration: row.session.completed
                                         ? TextDecoration.lineThrough
                                         : null,
@@ -773,7 +1083,9 @@ class _TodayPlanCard extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  strings.minutesShort(row.session.durationMin),
+                                  strings.minutesShort(
+                                    row.session.durationMin,
+                                  ),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: colorScheme.onSurfaceVariant,
                                   ),
@@ -867,29 +1179,63 @@ class _QuickActionCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Material(
-      color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(18),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: colorScheme.primary, size: 26),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
-                ),
+        borderRadius: BorderRadius.circular(18),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            color: colorScheme.surface,
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: colorScheme.primary.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        colorScheme.primaryContainer
+                            .withValues(alpha: 0.85),
+                        colorScheme.tertiaryContainer.withValues(alpha: 0.55),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(icon, color: colorScheme.primary, size: 24),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

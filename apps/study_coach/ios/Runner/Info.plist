@@ -49,6 +49,11 @@
 	     Flutter's built-in deep link → route pipeline cannot parse these URIs. -->
 	<key>FlutterDeepLinkingEnabled</key>
 	<false/>
+	<!-- Lets the app open the system Settings page for this app (e.g. app-settings:). -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>app-settings</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

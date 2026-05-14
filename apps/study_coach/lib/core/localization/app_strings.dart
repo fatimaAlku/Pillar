@@ -87,8 +87,8 @@ class AppStrings {
   String get verifyEmailTitle =>
       _isArabic ? 'تحقّق من بريدك' : 'Verify your email';
   String verifyEmailBody(String address) => _isArabic
-      ? 'أرسلنا رمزًا مكوّنًا من 6 أرقام إلى $address. أدخله أدناه.'
-      : 'We sent a 6-digit code to $address. Enter it below.';
+      ? 'أدخل الرمز المكوّن من 6 أرقام المُرسل إلى $address. إن لم يصلك، استخدم إعادة الإرسال وتحقق من البريد غير الهام.'
+      : 'Enter the 6-digit code for $address. If you did not receive it, tap Resend code and check spam.';
   String get verifyEmailNoAddressPlaceholder =>
       _isArabic ? 'عنوان بريدك' : 'your email address';
   String get verifyEmailOtpLabel =>
@@ -124,6 +124,11 @@ class AppStrings {
   String get verifyEmailOtpGenericError => _isArabic
       ? 'تعذّر التحقق. حاول مرة أخرى.'
       : 'Verification failed. Please try again.';
+
+  /// Shown when the callable fails with [internal] (Firebase often hides details).
+  String get verifyEmailSendFailed => _isArabic
+      ? 'تعذّر إرسال بريد التحقق من الخادم. أعد المحاولة لاحقًا أو تواصل مع الدعم إن استمرت المشكلة.'
+      : 'The verification email could not be sent from the server. Try again in a few minutes, or contact support if this continues.';
   String get chooseMajor => _isArabic ? 'اختر التخصص' : 'Choose major';
   String get majorOptional => _isArabic
       ? 'اختياري - يمكنك الاختيار لاحقًا'
@@ -285,19 +290,14 @@ class AppStrings {
   }
 
   String get generateQuizDescription => _isArabic
-      ? 'استخدم ملاحظاتك لإنشاء اختبار بالذكاء الاصطناعي ثم راجع نقاط الضعف.'
-      : 'Use your notes to generate an AI quiz, then review weak topics.';
+      ? 'استخدم ملاحظاتك لإنشاء اختبار .'
+      : 'Use your notes to generate quiz.';
   String get topicsCommaSeparated =>
       _isArabic ? 'المواضيع (مفصولة بفواصل)' : 'Topics (comma-separated)';
   String get topicsHint => _isArabic
       ? 'مثال: أشجار، رسوم بيانية، تجزئة'
       : 'e.g. Trees, Graphs, Hashing';
 
-  String get quizLinkCourseRequiredTitle =>
-      _isArabic ? 'المقرر والمواضيع (مطلوب)' : 'Course & topics (required)';
-  String get quizLinkCourseRequiredHint => _isArabic
-      ? 'اختر المقرر والمواضيع حتى يُربط الاختبار بالسجل وتظهر نقاط الضعف بوضوح.'
-      : 'Pick your course and topics so each quiz is tied to your courses and weak areas are clear.';
   String get quizSelectCoursePlaceholder =>
       _isArabic ? 'اختر مقررًا' : 'Select a course';
   String get quizCourseRequired =>
@@ -324,9 +324,14 @@ class AppStrings {
 
   String get notesRequired =>
       _isArabic ? 'الملاحظات (مطلوبة)' : 'Notes (required)';
+  String get notesOptional =>
+      _isArabic ? 'الملاحظات (اختيارية)' : 'Notes (optional)';
   String get notesHint => _isArabic
       ? 'الصق أو ارفع ملاحظاتك ليقوم الذكاء الاصطناعي بإنشاء الأسئلة والإجابات'
       : 'Paste or upload notes so AI can generate quiz questions and answers';
+  String get notesOptionalHint => _isArabic
+      ? 'الصق أو ارفع ملاحظاتك للحصول على أسئلة أدق (اختياري)'
+      : 'Paste or upload notes for sharper questions (optional)';
   String get notesRequiredForQuiz => _isArabic
       ? 'يرجى إضافة الملاحظات قبل إنشاء الاختبار.'
       : 'Please add notes before generating the quiz.';
@@ -598,6 +603,42 @@ class AppStrings {
       _isArabic ? 'المهام والمواعيد الدراسية' : 'Academic tasks & deadlines';
   String get academicTasksShort =>
       _isArabic ? 'المهام والمواعيد' : 'Tasks & deadlines';
+  String get remindersNotificationsTitle =>
+      _isArabic ? 'التذكيرات والإشعارات' : 'Reminders & notifications';
+  String get remindersNotificationsDescription => _isArabic
+      ? 'يمكن لبيلار إرسال تذكيرات على هذا الجهاز للجلسات الدراسية والمهام ومواعيد الامتحانات والخطة اليومية.\n\nتُحسب أوقات التذكير بتوقيت البحرين (Asia/Bahrain) لتطابق تواريخ خطتك في التطبيق.\n\n• الخطة اليومية: كل صباح الساعة 8:00\n• الجلسات: قبل 15 دقيقة من موعد البدء\n• المهام والامتحانات: تنبيهات حول المواعيد النهائية وعدّ تنازلي للامتحان\n\nفعّل إشعارات بيلار من إعدادات النظام حتى تظهر التذكيرات.'
+      : 'Pillar can send reminders on this device for study sessions, tasks, exam dates, and your daily plan.\n\nReminder times use Bahrain time (Asia/Bahrain) so they match the dates shown in your plan.\n\n• Daily plan: every morning at 8:00\n• Sessions: 15 minutes before a scheduled start\n• Tasks & exams: alerts around deadlines and exam countdowns\n\nTurn on notifications for Pillar in your system settings so these reminders can appear.';
+  String get remindersOpenSystemSettings =>
+      _isArabic ? 'فتح إعدادات الإشعارات' : 'Open notification settings';
+  String get remindersCouldNotOpenSettings =>
+      _isArabic ? 'تعذّر فتح الإعدادات.' : 'Could not open settings.';
+  String get remindersNotAvailableOnWeb => _isArabic
+      ? 'التذكيرات المحلية غير مدعومة في نسخة الويب. استخدم تطبيق iOS أو Android.'
+      : 'Local reminders are not supported in the web app. Use the iOS or Android app.';
+  String get remindersIosSettingsFootnote => _isArabic
+      ? 'قد تفتح الإعدادات صفحة التطبيق العامة؛ اختر «إشعارات» ثم فعّل التنبيهات.'
+      : 'Settings may open on the app’s main page—tap Notifications, then allow alerts.';
+  String get inboxTitle => _isArabic ? 'الإشعارات' : 'Notifications';
+  String get inboxEmpty =>
+      _isArabic ? 'لا توجد تنبيهات حالياً.' : 'You’re all caught up.';
+  String get inboxEmailVerifiedTitle =>
+      _isArabic ? 'تم التحقق من البريد' : 'Email verified';
+  String get inboxEmailVerifiedBody => _isArabic
+      ? 'تم تأكيد بريدك الإلكتروني. يمكنك استخدام بيلار بالكامل.'
+      : 'Your student email is verified. You’re all set to use Pillar.';
+  String get inboxDismiss => _isArabic ? 'حسناً' : 'Got it';
+  String get inboxUpcomingSessionTitle =>
+      _isArabic ? 'جلسة دراسية قادمة' : 'Upcoming study session';
+  String get inboxStudyTopicFallback =>
+      _isArabic ? 'جلسة دراسية' : 'Study session';
+  String inboxUpcomingSessionBody(String dateLabel, String topicLabel) =>
+      _isArabic ? '$topicLabel — $dateLabel' : '$topicLabel — $dateLabel';
+  String get inboxSyncGoogleTitle =>
+      _isArabic ? 'زامن تقويم جوجل' : 'Sync your Google Calendar';
+  String get inboxSyncGoogleBody => _isArabic
+      ? 'اربط تقويم جوجل من الملف الشخصي لتظهر جلساتك في تقويمك.'
+      : 'Connect Google Calendar from your profile so sessions appear in your calendar.';
+
   String get addAcademicTask =>
       _isArabic ? 'إضافة مهمة دراسية' : 'Add academic task';
   String get editAcademicTask =>
@@ -740,8 +781,8 @@ class AppStrings {
       ? 'سجّل الدخول لمزامنة خطتك من السحابة.'
       : 'Sign in to sync your plan from the cloud.';
   String get noSessionsTodayHome => _isArabic
-      ? 'لا توجد جلسات مجدولة لهذا اليوم. عندما يحتوي نشط خطة دراسة على جلسات لهذا التاريخ، ستظهر هنا.'
-      : 'No sessions scheduled for today. When your active study plan includes sessions for this date, they will appear here.';
+      ? 'لا توجد جلسات مجدولة لهذا اليوم. .'
+      : 'No sessions scheduled for today.';
   String get studySessionUntitled => _isArabic ? 'جلسة دراسة' : 'Study session';
   String get couldNotUpdateSession =>
       _isArabic ? 'تعذّر تحديث الجلسة.' : 'Could not update session.';

@@ -42,3 +42,38 @@ DateTime appNowInstant() => DateTime.fromMillisecondsSinceEpoch(
       appNow().millisecondsSinceEpoch,
       isUtc: true,
     );
+
+/// Parses a calendar day from values like Firestore `yyyy-MM-dd` or ISO strings.
+///
+/// Leading `yyyy-MM-dd` is read without applying UTC midnight semantics to the
+/// whole string, so times attached after `T` do not shift the calendar day.
+DateTime? appParseCalendarDateOnly(String value) {
+  final trimmed = value.trim();
+  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})').firstMatch(trimmed);
+  if (m != null) {
+    final y = int.tryParse(m.group(1)!);
+    final mo = int.tryParse(m.group(2)!);
+    final d = int.tryParse(m.group(3)!);
+    if (y == null || mo == null || d == null) return null;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    return DateTime(y, mo, d);
+  }
+  final parsed = DateTime.tryParse(trimmed);
+  if (parsed == null) return null;
+  return DateTime(parsed.year, parsed.month, parsed.day);
+}
+
+/// Inclusive end date for queries: app “today” (Bahrain) + [calendarDays].
+///
+/// Uses Bahrain midnight stepping so horizon windows stay aligned with session
+/// `date` strings regardless of device DST.
+String appEndDateIsoFromToday(int calendarDaysFromToday) {
+  final n = appNow();
+  var t = tz.TZDateTime(appTimeZoneLocation, n.year, n.month, n.day);
+  if (calendarDaysFromToday != 0) {
+    t = t.add(Duration(days: calendarDaysFromToday));
+  }
+  return '${t.year.toString().padLeft(4, '0')}-'
+      '${t.month.toString().padLeft(2, '0')}-'
+      '${t.day.toString().padLeft(2, '0')}';
+}

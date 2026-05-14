@@ -218,11 +218,7 @@ tz.TZDateTime? _sessionStartAt(StudySession session) {
   );
 }
 
-DateTime? _dateOnly(String value) {
-  final parsed = DateTime.tryParse(value.trim());
-  if (parsed == null) return null;
-  return DateTime(parsed.year, parsed.month, parsed.day);
-}
+DateTime? _dateOnly(String value) => appParseCalendarDateOnly(value);
 
 tz.TZDateTime _atAppTime(DateTime day, int hour) {
   return tz.TZDateTime(
