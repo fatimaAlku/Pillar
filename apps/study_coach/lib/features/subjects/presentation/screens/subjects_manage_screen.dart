@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/state/app_providers.dart';
 import '../../../study_plan/application/schedule_study_plan_rebalance.dart';
+import '../../../study_plan/application/subject_ids_for_plan.dart';
 import '../../domain/entities/subject.dart';
 import 'subject_detail_screen.dart';
 
@@ -114,12 +115,20 @@ class SubjectsManageScreen extends ConsumerWidget {
           ? ''
           : _toExamDateIso(examDate);
       try {
-        await ref.read(subjectsRepositoryProvider).createSubject(
+        final newSubjectId = await ref.read(subjectsRepositoryProvider).createSubject(
               uid: uid,
               name: name,
               examDateIso: examIso,
             );
-        scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
+        scheduleStudyPlanRebalance(
+          ref.read(studyPlanRepositoryProvider),
+          uid: uid,
+          subjectIds: subjectIdsForStudyPlan(
+            ref,
+            uid,
+            includeId: newSubjectId,
+          ),
+        );
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(strings.courseSaved)),
@@ -237,7 +246,11 @@ class SubjectsManageScreen extends ConsumerWidget {
               name: name,
               examDateIso: _toExamDateIso(examDate),
             );
-        scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
+        scheduleStudyPlanRebalance(
+          ref.read(studyPlanRepositoryProvider),
+          uid: uid,
+          subjectIds: subjectIdsForStudyPlan(ref, uid),
+        );
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(strings.courseUpdated)),
@@ -283,7 +296,15 @@ class SubjectsManageScreen extends ConsumerWidget {
             uid: uid,
             subjectId: subject.id,
           );
-      scheduleStudyPlanRebalance(ref.read(studyPlanRepositoryProvider));
+      scheduleStudyPlanRebalance(
+        ref.read(studyPlanRepositoryProvider),
+        uid: uid,
+        subjectIds: subjectIdsForStudyPlan(
+          ref,
+          uid,
+          excludeId: subject.id,
+        ),
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.courseDeleted)),

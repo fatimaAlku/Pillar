@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_strings.dart';
 import '../../../roadmap/domain/major_catalog.dart';
+import '../../domain/allowed_sign_in_email.dart';
 import '../controllers/auth_controller.dart';
-
-const _studentEmailSuffix = '@student.polytechnic.bh';
 
 /// True if [password] contains at least one non-alphanumeric character (symbol).
 bool _passwordHasSpecialCharacter(String password) {
@@ -246,10 +245,8 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                     if (email.isEmpty) {
                                       return strings.emailRequired;
                                     }
-                                    if (!email
-                                        .toLowerCase()
-                                        .endsWith(_studentEmailSuffix)) {
-                                      return strings.studentPolytechnicEmailRequired;
+                                    if (!isAllowedSignInEmail(email)) {
+                                      return strings.gmailEmailRequired;
                                     }
                                     return null;
                                   },

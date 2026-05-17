@@ -11,6 +11,7 @@ import '../../domain/repositories/quiz_history_repository.dart';
 import '../../../recommendations/domain/repositories/recommendations_repository.dart';
 import '../../../study_plan/application/schedule_study_plan_rebalance.dart';
 import '../../../study_plan/domain/repositories/study_plan_repository.dart';
+import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 
 /// Holds client-side quiz runner state (answer selection, progress, submission).
 final quizRunnerControllerProvider =
@@ -22,6 +23,19 @@ final quizRunnerControllerProvider =
     ref.watch(recommendationsRepositoryProvider),
     () => ref.read(currentAuthUserProvider).valueOrNull?.uid,
     () => ref.read(appLocaleProvider).languageCode,
+    () {
+      final uid = ref.read(currentAuthUserProvider).valueOrNull?.uid;
+      if (uid == null || uid.isEmpty) return const <String>[];
+      final topics = ref
+              .read(topicPerformanceInputsStreamProvider(uid))
+              .valueOrNull ??
+          const [];
+      return topics
+          .map((t) => t.subjectId.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet()
+          .toList(growable: false);
+    },
   );
 });
 
@@ -113,6 +127,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
     this._recommendationsRepository,
     this._currentUserId,
     this._currentLanguageCode,
+    this._subjectIdsResolver,
   ) : super(const QuizRunnerIdle());
   static const Duration _generationTimeout = Duration(seconds: 70);
 
@@ -122,6 +137,7 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
   final RecommendationsRepository _recommendationsRepository;
   final String? Function() _currentUserId;
   final String Function() _currentLanguageCode;
+  final List<String> Function() _subjectIdsResolver;
   QuizGenerationRequest? _lastRequest;
   List<QuizQuestion>? _lastGeneratedQuestions;
 
@@ -305,6 +321,8 @@ class QuizRunnerController extends StateNotifier<QuizRunnerState> {
       scheduleStudyPlanRebalance(
         _studyPlanRepository,
         recommendationsRepository: _recommendationsRepository,
+        uid: uid,
+        subjectIds: _subjectIdsResolver(),
       );
     } catch (_) {
       // History persistence failure should not block quiz submission UX.

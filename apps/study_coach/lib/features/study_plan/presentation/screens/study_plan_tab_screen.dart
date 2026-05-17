@@ -15,6 +15,7 @@ import '../../domain/entities/study_session.dart';
 import '../controllers/study_plan_controller.dart';
 import '../controllers/study_plan_firestore_providers.dart';
 import '../widgets/add_to_schedule_bottom_sheet.dart';
+import '../widgets/study_session_actions.dart';
 
 class StudyPlanTabScreen extends ConsumerStatefulWidget {
   const StudyPlanTabScreen({super.key});
@@ -29,6 +30,9 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
   /// Local override of the day's study budget. `null` follows the user's
   /// profile preference; otherwise the planner uses [_dayBudgetOverride].
   int? _dayBudgetOverride;
+
+  /// Avoids repeated cloud plan generation when a day has no sessions yet.
+  bool _cloudPlanEnsureAttempted = false;
 
   @override
   void initState() {
@@ -71,45 +75,13 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     required String uid,
     required _ScheduleItem item,
   }) async {
-    final strings = AppStrings.of(context);
-    final confirmed = await showDialog<bool>(
+    await confirmAndDeleteStudySession(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(strings.deleteSessionTitle),
-        content: Text(strings.deleteSessionConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(strings.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
-              foregroundColor: Theme.of(ctx).colorScheme.onError,
-            ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(strings.deleteSessionAction),
-          ),
-        ],
-      ),
+      ref: ref,
+      uid: uid,
+      planId: item.planId,
+      sessionId: item.sessionId,
     );
-    if (confirmed != true || !mounted) return;
-    try {
-      await ref.read(studySessionsRepositoryProvider).deleteSession(
-            uid: uid,
-            planId: item.planId,
-            sessionId: item.sessionId,
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.sessionDeleted)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.couldNotDeleteSession)),
-      );
-    }
   }
 
   Future<void> _editScheduledSession({
@@ -117,154 +89,44 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
     required List<TopicPerformanceInput> topics,
     required _ScheduleItem item,
   }) async {
-    if (topics.isEmpty || item.sessionId.isEmpty || item.planId.isEmpty) {
-      return;
-    }
-    final strings = AppStrings.of(context);
-    final idx = topics.indexWhere((t) => t.topicId == item.topicId);
-    var topicSel = idx >= 0 ? topics[idx] : topics.first;
-    double duration = item.durationMin.toDouble().clamp(15.0, 120.0);
-    var sessionTime = TimeOfDay(
-      hour: (item.startMinute ?? (17 * 60)) ~/ 60,
-      minute: (item.startMinute ?? (17 * 60)) % 60,
-    );
-
-    final saved = await showDialog<bool>(
+    await editStudySession(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setLocal) {
-            return AlertDialog(
-              title: Text(strings.editSessionTitle),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: strings.topicForSession,
-                        border: const OutlineInputBorder(),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<TopicPerformanceInput>(
-                          isExpanded: true,
-                          value: topicSel,
-                          items: topics
-                              .map(
-                                (t) => DropdownMenuItem(
-                                  value: t,
-                                  child: Text(
-                                    t.topicTitle == t.subjectTitle
-                                        ? t.topicTitle
-                                        : '${t.subjectTitle} — ${t.topicTitle}',
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (v) {
-                            if (v == null) return;
-                            setLocal(() => topicSel = v);
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: strings.studyTime,
-                        border: const OutlineInputBorder(),
-                      ),
-                      child: Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: TextButton.icon(
-                          onPressed: () async {
-                            final picked = await showTimePicker(
-                              context: context,
-                              initialTime: sessionTime,
-                            );
-                            if (picked == null) return;
-                            setLocal(() => sessionTime = picked);
-                          },
-                          icon: const Icon(Icons.schedule_outlined, size: 18),
-                          label: Text(
-                            MaterialLocalizations.of(context)
-                                .formatTimeOfDay(sessionTime),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: strings.sessionDuration,
-                        border: const OutlineInputBorder(),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Slider(
-                              min: 15,
-                              max: 120,
-                              divisions: 21,
-                              value: duration,
-                              label: '${duration.round()}',
-                              onChanged: (v) => setLocal(() => duration = v),
-                            ),
-                          ),
-                          Text('${duration.round()}'),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(strings.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(strings.save),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      ref: ref,
+      uid: uid,
+      topics: topics,
+      planId: item.planId,
+      sessionId: item.sessionId,
+      topicId: item.topicId,
+      durationMin: item.durationMin,
+      startMinute: item.startMinute,
     );
+  }
 
-    if (saved != true || !mounted) return;
-    final newTopicId = topicSel.topicId;
-    final newDuration = duration.round();
-    final newStartMinute = (sessionTime.hour * 60) + sessionTime.minute;
-    if (newTopicId == item.topicId &&
-        newDuration == item.durationMin &&
-        newStartMinute == item.startMinute) {
+  void _maybeEnsureCloudStudyPlan({
+    required String uid,
+    required List<TopicPerformanceInput> topics,
+    required List<StudySession> sessions,
+  }) {
+    if (_cloudPlanEnsureAttempted || sessions.isNotEmpty || topics.isEmpty) {
       return;
     }
-    try {
-      await ref.read(studySessionsRepositoryProvider).updateSession(
-            uid: uid,
-            planId: item.planId,
-            sessionId: item.sessionId,
-            topicId: newTopicId != item.topicId ? newTopicId : null,
-            durationMin: newDuration != item.durationMin ? newDuration : null,
-            startMinute:
-                newStartMinute != item.startMinute ? newStartMinute : null,
-          );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.sessionUpdated)),
-      );
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(strings.couldNotUpdateSession)),
-      );
-    }
+    if (!_isTodayOrFuture(_selectedDate)) return;
+    final subjectIds = topics
+        .map((t) => t.subjectId.trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (subjectIds.isEmpty) return;
+
+    _cloudPlanEnsureAttempted = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        await ref.read(studyPlanRepositoryProvider).refreshOrGenerateStudyPlan(
+              uid: uid,
+              subjectIds: subjectIds,
+            );
+      } catch (_) {}
+    });
   }
 
   Future<void> _openAddToSchedule({
@@ -485,6 +347,11 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
               child: Text('$e'),
             ),
             data: (sessionsForDay) {
+              _maybeEnsureCloudStudyPlan(
+                uid: uid,
+                topics: topics,
+                sessions: sessionsForDay,
+              );
               final daySchedule = _buildScheduleFromSessionsAndTasks(
                 sessions: sessionsForDay,
                 tasks: tasks,
@@ -541,21 +408,19 @@ class _StudyPlanTabScreenState extends ConsumerState<StudyPlanTabScreen> {
                                   scheduleDate: _selectedDate,
                                 )
                             : null,
-                        onEditSession:
-                            item.sessionId.isNotEmpty && item.planId.isNotEmpty
-                                ? () => _editScheduledSession(
-                                      uid: uid,
-                                      topics: topics,
-                                      item: item,
-                                    )
-                                : null,
-                        onDeleteSession:
-                            item.sessionId.isNotEmpty && item.planId.isNotEmpty
-                                ? () => _confirmDeleteScheduledSession(
-                                      uid: uid,
-                                      item: item,
-                                    )
-                                : null,
+                        onEditSession: item.canEdit
+                            ? () => _editScheduledSession(
+                                  uid: uid,
+                                  topics: topics,
+                                  item: item,
+                                )
+                            : null,
+                        onDeleteSession: item.canEdit
+                            ? () => _confirmDeleteScheduledSession(
+                                  uid: uid,
+                                  item: item,
+                                )
+                            : null,
                       ),
                     ),
                 ],
@@ -1314,6 +1179,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                       ref,
                       strings,
                       uid,
+                      topics,
                     ),
                     borderRadius: BorderRadius.circular(999),
                     child: const _PlanSectionIcon(
@@ -1339,6 +1205,7 @@ class _ScheduleRecommendationsCard extends ConsumerWidget {
                       ref,
                       strings,
                       uid,
+                      topics,
                     ),
                     icon: const Icon(Icons.refresh_rounded, size: 20),
                   ),
@@ -1445,10 +1312,23 @@ Future<void> _refreshRecommendationsAndPlan(
   WidgetRef ref,
   AppStrings strings,
   String uid,
+  List<TopicPerformanceInput> topics,
 ) async {
+  final subjectIds = topics
+      .map((t) => t.subjectId.trim())
+      .where((id) => id.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
   try {
     await ref.read(recommendationsRepositoryProvider).generateRecommendations();
-    await ref.read(studyPlanRepositoryProvider).rebalanceStudyPlan();
+    if (subjectIds.isEmpty) {
+      await ref.read(studyPlanRepositoryProvider).rebalanceStudyPlan();
+    } else {
+      await ref.read(studyPlanRepositoryProvider).refreshOrGenerateStudyPlan(
+            uid: uid,
+            subjectIds: subjectIds,
+          );
+    }
     ref.invalidate(latestRecommendationProvider(uid));
     ref.invalidate(quizHistoryStreamProvider(uid));
     if (!context.mounted) return;
@@ -1470,14 +1350,6 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
   required DateTime date,
   required String localeCode,
 }) {
-  if (sessions.isEmpty && _isTodayOrFuture(date)) {
-    return _buildSuggestedScheduleFromTasks(
-      tasks: tasks,
-      date: date,
-      localeCode: localeCode,
-      topics: topics,
-    );
-  }
   final taskByTopic = <String, StudyTaskPriority>{};
   for (final t in tasks) {
     taskByTopic.putIfAbsent(t.topicId, () => t);
@@ -1530,36 +1402,6 @@ List<_ScheduleItem> _buildScheduleFromSessionsAndTasks({
       ),
     );
     current = sessionStart.add(Duration(minutes: session.durationMin + 10));
-  }
-  return items;
-}
-
-List<_ScheduleItem> _buildSuggestedScheduleFromTasks({
-  required List<StudyTaskPriority> tasks,
-  required DateTime date,
-  required String localeCode,
-  required List<TopicPerformanceInput> topics,
-}) {
-  if (tasks.isEmpty) return const [];
-  final today = appTodayDateOnly();
-  final startHour = _isSameDay(date, today) ? 17 : 15;
-  var current = DateTime(date.year, date.month, date.day, startHour);
-  final topicById = <String, TopicPerformanceInput>{
-    for (final t in topics) t.topicId: t,
-  };
-  final items = <_ScheduleItem>[];
-  for (final task in tasks) {
-    if (task.recommendedMinutes <= 0) continue;
-    final timeLabel = _formatTime(current, localeCode);
-    items.add(
-      _ScheduleItem.fromTask(
-        task,
-        timeLabel: timeLabel,
-        topic: topicById[task.topicId],
-        today: today,
-      ),
-    );
-    current = current.add(Duration(minutes: task.recommendedMinutes + 10));
   }
   return items;
 }
@@ -1783,6 +1625,9 @@ class _ScheduleItem {
 
   bool get canStartFocus =>
       planId.isNotEmpty && sessionId.isNotEmpty && !completed;
+
+  /// Only persisted Firestore sessions can be edited or deleted.
+  bool get canEdit => planId.isNotEmpty && sessionId.isNotEmpty;
 }
 
 int? _daysSince(DateTime? date, {DateTime? today}) {

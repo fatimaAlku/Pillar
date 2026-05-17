@@ -14,6 +14,7 @@ import '../../../study_plan/domain/entities/study_session.dart';
 import '../../../study_chat/presentation/screens/study_chat_screen.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 import '../../../study_plan/presentation/widgets/add_to_schedule_bottom_sheet.dart';
+import '../../../study_plan/presentation/widgets/study_session_actions.dart';
 
 String _formatTodayHeader(DateTime d, String locale) {
   return DateFormat('EEEE, MMMM d', locale).format(d);
@@ -119,6 +120,37 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
       MaterialPageRoute<void>(
         builder: (_) => const AcademicTasksScreen(),
       ),
+    );
+  }
+
+  Future<void> _editSession({
+    required String uid,
+    required List<TopicPerformanceInput> topics,
+    required StudySession session,
+  }) async {
+    await editStudySession(
+      context: context,
+      ref: ref,
+      uid: uid,
+      topics: topics,
+      planId: session.planId,
+      sessionId: session.id,
+      topicId: session.topicId,
+      durationMin: session.durationMin,
+      startMinute: session.startMinute,
+    );
+  }
+
+  Future<void> _deleteSession({
+    required String uid,
+    required StudySession session,
+  }) async {
+    await confirmAndDeleteStudySession(
+      context: context,
+      ref: ref,
+      uid: uid,
+      planId: session.planId,
+      sessionId: session.id,
     );
   }
 
@@ -327,6 +359,15 @@ class _HomeDashboardViewState extends ConsumerState<HomeDashboardView> {
                         uid: user.uid,
                         session: rows[index].session,
                         title: rows[index].title,
+                      ),
+                      onEdit: (index) => _editSession(
+                        uid: user.uid,
+                        topics: topics,
+                        session: rows[index].session,
+                      ),
+                      onDelete: (index) => _deleteSession(
+                        uid: user.uid,
+                        session: rows[index].session,
                       ),
                       onAddToSchedule: topics.isEmpty
                           ? null
@@ -951,6 +992,8 @@ class _TodayPlanCard extends StatelessWidget {
     required this.emptyMessage,
     required this.onToggle,
     required this.onStartFocus,
+    required this.onEdit,
+    required this.onDelete,
     this.onAddToSchedule,
   });
 
@@ -958,6 +1001,8 @@ class _TodayPlanCard extends StatelessWidget {
   final String emptyMessage;
   final void Function(int index) onToggle;
   final void Function(int index) onStartFocus;
+  final void Function(int index) onEdit;
+  final void Function(int index) onDelete;
   final VoidCallback? onAddToSchedule;
 
   @override
@@ -1093,8 +1138,23 @@ class _TodayPlanCard extends StatelessWidget {
                               ],
                             ),
                           ),
+                          IconButton(
+                            onPressed: () => onEdit(index),
+                            tooltip: strings.editScheduledSessionTooltip,
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          IconButton(
+                            onPressed: () => onDelete(index),
+                            tooltip: strings.deleteScheduledSessionTooltip,
+                            icon: Icon(
+                              Icons.delete_outline_rounded,
+                              size: 20,
+                              color: colorScheme.error,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                          ),
                           if (!row.session.completed) ...[
-                            const SizedBox(width: 8),
                             IconButton.filledTonal(
                               onPressed: () => onStartFocus(index),
                               tooltip: strings.startFocusSessionTooltip,

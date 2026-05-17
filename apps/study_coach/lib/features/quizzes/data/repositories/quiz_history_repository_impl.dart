@@ -98,4 +98,19 @@ class QuizHistoryRepositoryImpl implements QuizHistoryRepository {
       }).toList(growable: false);
     });
   }
+
+  @override
+  Future<void> deleteAttempt({
+    required String uid,
+    required String entryId,
+  }) async {
+    final id = entryId.trim();
+    if (id.isEmpty) return;
+    await _db
+        .collection(FirestorePaths.users)
+        .doc(uid)
+        .collection(FirestorePaths.quizHistory)
+        .doc(id)
+        .delete();
+  }
 }

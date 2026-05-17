@@ -9,4 +9,9 @@ abstract class QuizHistoryRepository {
   });
 
   Stream<List<QuizHistoryEntry>> watchHistory(String uid, {int limit = 30});
+
+  Future<void> deleteAttempt({
+    required String uid,
+    required String entryId,
+  });
 }

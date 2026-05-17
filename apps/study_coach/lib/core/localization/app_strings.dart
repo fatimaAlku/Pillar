@@ -72,9 +72,9 @@ class AppStrings {
       _isArabic ? 'كلمة المرور مطلوبة' : 'Password is required';
   String get minimumSixChars =>
       _isArabic ? '6 أحرف على الأقل' : 'Minimum 6 characters';
-  String get studentPolytechnicEmailRequired => _isArabic
-      ? 'استخدم بريدك الطلابي الذي ينتهي بـ @student.polytechnic.bh'
-      : 'Use your student email ending with @student.polytechnic.bh';
+  String get gmailEmailRequired => _isArabic
+      ? 'استخدم عنوان Gmail ينتهي بـ @gmail.com'
+      : 'Use a Gmail address ending with @gmail.com';
   String get signUpPasswordMinEight =>
       _isArabic ? '8 أحرف على الأقل' : 'Minimum 8 characters';
   String get signUpPasswordNeedsSpecialChar => _isArabic
@@ -446,6 +446,18 @@ class AppStrings {
       _isArabic ? 'لا يوجد سجل اختبارات بعد.' : 'No quiz history yet.';
   String get couldNotLoadHistory =>
       _isArabic ? 'تعذّر تحميل السجل.' : 'Could not load history.';
+  String get deleteQuizHistoryTooltip =>
+      _isArabic ? 'حذف المحاولة' : 'Delete attempt';
+  String get deleteQuizHistoryTitle =>
+      _isArabic ? 'حذف المحاولة؟' : 'Delete attempt?';
+  String get deleteQuizHistoryConfirm => _isArabic
+      ? 'سيتم إزالة هذه المحاولة من سجل الاختبارات.'
+      : 'This attempt will be removed from your quiz history.';
+  String get quizHistoryEntryDeleted =>
+      _isArabic ? 'تم حذف المحاولة.' : 'Attempt deleted.';
+  String get couldNotDeleteQuizHistoryEntry => _isArabic
+      ? 'تعذّر حذف المحاولة.'
+      : 'Could not delete attempt.';
   String get passwordChange =>
       _isArabic ? 'تغيير كلمة المرور' : 'Password change';
   String get passwordChangeDescription => _isArabic
@@ -532,6 +544,20 @@ class AppStrings {
   String get aboutFeaturesBody => _isArabic
       ? '• خطة دراسة يومية قابلة للتعديل\n• اختبارات مولّدة بالذكاء الاصطناعي\n• تتبع المواد والمواضيع والتقدّم\n• تخصيص اللغة والمظهر والملف الشخصي'
       : '• Editable daily study planning\n• AI-generated quizzes\n• Subject, topic, and progress tracking\n• Profile, language, and theme personalization';
+  String get load => _isArabic ? 'تحميل' : 'Load';
+  String get loadDemoData =>
+      _isArabic ? 'تحميل بيانات العرض' : 'Demo data';
+  String get loadDemoDataConfirmTitle =>
+      _isArabic ? 'تحميل بيانات العرض؟' : 'Load demo data?';
+  String get loadDemoDataConfirmMessage => _isArabic
+      ? 'سيتم إضافة أو تحديث مواد تجريبية وخطة دراسة وتاريخ اختبارات على حسابك. يمكنك تعديلها أو حذفها لاحقًا.'
+      : 'This adds or refreshes sample courses, a study plan, quiz history, and tasks on your account. You can edit or delete them anytime.';
+  String get loadDemoDataSuccess => _isArabic
+      ? 'تم تحميل بيانات العرض. افتح الرئيسية أو الخطة للمعاينة.'
+      : 'Demo data loaded. Open Home or Plan to preview.';
+  String get loadDemoDataFailed => _isArabic
+      ? 'تعذّر تحميل بيانات العرض. تحقق من الاتصال وحاول مرة أخرى.'
+      : 'Could not load demo data. Check your connection and try again.';
   String get logout => _isArabic ? 'تسجيل الخروج' : 'Log out';
   String get allRightsReserved => _isArabic
       ? '© 2026 بيلار. جميع الحقوق محفوظة.'

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../../core/demo/demo_data_providers.dart';
 import '../../../../core/localization/app_strings.dart';
 import '../../../../core/oauth/google_calendar_oauth_pending_store.dart';
 import '../../../../core/oauth/google_oauth_env.dart';
@@ -21,6 +22,8 @@ import '../../../auth/presentation/controllers/auth_controller.dart';
 import '../../../dashboard/presentation/providers/dashboard_inbox_provider.dart';
 import '../../../dashboard/presentation/widgets/dashboard_inbox_sheet.dart';
 import '../../../progress/presentation/screens/progress_details_screen.dart';
+import '../../../progress/presentation/controllers/progress_controller.dart';
+import '../../../roadmap/presentation/controllers/roadmap_progress_providers.dart';
 import '../../../study_plan/presentation/controllers/study_plan_firestore_providers.dart';
 import '../../../subjects/presentation/screens/subjects_manage_screen.dart';
 import '../../data/local/local_profile_avatar_store.dart';
@@ -40,6 +43,7 @@ class ProfileTabScreen extends ConsumerStatefulWidget {
 class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
     with WidgetsBindingObserver {
   bool _isGoogleBusy = false;
+  bool _isDemoSeeding = false;
   Map<String, dynamic>? _googleStatus;
   var _googleBumpListenerAttached = false;
 
@@ -161,6 +165,64 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(strings.googleConnectFailed)),
         );
+      }
+    }
+  }
+
+  Future<void> _loadDemoData() async {
+    final strings = AppStrings.of(context);
+    final authUser = ref.read(currentAuthUserProvider).valueOrNull;
+    if (authUser == null || _isDemoSeeding) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(strings.loadDemoDataConfirmTitle),
+        content: Text(strings.loadDemoDataConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(strings.loadDemoData),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isDemoSeeding = true);
+    final uid = authUser.uid;
+    try {
+      await ref.read(demoDataSeederProvider).seedForUser(uid);
+      ref.invalidate(subjectsStreamProvider(uid));
+      ref.invalidate(academicTasksStreamProvider(uid));
+      ref.invalidate(quizHistoryStreamProvider(uid));
+      ref.invalidate(latestRecommendationProvider(uid));
+      ref.invalidate(progressSnapshotProvider);
+      ref.invalidate(todaysSessionsStreamProvider(uid));
+      ref.invalidate(upcomingSessionsStreamProvider(uid));
+      ref.invalidate(topicPerformanceInputsStreamProvider(uid));
+      ref.invalidate(recentTopicActivityStreamProvider(uid));
+      ref.invalidate(
+        roadmapCompletedItemsStreamProvider(
+          RoadmapProgressKey(uid: uid, majorId: 'computer_science'),
+        ),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.loadDemoDataSuccess)),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.loadDemoDataFailed)),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isDemoSeeding = false);
       }
     }
   }
@@ -525,6 +587,56 @@ class _ProfileTabScreenState extends ConsumerState<ProfileTabScreen>
                     ),
                   );
                 },
+              ),
+              const _TileDivider(),
+              _ProfileMenuTile(
+                icon: Icons.science_outlined,
+                title: strings.loadDemoData,
+                onTap: () {},
+                trailing: _isDemoSeeding
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: authUser == null
+                              ? null
+                              : () => unawaited(_loadDemoData()),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 7,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  colorScheme.primaryContainer
+                                      .withValues(alpha: 0.9),
+                                  colorScheme.tertiaryContainer
+                                      .withValues(alpha: 0.5),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: colorScheme.outlineVariant
+                                    .withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Text(
+                              strings.load,
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                color: colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
               ),
             ],
           ),

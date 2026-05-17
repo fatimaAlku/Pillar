@@ -56,7 +56,7 @@ class QuizHistoryScreen extends ConsumerWidget {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {
                       final entry = entries[index];
-                      return _HistoryCard(entry: entry);
+                      return _HistoryCard(uid: safeUid, entry: entry);
                     },
                   );
                 },
@@ -65,14 +65,54 @@ class QuizHistoryScreen extends ConsumerWidget {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.entry});
+class _HistoryCard extends ConsumerWidget {
+  const _HistoryCard({required this.uid, required this.entry});
 
+  final String uid;
   final QuizHistoryEntry entry;
 
-  @override
-  Widget build(BuildContext context) {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final strings = AppStrings.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(strings.deleteQuizHistoryTitle),
+        content: Text(strings.deleteQuizHistoryConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(strings.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(strings.deleteSessionAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(quizHistoryRepositoryProvider).deleteAttempt(
+            uid: uid,
+            entryId: entry.id,
+          );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(strings.quizHistoryEntryDeleted)),
+        );
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(strings.couldNotDeleteQuizHistoryEntry)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final strings = AppStrings.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final percent = (entry.scoreFraction * 100).round();
     final courseLine = _courseLabelForHistory(entry);
     final showCourseLink =
@@ -83,9 +123,28 @@ class _HistoryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _formatDate(entry.completedAt),
-              style: Theme.of(context).textTheme.labelLarge,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    _formatDate(entry.completedAt),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => _confirmDelete(context, ref),
+                  tooltip: strings.deleteQuizHistoryTooltip,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 20,
+                    color: colorScheme.error,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 6),
             Text(
