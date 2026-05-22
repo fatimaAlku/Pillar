@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-import 'dart:ui';
-
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 
@@ -20,15 +17,7 @@ class QuizReportExporter {
     required AppStrings strings,
     required DateTime generatedAt,
   }) async {
-    final regularBytes = await _loadFontBytes(_regularFontAsset);
-    final boldBytes = await _loadFontBytes(_boldFontAsset);
-
-    final titleFont = PdfTrueTypeFont(boldBytes, 18);
-    final smallFont = PdfTrueTypeFont(regularBytes, 10);
-    final scoreFont = PdfTrueTypeFont(regularBytes, 14);
-    final sectionFont = PdfTrueTypeFont(boldBytes, 12);
-    final bodyFont = PdfTrueTypeFont(regularBytes, 11);
-
+    final fonts = await _fontsForLocale(strings);
     final format = _stringFormat(strings);
 
     final doc = PdfDocument();
@@ -46,13 +35,13 @@ class QuizReportExporter {
       _addTextRow(
         grid,
         text: strings.quizReport,
-        font: titleFont,
+        font: fonts.titleFont,
         format: format,
       );
       _addTextRow(
         grid,
         text: _formatDateTime(generatedAt),
-        font: smallFont,
+        font: fonts.smallFont,
         format: format,
       );
 
@@ -61,7 +50,7 @@ class QuizReportExporter {
         grid,
         text:
             '${strings.score}: ${result.correctCount}/${result.totalCount} ($percent%)',
-        font: scoreFont,
+        font: fonts.scoreFont,
         format: format,
       );
 
@@ -70,17 +59,17 @@ class QuizReportExporter {
         _addTextRow(
           grid,
           text: '${strings.quizLinkedScopeLabel}: ${link.displayLine}',
-          font: bodyFont,
+          font: fonts.bodyFont,
           format: format,
         );
       }
 
-      _addSectionTitleRow(grid, strings.weakTopics, sectionFont, format);
+      _addSectionTitleRow(grid, strings.weakTopics, fonts.sectionFont, format);
       if (result.weakTopics.isEmpty) {
         _addTextRow(
           grid,
           text: strings.noWeakTopics,
-          font: bodyFont,
+          font: fonts.bodyFont,
           format: format,
         );
       } else {
@@ -90,12 +79,12 @@ class QuizReportExporter {
         _addTextRow(
           grid,
           text: weakLines,
-          font: bodyFont,
+          font: fonts.bodyFont,
           format: format,
         );
       }
 
-      _addSectionTitleRow(grid, strings.review, sectionFont, format);
+      _addSectionTitleRow(grid, strings.review, fonts.sectionFont, format);
 
       for (var i = 0; i < result.questions.length; i++) {
         final q = result.questions[i];
@@ -119,7 +108,7 @@ class QuizReportExporter {
           correctAnswer: correctAnswer,
           explanationLine: explanationLine,
           strings: strings,
-          font: bodyFont,
+          font: fonts.bodyFont,
           format: format,
         );
       }
@@ -135,6 +124,38 @@ class QuizReportExporter {
   Future<List<int>> _loadFontBytes(String assetPath) async {
     final data = await rootBundle.load(assetPath);
     return data.buffer.asUint8List().toList(growable: false);
+  }
+
+  /// Noto Sans Arabic does not reliably include Latin glyphs for English quiz
+  /// text; Syncfusion then draws blank letters while punctuation still shows.
+  /// Use standard PDF fonts (Helvetica) for LTR locales.
+  Future<_QuizReportFonts> _fontsForLocale(AppStrings strings) async {
+    if (strings.isArabicLocale) {
+      final regularBytes = await _loadFontBytes(_regularFontAsset);
+      final boldBytes = await _loadFontBytes(_boldFontAsset);
+      return _QuizReportFonts(
+        titleFont: PdfTrueTypeFont(boldBytes, 18),
+        smallFont: PdfTrueTypeFont(regularBytes, 10),
+        scoreFont: PdfTrueTypeFont(regularBytes, 14),
+        sectionFont: PdfTrueTypeFont(boldBytes, 12),
+        bodyFont: PdfTrueTypeFont(regularBytes, 11),
+      );
+    }
+    return _QuizReportFonts(
+      titleFont: PdfStandardFont(
+        PdfFontFamily.helvetica,
+        18,
+        style: PdfFontStyle.bold,
+      ),
+      smallFont: PdfStandardFont(PdfFontFamily.helvetica, 10),
+      scoreFont: PdfStandardFont(PdfFontFamily.helvetica, 14),
+      sectionFont: PdfStandardFont(
+        PdfFontFamily.helvetica,
+        12,
+        style: PdfFontStyle.bold,
+      ),
+      bodyFont: PdfStandardFont(PdfFontFamily.helvetica, 11),
+    );
   }
 
   PdfStringFormat _stringFormat(AppStrings strings) {
@@ -207,4 +228,20 @@ class QuizReportExporter {
     final min = value.minute.toString().padLeft(2, '0');
     return '$yyyy-$mm-$dd $hh:$min';
   }
+}
+
+final class _QuizReportFonts {
+  const _QuizReportFonts({
+    required this.titleFont,
+    required this.smallFont,
+    required this.scoreFont,
+    required this.sectionFont,
+    required this.bodyFont,
+  });
+
+  final PdfFont titleFont;
+  final PdfFont smallFont;
+  final PdfFont scoreFont;
+  final PdfFont sectionFont;
+  final PdfFont bodyFont;
 }

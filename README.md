@@ -1,30 +1,65 @@
 # Pillar
 
-Cross-platform study assistant for university students, built with Flutter and Firebase.
+<p align="center">
+  <img src="apps/study_coach/assets/Pillar%20-%20Home.png" alt="Pillar - Home" width="280" />
+</p>
 
-## Product Goals
+Cross-platform study assistant for university students. The Flutter app (Pillar) helps learners organize courses, follow an AI-assisted study plan, take generated quizzes, track progress, and sync sessions to Google Calendar. The backend is Firebase (Auth, Firestore, Storage, Cloud Functions).
 
-- Let students organize subjects, topics, and exam deadlines
-- Generate dynamic study plans based on time and performance
-- Generate AI quizzes from notes/topics
-- Track progress and identify weak areas
-- Automatically adjust the plan as deadlines approach
+## What the app does
 
-## Tech Stack
+After sign-in and optional email verification, students use five main tabs:
 
-- Frontend: Flutter (iOS, Android, Web)
-- Backend: Firebase Auth, Firestore, Storage, Cloud Functions
-- AI: OpenAI via authenticated HTTPS callables (quiz generation)
+| Tab | Purpose |
+|-----|---------|
+| **Home** | Today’s study sessions, upcoming academic tasks, progress snapshot, study chat entry, quick actions |
+| **Plan** | Study plan calendar, session completion, focus timer, plan generation/rebalance |
+| **Quiz** | AI quiz generation from topics and/or uploaded notes (text extraction), quiz runner, PDF report export |
+| **Roadmap** | Degree roadmap checklist persisted per major |
+| **Profile** | Account, courses, academic tasks, quiz history, notifications, language (EN/AR),  Google Calendar sync |
 
-## Repository Layout
+Other notable capabilities:
 
-- `apps/study_coach`: Flutter application
-- `firebase`: Firebase config, security rules, and Cloud Functions
-- `docs`: Architecture and implementation guidance
+- **Courses & topics** — courses, exam dates, topics
+- **Academic tasks** — homework, exams, projects, etc., with local notification reminders
+- **Study chat** — scope-limited OpenAI assistant (requires client `OPENAI_API_KEY`; see below)
+- **Recommendations** — rule-based insights from quiz history (Cloud Function, no LLM)
+- **Bilingual UI** — English and Arabic (`AppStrings`), including RTL quiz PDF export
+- **Calendar context** — scheduling and “today” use `Asia/Bahrain` (Manama), aligned with Cloud Functions
 
-## Quick Start
+Sign-in is restricted to **Gmail** addresses (`@gmail.com`) in the current build.
 
-### 1) Flutter App
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Client | Flutter 3.x (iOS, Android, Web), Riverpod |
+| Backend | Firebase Auth, Firestore, Storage, Cloud Functions (Node, Gen 2) |
+| AI (quizzes) | OpenAI via authenticated HTTPS callables only |
+| AI (study chat) | OpenAI from the app via `--dart-define=OPENAI_API_KEY=...` |
+| Integrations | Google Calendar (OAuth PKCE from the client; tokens and API calls on Functions) |
+
+## Repository layout
+
+```
+Pillar/
+├── apps/study_coach/     # Flutter app (pillar_study_coach)
+├── firebase/
+│   ├── functions/        # Cloud Functions (TypeScript)
+│   ├── firestore.rules
+│   └── storage.rules
+├── scripts/              # e.g. run-ios-simulator.sh
+├── docs/
+│   └── architecture.md   # Data model, features, callables
+├── firebase.json         # CLI: emulators, deploy, hosting (web)
+└── .firebaserc
+```
+
+App-specific run notes (Google OAuth): `apps/study_coach/README.md`.
+
+## Quick start
+
+### Flutter app
 
 ```bash
 cd apps/study_coach
@@ -32,19 +67,25 @@ flutter pub get
 flutter run
 ```
 
-iPhone Simulator quick start from repo root:
+iPhone Simulator from repo root:
 
 ```bash
 ./scripts/run-ios-simulator.sh
-```
-
-Optional: choose a different simulator device name:
-
-```bash
+# Optional device name:
 ./scripts/run-ios-simulator.sh "iPhone 16"
 ```
 
-### 2) Firebase Functions
+**Google Calendar** (optional): configure `env.dev.json` and run with defines — see `apps/study_coach/README.md`.
+
+**Study chat** (optional): pass an OpenAI key at build/run time (not used for quizzes):
+
+```bash
+flutter run --dart-define=OPENAI_API_KEY=your_key
+# Or combine with env.dev.json:
+flutter run --dart-define-from-file=env.dev.json --dart-define=OPENAI_API_KEY=your_key
+```
+
+### Cloud Functions
 
 ```bash
 cd firebase/functions
@@ -52,7 +93,7 @@ npm install
 npm run build
 ```
 
-Main **HTTPS callables** (all require a signed-in user except where noted):
+Authenticated **HTTPS callables** (Flutter uses `cloud_functions`):
 
 | Area | Functions |
 |------|-----------|
@@ -62,96 +103,58 @@ Main **HTTPS callables** (all require a signed-in user except where noted):
 | Email | `sendEmailVerificationOtp`, `verifyEmailWithOtp` |
 | Google Calendar | `connectGoogleCalendarWithAuthCode`, `getGoogleCalendarConnectionStatus`, `disconnectGoogleCalendar`, `syncStudySessionToGoogleCalendar` |
 
-The Flutter app calls these over HTTPS; it does not embed `OPENAI_API_KEY` for quiz generation.
+Quiz flows in the app call `generateQuizQuestions` (and related paths) so the **OpenAI key never ships in the client** for quizzes.
 
-#### Secrets and environment (production)
+### Secrets and environment (production)
 
-- **Quiz AI:** set the OpenAI key as a Firebase secret:
+**Quiz AI:**
 
-  ```bash
-  firebase functions:secrets:set OPENAI_API_KEY
-  ```
+```bash
+firebase functions:secrets:set OPENAI_API_KEY
+```
 
-- **Email OTP:** set a long random pepper and SMTP for sending codes:
+**Email OTP:**
 
-  ```bash
-  firebase functions:secrets:set EMAIL_OTP_SECRET
-  ```
+```bash
+firebase functions:secrets:set EMAIL_OTP_SECRET
+```
 
-  `EMAIL_OTP_SECRET` is only used to **hash** OTPs in Firestore; it is **not** your SMTP password. Mail credentials are `SMTP_USER` and `SMTP_PASS` (environment variables on Cloud Run).
+`EMAIL_OTP_SECRET` hashes OTPs in Firestore; it is not your SMTP password. Mail uses `SMTP_USER` / `SMTP_PASS` on the Cloud Run service for `sendEmailVerificationOtp`.
 
-  Deploy at least once so the functions exist, then attach the secret to the OTP callables if the CLI prompts you to.
+Gen 2 functions run on **Cloud Run**. Set SMTP variables on the **`sendemailverificationotp`** service in the same GCP project as Firebase (see `.firebaserc` → `default`). Minimum variables: `SMTP_HOST`, optionally `SMTP_PORT` (default `587`), `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`. Mount `EMAIL_OTP_SECRET` as a secret on that service.
 
-  **SMTP in production (required or mail is never sent):** Gen 2 callables run on **Cloud Run**. Plain environment variables such as `SMTP_HOST` are **not** picked up from your laptop; you must set them on the **Cloud Run service** for `sendEmailVerificationOtp` (the verify callable does not send email).
+Detailed SMTP behavior and Gmail app-password steps: `firebase/functions/src/emailVerificationOtp.ts`.
 
-  1. In [Google Cloud Console](https://console.cloud.google.com/) pick the **same project** as Firebase (see `.firebaserc` → `default`).
-  2. Open **Cloud Run** → find the service whose name matches the function, usually `sendemailverificationotp` (lowercase). Confirm the **region** in the URL or list (often `us-central1` if you never set a custom region).
-  3. Open that service → **Edit & deploy new revision** → **Variables & secrets** → **Add variable** and set at least:
-     - `SMTP_HOST` — your provider’s SMTP hostname (required in production).
-     - `SMTP_PORT` — optional; default is `587` in code.
-     - `SMTP_USER` / `SMTP_PASS` — if the provider requires authentication (prefer [Secret Manager](https://console.cloud.google.com/security/secret-manager) for `SMTP_PASS` and reference it as a secret on the service instead of a plain variable).
-     - `EMAIL_FROM` — sender address; for **Microsoft 365** use the **same** address as `SMTP_USER` unless your admin documents otherwise (if unset, the function defaults `From` to `SMTP_USER`).
-  4. **Deploy** the revision. No Flutter rebuild is required.
-
-  From a machine with [`gcloud`](https://cloud.google.com/sdk/docs/install) and access to the project, you can list services and regions:
-
-  ```bash
-  gcloud run services list --project=YOUR_PROJECT_ID
-  ```
-
-  Variable names and behavior are documented in `firebase/functions/src/emailVerificationOtp.ts`.
-
-  **Gmail SMTP (step-by-step, good for testing OTP):**
-
-  1. Open [Google Account security](https://myaccount.google.com/security) for the Gmail address you will use to send mail.
-  2. Enable **2-Step Verification** if it is not already on (required for app passwords).
-  3. Open [App passwords](https://myaccount.google.com/apppasswords), create one (e.g. app “Mail”, device “Pillar functions”), and copy the **16-character** password (spaces optional); this is **not** your normal Gmail password.
-  4. In [Google Cloud Console](https://console.cloud.google.com/) select the same project as Firebase (see `.firebaserc`).
-  5. Go to **Cloud Run** → open the service **`sendemailverificationotp`** (region is often `us-central1`).
-  6. Click **Edit & deploy new revision** → **Variables & secrets** → add or update:
-     - `SMTP_HOST` = `smtp.gmail.com`
-     - `SMTP_PORT` = `587`
-     - `SMTP_USER` = your full Gmail address (e.g. `you@gmail.com`)
-     - `SMTP_PASS` = the app password from step 3 (store as a **secret** reference on Cloud Run if possible, not in chat or screenshots).
-     - `EMAIL_FROM` = the **same** Gmail as `SMTP_USER` (or omit it; the function defaults `From` to `SMTP_USER` when `EMAIL_FROM` is empty).
-  7. Under **Secrets**, ensure **`EMAIL_OTP_SECRET`** is still mounted for this function (that secret is only for hashing OTPs in Firestore, not for Gmail).
-  8. **Deploy** the new revision.
-  9. In the app, open **Verify your email** and tap **Resend code**; check the **student inbox** and **Spam** for the message.
-
-  Gmail has daily send limits; for production traffic use a transactional provider (SendGrid, SES, etc.) and a verified domain.
-
-For local emulators:
+**Local emulators** (from repo root):
 
 ```bash
 export OPENAI_API_KEY=your_openai_key
-# Optional: export EMAIL_OTP_SECRET=... and SMTP_* if you want real email locally
+# Optional: EMAIL_OTP_SECRET, SMTP_* for real email locally
 firebase emulators:start
 ```
 
-With the emulator, OTP flows may log the code instead of sending mail when SMTP is not configured.
+Without SMTP locally, OTP callables may log the code instead of sending mail.
 
-### 3) Firebase Emulator (optional)
+### Web hosting (optional)
 
-From repo root:
+Root `firebase.json` hosts `apps/study_coach/build/web` after:
 
 ```bash
-firebase emulators:start
+cd apps/study_coach && flutter build web
+firebase deploy --only hosting
 ```
 
-### Firebase config note
+## Core architecture
 
-- Root `firebase.json` + `.firebaserc` are used by Firebase CLI for emulators/deploy.
-- `apps/study_coach/firebase.json` is FlutterFire metadata and is ignored in git.
+Clean Architecture with feature-first modules under `apps/study_coach/lib/features/<feature>/`:
 
-## Core Architecture
+- `presentation` — UI and Riverpod controllers
+- `domain` — entities, repository contracts, use cases
+- `data` — DTOs, repository implementations, remote services
 
-The app follows Clean Architecture with feature-first modules:
+`core/` holds Firebase wrappers, theme, localization, notifications, OAuth bridges, and shared providers. Firebase and AI are behind repository interfaces where features need testability.
 
-- `presentation`: UI + state management
-- `domain`: entities + use cases + repository contracts
-- `data`: DTOs + repository implementations + remote/local data sources
-
-Firebase and AI providers are abstracted behind repository interfaces for testability and future scalability.
+See **`docs/architecture.md`** for Firestore paths, example documents, and function boundaries.
 
 ## Tests
 
@@ -160,6 +163,9 @@ cd apps/study_coach
 flutter test
 ```
 
-## Further Reading
+Includes widget/smoke tests, study-plan personalization, quiz parsers, study-chat preflight, student reminders, and sign-in email rules.
 
-- Deeper architecture notes: `docs/architecture.md`
+## Firebase config note
+
+- Root `firebase.json` + `.firebaserc` — CLI emulators and deploy.
+- `apps/study_coach/firebase.json` — FlutterFire metadata (gitignored).
